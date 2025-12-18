@@ -28,7 +28,6 @@ const leasingSchema = z.object({
   business_id: z.string().regex(/^\d{7}-\d$/, 'Virheellinen Y-tunnus'),
   contact_email: z.string().email('Virheellinen sähköposti'),
   contact_phone: z.string().optional(),
-  password: z.string().min(6, 'Salasanan on oltava vähintään 6 merkkiä'),
   equipment_price: z.number().min(1000, 'Vähimmäissumma 1 000 €'),
   requested_term_months: z.number().optional(),
   additional_info: z.string().optional(),
@@ -41,7 +40,6 @@ const saleLeasebackSchema = z.object({
   business_id: z.string().regex(/^\d{7}-\d$/, 'Virheellinen Y-tunnus'),
   contact_email: z.string().email('Virheellinen sähköposti'),
   contact_phone: z.string().optional(),
-  password: z.string().min(6, 'Salasanan on oltava vähintään 6 merkkiä'),
   equipment_description: z.string().min(10, 'Kuvaa kohde tarkemmin'),
   year_model: z.number().min(1990, 'Vuosimalli vaaditaan').max(new Date().getFullYear() + 1, 'Virheellinen vuosimalli'),
   hours: z.number().min(0, 'Tunnit vaaditaan').optional(),
@@ -578,24 +576,6 @@ export default function LandingPage() {
                       </div>
 
                       <div>
-                        <label className="label">Salasana (kirjautumista varten) *</label>
-                        <input
-                          {...leasingForm.register('password')}
-                          type="password"
-                          className="input"
-                          placeholder="Vähintään 6 merkkiä"
-                        />
-                        {leasingForm.formState.errors.password && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {leasingForm.formState.errors.password.message}
-                          </p>
-                        )}
-                        <p className="text-xs text-slate-500 mt-1">
-                          Tarvitset tämän salasanan kirjautuaksesi seuraamaan hakemustasi
-                        </p>
-                      </div>
-
-                      <div>
                         <label className="label">Hankintahinta (€) *</label>
                         <input
                           {...leasingForm.register('equipment_price', { valueAsNumber: true })}
@@ -802,24 +782,6 @@ export default function LandingPage() {
                             placeholder="+358 40 123 4567"
                           />
                         </div>
-                      </div>
-
-                      <div>
-                        <label className="label">Salasana (kirjautumista varten) *</label>
-                        <input
-                          {...slbForm.register('password')}
-                          type="password"
-                          className="input"
-                          placeholder="Vähintään 6 merkkiä"
-                        />
-                        {slbForm.formState.errors.password && (
-                          <p className="text-red-500 text-sm mt-1">
-                            {slbForm.formState.errors.password.message}
-                          </p>
-                        )}
-                        <p className="text-xs text-slate-500 mt-1">
-                          Tarvitset tämän salasanan kirjautuaksesi seuraamaan hakemustasi
-                        </p>
                       </div>
 
                       <div>
