@@ -13,6 +13,7 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications as notificationsApi } from '../lib/api';
 import type { Notification } from '../types';
+import Logo from '../components/Logo';
 
 export default function DashboardLayout() {
   const { user, logout } = useAuthStore();
@@ -85,12 +86,7 @@ export default function DashboardLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">e</span>
-              </div>
-              <span className="text-white font-display font-bold text-lg">Kantama</span>
-            </Link>
+            <Logo to="/dashboard" size="sm" variant="light" />
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-white"

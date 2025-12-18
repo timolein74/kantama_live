@@ -12,12 +12,12 @@ import {
   ChevronDown,
   Settings,
   Euro,
-  FileCheck,
-  Check
+  FileCheck
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { notifications as notificationsApi } from '../lib/api';
 import type { Notification } from '../types';
+import Logo from '../components/Logo';
 
 export default function AdminLayout() {
   const { user, logout } = useAuthStore();
@@ -94,15 +94,10 @@ export default function AdminLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
-            <Link to="/admin" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">e</span>
-              </div>
-              <div>
-                <span className="text-white font-display font-bold text-lg">Kantama</span>
-                <span className="block text-xs text-Kantama-400">Admin</span>
-              </div>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Logo to="/admin" size="sm" variant="light" showSubtext={false} />
+              <span className="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-medium">Admin</span>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-white"

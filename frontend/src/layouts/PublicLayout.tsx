@@ -2,6 +2,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Menu, X, LogIn, UserPlus } from 'lucide-react';
 import { useState } from 'react';
+import Logo from '../components/Logo';
 
 export default function PublicLayout() {
   const { isAuthenticated, user } = useAuthStore();
@@ -24,12 +25,7 @@ export default function PublicLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-xl">e</span>
-              </div>
-              <span className="text-white font-display font-bold text-xl">Kantama</span>
-            </Link>
+            <Logo to="/" size="md" variant="light" />
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center space-x-8">
@@ -127,11 +123,8 @@ export default function PublicLayout() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold">e</span>
-                </div>
-                <span className="text-white font-display font-bold text-lg">Kantama</span>
+              <div className="mb-4">
+                <Logo to="/" size="sm" variant="light" />
               </div>
               <p className="text-sm">
                 Yritysrahoitusta helposti ja nopeasti. Leasing ja takaisinvuokraus yrityksille.

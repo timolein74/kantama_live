@@ -7,12 +7,12 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown,
-  Building2
+  ChevronDown
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { notifications as notificationsApi } from '../lib/api';
 import type { Notification } from '../types';
+import Logo from '../components/Logo';
 
 export default function FinancierLayout() {
   const { user, logout } = useAuthStore();
@@ -85,15 +85,10 @@ export default function FinancierLayout() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
-            <Link to="/financier" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-white font-display font-bold text-lg">Kantama</span>
-                <span className="block text-xs text-emerald-400">Rahoittaja</span>
-              </div>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Logo to="/financier" size="sm" variant="light" showSubtext={false} />
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-medium">Rahoittaja</span>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-white"
