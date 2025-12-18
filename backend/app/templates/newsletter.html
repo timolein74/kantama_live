@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subject }}</title>
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0f172a;">
+    <!-- Wrapper -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #0f172a;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <!-- Container -->
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; max-width: 600px;">
+                    
+                    <!-- Header with Logo -->
+                    <tr>
+                        <td style="padding: 30px 40px; background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%); border-radius: 16px 16px 0 0;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td>
+                                        <!-- Logo -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                                            <tr>
+                                                <td style="vertical-align: middle;">
+                                                    <!-- Logo Icon -->
+                                                    <div style="width: 44px; height: 44px; background: linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%); border-radius: 12px; display: inline-block; vertical-align: middle;">
+                                                        <img src="https://kantama.fi/logo-icon.png" alt="" width="44" height="44" style="display: block;" />
+                                                    </div>
+                                                </td>
+                                                <td style="vertical-align: middle; padding-left: 12px;">
+                                                    <span style="font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">Kantama</span>
+                                                    <span style="font-size: 24px; font-weight: 500; color: rgba(255,255,255,0.9); letter-spacing: -0.5px; margin-left: 8px;">Rahoitus</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Main Content Area -->
+                    <tr>
+                        <td style="padding: 0;">
+                            <!-- Hero Section -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(180deg, #1e3a5f 0%, #1e40af 100%);">
+                                <tr>
+                                    <td style="padding: 40px 40px 50px 40px; text-align: center;">
+                                        <h1 style="margin: 0 0 16px 0; font-size: 32px; font-weight: 700; color: #ffffff; line-height: 1.2;">
+                                            {{ headline }}
+                                        </h1>
+                                        <p style="margin: 0; font-size: 18px; color: #94a3b8; line-height: 1.6;">
+                                            {{ subheadline }}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- White Content Box -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #ffffff;">
+                                <tr>
+                                    <td style="padding: 40px;">
+                                        <!-- Content Block -->
+                                        <div style="color: #334155; font-size: 16px; line-height: 1.7;">
+                                            {{ content }}
+                                        </div>
+
+                                        <!-- CTA Button -->
+                                        {% if cta_text and cta_url %}
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 32px 0;">
+                                            <tr>
+                                                <td style="border-radius: 8px; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                                                    <a href="{{ cta_url }}" target="_blank" style="display: inline-block; padding: 16px 32px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+                                                        {{ cta_text }} →
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        {% endif %}
+
+                                        <!-- Features/Highlights Box -->
+                                        {% if features %}
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-top: 32px; background-color: #f8fafc; border-radius: 12px;">
+                                            <tr>
+                                                <td style="padding: 24px;">
+                                                    <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1e293b;">
+                                                        Miksi Kantama Rahoitus?
+                                                    </h3>
+                                                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                                        {% for feature in features %}
+                                                        <tr>
+                                                            <td style="padding: 8px 0; vertical-align: top; width: 24px;">
+                                                                <span style="color: #3b82f6; font-size: 16px;">✓</span>
+                                                            </td>
+                                                            <td style="padding: 8px 0; color: #475569; font-size: 15px;">
+                                                                {{ feature }}
+                                                            </td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 32px 40px; background-color: #0f172a; border-radius: 0 0 16px 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="text-align: center;">
+                                        <!-- Footer Logo -->
+                                        <p style="margin: 0 0 16px 0;">
+                                            <span style="font-size: 18px; font-weight: 700; color: #ffffff;">Kantama</span>
+                                            <span style="font-size: 18px; font-weight: 500; color: rgba(255,255,255,0.8);"> Rahoitus</span>
+                                        </p>
+                                        
+                                        <!-- Contact Info -->
+                                        <p style="margin: 0 0 8px 0; font-size: 14px; color: #94a3b8;">
+                                            Yritysrahoitusta helposti
+                                        </p>
+                                        <p style="margin: 0 0 20px 0; font-size: 14px; color: #64748b;">
+                                            <a href="mailto:info@kantama.fi" style="color: #60a5fa; text-decoration: none;">info@kantama.fi</a>
+                                        </p>
+
+                                        <!-- Social Links -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 0 auto 20px auto;">
+                                            <tr>
+                                                <td style="padding: 0 8px;">
+                                                    <a href="https://kantama.fi" style="color: #60a5fa; font-size: 13px; text-decoration: none;">Verkkosivut</a>
+                                                </td>
+                                                <td style="color: #475569;">|</td>
+                                                <td style="padding: 0 8px;">
+                                                    <a href="https://kantama.fi/login" style="color: #60a5fa; font-size: 13px; text-decoration: none;">Kirjaudu</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <!-- Unsubscribe -->
+                                        <p style="margin: 0; font-size: 12px; color: #475569;">
+                                            Sait tämän viestin koska olet Kantama Rahoituksen asiakas.<br>
+                                            <a href="{{ unsubscribe_url }}" style="color: #64748b; text-decoration: underline;">Peruuta uutiskirjeen tilaus</a>
+                                        </p>
+
+                                        <!-- Copyright -->
+                                        <p style="margin: 24px 0 0 0; font-size: 12px; color: #475569;">
+                                            © 2025 Kantama Rahoitus. Kaikki oikeudet pidätetään.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+

@@ -32,21 +32,34 @@ export default function Logo({
 
   const content = (
     <div className={`flex items-center ${sizes[size].gap}`}>
-      {/* Logo Icon - Bold modern K */}
+      {/* Logo Icon - Abstract growth/reach symbol */}
       <div className={`${sizes[size].icon} relative flex-shrink-0`}>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-indigo-700 rounded-xl shadow-lg">
           {/* Glossy effect */}
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/25 via-transparent to-black/10" />
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/20 via-transparent to-black/10" />
           
           <svg 
             viewBox="0 0 40 40" 
             fill="none" 
-            className="w-full h-full"
+            className="w-full h-full p-1.5"
           >
-            {/* Bold filled K shape */}
+            {/* Abstract rising bars - symbolizing growth/reach */}
+            <rect x="6" y="22" width="6" height="12" rx="1.5" fill="white" opacity="0.7" />
+            <rect x="14" y="14" width="6" height="20" rx="1.5" fill="white" opacity="0.85" />
+            <rect x="22" y="8" width="6" height="26" rx="1.5" fill="white" />
+            {/* Arrow pointing up-right - reaching forward */}
             <path 
-              d="M10 6H16V16L26 6H34L21 19L35 34H26L16 23V34H10V6Z" 
-              fill="white"
+              d="M30 6L34 6L34 10" 
+              stroke="white" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+            />
+            <path 
+              d="M26 14L34 6" 
+              stroke="white" 
+              strokeWidth="2.5" 
+              strokeLinecap="round"
             />
           </svg>
         </div>
