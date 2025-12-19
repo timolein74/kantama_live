@@ -5,3 +5,5 @@ c.execute("UPDATE users SET password_hash=?, is_active=1, is_verified=1 WHERE em
 c.commit()
 print("Done! t.leinonen@yahoo.com can now login with password: admin123")
 
+
+

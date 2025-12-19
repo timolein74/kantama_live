@@ -84,7 +84,9 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """Login with email and password"""
-    result = await db.execute(select(User).where(User.email == credentials.email))
+    # Case-insensitive email lookup
+    from sqlalchemy import func
+    result = await db.execute(select(User).where(func.lower(User.email) == credentials.email.lower()))
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(credentials.password, user.password_hash):

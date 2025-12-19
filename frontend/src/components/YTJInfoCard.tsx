@@ -247,3 +247,5 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
   );
 }
 
+
+

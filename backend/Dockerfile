@@ -25,3 +25,5 @@ EXPOSE 8000
 # Run with gunicorn for production
 CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
 
+
+

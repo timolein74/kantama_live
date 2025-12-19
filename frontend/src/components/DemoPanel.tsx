@@ -13,7 +13,7 @@ interface DemoUser {
 
 const demoUsers: DemoUser[] = [
   {
-    email: 'admin@Kantama.fi',
+    email: 'admin@Kantama.fi',  // Case sensitive - must match exactly!
     password: 'admin123',
     role: 'ADMIN',
     label: 'Admin',
@@ -21,7 +21,7 @@ const demoUsers: DemoUser[] = [
     color: 'from-purple-500 to-indigo-600',
   },
   {
-    email: 'demo.financier@Kantama.fi',
+    email: 'demo.financier@kantama.fi',
     password: 'demo123',
     role: 'FINANCIER',
     label: 'Rahoittaja',
@@ -29,7 +29,7 @@ const demoUsers: DemoUser[] = [
     color: 'from-emerald-500 to-teal-600',
   },
   {
-    email: 'demo.customer@Kantama.fi',
+    email: 'demo.customer@kantama.fi',
     password: 'demo123',
     role: 'CUSTOMER',
     label: 'Asiakas',

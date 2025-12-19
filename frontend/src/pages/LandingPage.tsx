@@ -101,74 +101,16 @@ export default function LandingPage() {
     },
   });
 
-  // Y-tunnus lookup function (by business ID)
+  // Y-tunnus lookup function - DISABLED temporarily due to slow PRH API
   const lookupCompany = useCallback(async (businessId: string, formType: 'leasing' | 'slb') => {
-    // Validate format first
-    const pattern = /^\d{7}-\d$/;
-    if (!pattern.test(businessId)) {
-      setYtjStatus('idle');
-      return;
-    }
-
-    setYtjLoading(true);
-    setYtjStatus('idle');
-    
-    try {
-      const response = await ytj.getCompanyInfo(businessId);
-      const company = response.data;
-      setYtjCompany(company);
-      
-      if (!company.is_active || company.is_liquidated) {
-        setYtjStatus('inactive');
-        toast.error('Yritys ei ole aktiivinen tai on selvitystilassa');
-        return;
-      }
-      
-      setYtjStatus('success');
-      
-      // Auto-fill company name
-      if (company.name) {
-        if (formType === 'leasing') {
-          leasingForm.setValue('company_name', company.name);
-        } else {
-          slbForm.setValue('company_name', company.name);
-        }
-        toast.success(`Yritystiedot haettu: ${company.name}`);
-      }
-    } catch (error: any) {
-      setYtjStatus('error');
-      if (error.response?.status === 404) {
-        toast.error('Yritystä ei löytynyt Y-tunnuksella');
-      } else {
-        console.error('YTJ lookup error:', error);
-      }
-    } finally {
-      setYtjLoading(false);
-    }
+    // Disabled - PRH API is too slow
+    return;
   }, [leasingForm, slbForm]);
 
-  // Company name search function
+  // Company name search function - DISABLED temporarily due to slow PRH API
   const searchCompanyByName = useCallback(async (name: string, formType: 'leasing' | 'slb') => {
-    if (name.length < 2) {
-      setNameSearchResults([]);
-      setShowNameDropdown(false);
-      return;
-    }
-
-    setNameSearchLoading(true);
-    setActiveNameField(formType);
-    
-    try {
-      const response = await ytj.searchByName(name, 8);
-      setNameSearchResults(response.data.results);
-      setShowNameDropdown(response.data.results.length > 0);
-    } catch (error) {
-      console.error('Company name search error:', error);
-      setNameSearchResults([]);
-      setShowNameDropdown(false);
-    } finally {
-      setNameSearchLoading(false);
-    }
+    // Disabled - PRH API is too slow, let user type freely
+    return;
   }, []);
 
   // Select company from dropdown
@@ -419,13 +361,13 @@ export default function LandingPage() {
             >
               <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
                 {/* Form tabs */}
-                <div className="flex border-b border-slate-200">
+                <div className="flex">
                   <button
                     onClick={() => setActiveForm('leasing')}
-                    className={`flex-1 py-4 text-center font-medium transition-colors ${
+                    className={`flex-1 py-4 text-center font-semibold transition-all ${
                       activeForm === 'leasing'
-                        ? 'bg-Kantama-50 text-Kantama-600 border-b-2 border-Kantama-600'
-                        : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                     }`}
                   >
                     <TrendingUp className="w-5 h-5 inline mr-2" />
@@ -433,10 +375,10 @@ export default function LandingPage() {
                   </button>
                   <button
                     onClick={() => setActiveForm('slb')}
-                    className={`flex-1 py-4 text-center font-medium transition-colors ${
+                    className={`flex-1 py-4 text-center font-semibold transition-all ${
                       activeForm === 'slb'
-                        ? 'bg-Kantama-50 text-Kantama-600 border-b-2 border-Kantama-600'
-                        : 'text-slate-600 hover:bg-slate-50'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                     }`}
                   >
                     <RefreshCw className="w-5 h-5 inline mr-2" />
