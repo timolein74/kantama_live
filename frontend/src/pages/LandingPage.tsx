@@ -25,10 +25,10 @@ import { applications, ytj, CompanyInfo, CompanySearchResult } from '../lib/api'
 // Form schemas
 const leasingSchema = z.object({
   company_name: z.string().min(2, 'Yrityksen nimi vaaditaan'),
-  business_id: z.string().regex(/^\d{7}-\d$/, 'Virheellinen Y-tunnus'),
+  business_id: z.string().min(1, 'Y-tunnus vaaditaan'),
   contact_email: z.string().email('Virheellinen sähköposti'),
   contact_phone: z.string().optional(),
-  equipment_price: z.number().min(1000, 'Vähimmäissumma 1 000 €'),
+  equipment_price: z.number({ invalid_type_error: 'Syötä hankintahinta' }).min(1000, 'Vähimmäissumma 1 000 €'),
   requested_term_months: z.number().optional(),
   additional_info: z.string().optional(),
   link_to_item: z.string().optional(),
@@ -37,10 +37,10 @@ const leasingSchema = z.object({
 
 const saleLeasebackSchema = z.object({
   company_name: z.string().min(2, 'Yrityksen nimi vaaditaan'),
-  business_id: z.string().regex(/^\d{7}-\d$/, 'Virheellinen Y-tunnus'),
+  business_id: z.string().min(1, 'Y-tunnus vaaditaan'),
   contact_email: z.string().email('Virheellinen sähköposti'),
   contact_phone: z.string().optional(),
-  equipment_description: z.string().min(10, 'Kuvaa kohde tarkemmin'),
+  equipment_description: z.string().min(5, 'Kuvaa kohde'),
   year_model: z.number().min(1990, 'Vuosimalli vaaditaan').max(new Date().getFullYear() + 1, 'Virheellinen vuosimalli'),
   hours: z.number().min(0, 'Tunnit vaaditaan').optional(),
   kilometers: z.number().min(0).optional(),
