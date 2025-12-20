@@ -114,8 +114,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* Demo panel for easy user switching - only show in development or when explicitly enabled */}
-      {(import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_PANEL === 'true') && <DemoPanel />}
+      {/* Demo panel - ONLY in localhost development */}
+      {import.meta.env.DEV && <DemoPanel />}
     </PasswordProtection>
   );
 }
