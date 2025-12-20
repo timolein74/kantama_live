@@ -21,6 +21,9 @@ import {
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, ApplicationStatus, ApplicationType } from '../../types';
 
+// DEMO DATA - Empty for fresh testing
+const demoApplications: Application[] = [];
+
 export default function AdminApplications() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [appList, setAppList] = useState<Application[]>([]);
@@ -33,6 +36,18 @@ export default function AdminApplications() {
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
   useEffect(() => {
+    // DEMO MODE: Check if using demo token
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Combine static demo data + localStorage applications
+      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+      const allApps = [...demoApplications, ...storedApps] as any;
+      setAppList(allApps);
+      setFilteredApps(allApps);
+      setIsLoading(false);
+      return;
+    }
+    
     const fetchApps = async () => {
       try {
         const response = await applications.list();
@@ -264,7 +279,6 @@ export default function AdminApplications() {
     </div>
   );
 }
-
 
 
 

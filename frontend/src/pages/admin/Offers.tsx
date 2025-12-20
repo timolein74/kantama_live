@@ -28,6 +28,9 @@ interface OfferWithApplication extends Offer {
   financier_name?: string;
 }
 
+// DEMO DATA - Empty for fresh testing
+const demoOffers: OfferWithApplication[] = [];
+
 export default function AdminOffers() {
   const [offerList, setOfferList] = useState<OfferWithApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +38,15 @@ export default function AdminOffers() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    // DEMO MODE: Use demo data + localStorage
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      setOfferList([...demoOffers, ...storedOffers]);
+      setIsLoading(false);
+      return;
+    }
+    
     const fetchOffers = async () => {
       try {
         const response = await api.get<OfferWithApplication[]>('/offers/admin/all');
@@ -49,6 +61,39 @@ export default function AdminOffers() {
   }, []);
 
   const handleApprove = async (offerId: number) => {
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Update offer status in localStorage
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      const offerIndex = storedOffers.findIndex((o: any) => o.id === offerId);
+      let applicationId: number | null = null;
+      
+      if (offerIndex >= 0) {
+        storedOffers[offerIndex].status = 'SENT';
+        applicationId = storedOffers[offerIndex].application_id;
+        localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      }
+      
+      // Also update application status to OFFER_SENT
+      if (applicationId) {
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => a.id === applicationId || String(a.id) === String(applicationId));
+        if (appIndex >= 0) {
+          storedApps[appIndex].status = 'OFFER_SENT';
+          localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+        }
+      }
+      
+      // Update local state
+      setOfferList(prev => prev.map(o => 
+        o.id === offerId ? { ...o, status: 'SENT' } : o
+      ));
+      
+      toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
+      return;
+    }
+    
     try {
       await offers.approve(offerId);
       toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
@@ -215,7 +260,6 @@ export default function AdminOffers() {
     </div>
   );
 }
-
 
 
 

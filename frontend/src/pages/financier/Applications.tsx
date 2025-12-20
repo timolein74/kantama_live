@@ -21,6 +21,18 @@ import {
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, ApplicationStatus, ApplicationType } from '../../types';
 
+// DEMO DATA - Empty for fresh testing
+const demoApplications: Application[] = [];
+
+// Financier-specific status labels
+const getFinancierStatusLabel = (status: string): string => {
+  const labels: Record<string, string> = {
+    OFFER_RECEIVED: 'Tarjous lähetetty (odottaa adminia)',
+    OFFER_SENT: 'Tarjous lähetetty asiakkaalle',
+  };
+  return labels[status] || getStatusLabel(status);
+};
+
 export default function FinancierApplications() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [appList, setAppList] = useState<Application[]>([]);
@@ -33,6 +45,18 @@ export default function FinancierApplications() {
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
   useEffect(() => {
+    // DEMO MODE: Check if using demo token
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Combine demo data + localStorage applications
+      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+      const allApps = [...demoApplications, ...storedApps] as any;
+      setAppList(allApps);
+      setFilteredApps(allApps);
+      setIsLoading(false);
+      return;
+    }
+    
     const fetchApps = async () => {
       try {
         const response = await applications.list();
@@ -252,7 +276,7 @@ export default function FinancierApplications() {
                       <div className="flex items-center space-x-2">
                         <h3 className="font-medium text-midnight-900">{app.reference_number}</h3>
                         <span className={getStatusColor(app.status)}>
-                          {getStatusLabel(app.status)}
+                          {getFinancierStatusLabel(app.status)}
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 mt-1">
@@ -285,7 +309,6 @@ export default function FinancierApplications() {
     </div>
   );
 }
-
 
 
 

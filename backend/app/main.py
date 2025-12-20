@@ -51,20 +51,14 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS - Allow Vercel preview URLs and production
-origins = [
-    "http://localhost:5173",
-    "http://localhost:3000",
-    settings.FRONTEND_URL,
-    "https://kantama.fi",
-    "https://www.kantama.fi",
-]
-
-# Allow all Vercel preview URLs
+# CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        settings.FRONTEND_URL
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

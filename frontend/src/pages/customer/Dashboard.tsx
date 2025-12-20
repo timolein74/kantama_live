@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -9,7 +9,11 @@ import {
   ArrowRight,
   TrendingUp,
   RefreshCw,
-  Bell
+  Bell,
+  Euro,
+  Sparkles,
+  Upload,
+  MessageSquare
 } from 'lucide-react';
 import { applications, notifications as notificationsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
@@ -17,29 +21,66 @@ import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../.
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, Notification } from '../../types';
 
+// DEMO DATA for customer - Empty for fresh testing
+const demoCustomerApplications: Application[] = [];
+
 export default function CustomerDashboard() {
   const { user } = useAuthStore();
+  // DEMO MODE: Combine static + localStorage data filtered by user email
   const [appList, setAppList] = useState<Application[]>([]);
-  const [notificationList, setNotificationList] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [notificationList] = useState<Notification[]>([]);
+  const [pendingInfoRequests, setPendingInfoRequests] = useState<any[]>([]);
+  const [isLoading] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [appsRes, notifsRes] = await Promise.all([
-          applications.list(),
-          notificationsApi.list()
-        ]);
-        setAppList(appsRes.data);
-        setNotificationList(notifsRes.data.slice(0, 5));
-      } catch (error) {
-        console.error('Failed to fetch data');
-      } finally {
-        setIsLoading(false);
+    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+    const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+    
+    // Filter by user email if available
+    const userEmail = user?.email?.toLowerCase();
+    const userApps = storedApps.filter((app: any) => 
+      app.contact_email?.toLowerCase() === userEmail
+    );
+    
+    // For t.leinonen show demo apps + their own
+    let allApps: Application[];
+    if (userEmail === 't.leinonen@yahoo.com') {
+      allApps = [...demoCustomerApplications, ...userApps];
+    } else {
+      allApps = [...demoCustomerApplications, ...userApps];
+    }
+    
+    // Update application statuses based on offers
+    allApps = allApps.map(app => {
+      const appOffers = storedOffers.filter((o: any) => 
+        String(o.application_id) === String(app.id) ||
+        o.application?.id === app.id
+      );
+      if (appOffers.length > 0) {
+        const latestOffer = appOffers[appOffers.length - 1];
+        // Customer only sees offer after admin has approved (status APPROVED or SENT)
+        if (latestOffer.status === 'APPROVED' || latestOffer.status === 'SENT') {
+          return { ...app, status: 'OFFER_SENT' };
+        } else if (latestOffer.status === 'ACCEPTED') {
+          return { ...app, status: 'OFFER_ACCEPTED' };
+        }
+        // PENDING_ADMIN status means admin hasn't approved yet - customer doesn't see it
       }
-    };
-    fetchData();
-  }, []);
+      return app;
+    });
+    
+    setAppList(allApps);
+    
+    // Filter info requests for user's applications
+    const userAppIds = allApps.map(a => String(a.id));
+    const userInfoRequests = storedInfoRequests.filter((ir: any) => 
+      userAppIds.includes(String(ir.application_id)) && 
+      ir.status === 'PENDING' &&
+      ir.sender === 'financier' // Only show requests from financier
+    );
+    setPendingInfoRequests(userInfoRequests);
+  }, [user]);
 
   // Calculate stats
   const totalApplications = appList.length;
@@ -70,6 +111,99 @@ export default function CustomerDashboard() {
           Seuraa rahoitushakemuksiasi ja hallitse tarjouksia.
         </p>
       </div>
+
+      {/* OFFER AVAILABLE - Most important notification */}
+      {offersAvailable > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <Euro className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  {offersAvailable === 1 ? 'Uusi tarjous saatavilla!' : `${offersAvailable} tarjousta saatavilla!`}
+                </h2>
+                <p className="text-green-100 mt-1">
+                  Rahoittaja on lähettänyt sinulle tarjouksen. Tarkista se ja hyväksy sopimus.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/dashboard/applications"
+              className="bg-white text-green-700 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors flex items-center"
+            >
+              Katso tarjoukset
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* PENDING INFO REQUEST - Financier needs documents */}
+      {pendingInfoRequests.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <Upload className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  Rahoittaja tarvitsee lisätietoja
+                </h2>
+                <p className="text-amber-100 mt-1">
+                  Toimita pyydetyt liitteet luottopäätöstä varten.
+                </p>
+              </div>
+            </div>
+            <Link
+              to={`/dashboard/applications/${pendingInfoRequests[0]?.application_id}`}
+              className="bg-white text-amber-700 px-6 py-3 rounded-xl font-semibold hover:bg-amber-50 transition-colors flex items-center"
+            >
+              Vastaa pyyntöön
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* NEW APPLICATIONS - Green highlight for recently submitted */}
+      {appList.filter(a => a.status === 'SUBMITTED' || a.status === 'SUBMITTED_TO_FINANCIER').length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border-2 border-green-300 rounded-xl p-4 flex items-start space-x-3"
+        >
+          <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-green-800 font-bold">Hakemuksesi on käsittelyssä!</p>
+            <p className="text-green-700 text-sm mt-1">
+              {appList.filter(a => a.status === 'SUBMITTED' || a.status === 'SUBMITTED_TO_FINANCIER').length} hakemusta odottaa rahoittajan käsittelyä. 
+              Saat ilmoituksen kun tarjous on valmis.
+            </p>
+          </div>
+          <Link
+            to="/dashboard/applications"
+            className="text-green-700 hover:text-green-800 font-medium text-sm flex items-center"
+          >
+            Näytä
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </Link>
+        </motion.div>
+      )}
 
       {/* Verification warning */}
       {user && !user.is_verified && (
@@ -147,34 +281,50 @@ export default function CustomerDashboard() {
             </div>
           ) : (
             <div className="space-y-4">
-              {recentApplications.map((app) => (
-                <Link
-                  key={app.id}
-                  to={`/dashboard/applications/${app.id}`}
-                  className="block p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                        app.application_type === 'LEASING' ? 'bg-blue-100' : 'bg-emerald-100'
-                      }`}>
-                        {app.application_type === 'LEASING' ? (
-                          <TrendingUp className="w-5 h-5 text-blue-600" />
-                        ) : (
-                          <RefreshCw className="w-5 h-5 text-emerald-600" />
-                        )}
+              {recentApplications.map((app) => {
+                const isNew = app.status === 'SUBMITTED' || app.status === 'SUBMITTED_TO_FINANCIER';
+                const hasOffer = app.status === 'OFFER_SENT';
+                return (
+                  <Link
+                    key={app.id}
+                    to={`/dashboard/applications/${app.id}`}
+                    className={`block p-4 rounded-xl transition-colors ${
+                      hasOffer 
+                        ? 'bg-green-50 border-2 border-green-300 hover:bg-green-100' 
+                        : isNew 
+                          ? 'bg-green-50 border border-green-200 hover:bg-green-100'
+                          : 'bg-slate-50 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          hasOffer ? 'bg-green-500' :
+                          app.application_type === 'LEASING' ? 'bg-blue-100' : 'bg-emerald-100'
+                        }`}>
+                          {hasOffer ? (
+                            <Euro className="w-5 h-5 text-white" />
+                          ) : app.application_type === 'LEASING' ? (
+                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                          ) : (
+                            <RefreshCw className="w-5 h-5 text-emerald-600" />
+                          )}
+                        </div>
+                        <div>
+                          <p className={`font-medium ${hasOffer ? 'text-green-800' : 'text-midnight-900'}`}>
+                            {app.reference_number || app.company_name}
+                            {hasOffer && <span className="ml-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">TARJOUS!</span>}
+                          </p>
+                          <p className="text-sm text-slate-500">{formatCurrency(app.equipment_price)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-medium text-midnight-900">{app.reference_number}</p>
-                        <p className="text-sm text-slate-500">{formatCurrency(app.equipment_price)}</p>
-                      </div>
+                      <span className={hasOffer ? 'text-green-700 font-bold' : getStatusColor(app.status)}>
+                        {getStatusLabel(app.status)}
+                      </span>
                     </div>
-                    <span className={getStatusColor(app.status)}>
-                      {getStatusLabel(app.status)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </motion.div>

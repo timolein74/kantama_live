@@ -32,12 +32,14 @@ export function formatDateTime(date: string | Date): string {
   }).format(new Date(date));
 }
 
-export function getStatusLabel(status: ApplicationStatus): string {
-  const labels: Record<ApplicationStatus, string> = {
+export function getStatusLabel(status: ApplicationStatus | string): string {
+  const labels: Record<string, string> = {
     DRAFT: 'Luonnos',
     SUBMITTED: 'Lähetetty',
     SUBMITTED_TO_FINANCIER: 'Käsittelyssä',
+    IN_PROGRESS: 'Käsittelyssä',
     INFO_REQUESTED: 'Lisätietopyyntö',
+    OFFER_RECEIVED: 'Tarjous saatu',
     OFFER_SENT: 'Tarjous saatavilla',
     OFFER_ACCEPTED: 'Tarjous hyväksytty',
     OFFER_REJECTED: 'Tarjous hylätty',
@@ -49,12 +51,14 @@ export function getStatusLabel(status: ApplicationStatus): string {
   return labels[status] || status;
 }
 
-export function getStatusColor(status: ApplicationStatus): string {
-  const colors: Record<ApplicationStatus, string> = {
+export function getStatusColor(status: ApplicationStatus | string): string {
+  const colors: Record<string, string> = {
     DRAFT: 'badge-gray',
     SUBMITTED: 'badge-blue',
     SUBMITTED_TO_FINANCIER: 'badge-blue',
+    IN_PROGRESS: 'badge-blue',
     INFO_REQUESTED: 'badge-yellow',
+    OFFER_RECEIVED: 'badge-orange',
     OFFER_SENT: 'badge-green',
     OFFER_ACCEPTED: 'badge-green',
     OFFER_REJECTED: 'badge-red',

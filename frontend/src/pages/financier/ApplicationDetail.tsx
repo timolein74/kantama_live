@@ -58,11 +58,13 @@ export default function FinancierApplicationDetail() {
   
   // Offer form
   const [showOfferForm, setShowOfferForm] = useState(false);
+  const [insuranceByLessee, setInsuranceByLessee] = useState(true);
+  const [customerOwnInsurance, setCustomerOwnInsurance] = useState('');
   const [offerData, setOfferData] = useState({
-    monthly_payment: '',
+    monthly_payment: '2500',
     term_months: '36',
-    upfront_payment: '',
-    residual_value: '',
+    upfront_payment: '0',
+    residual_value: '0',
     opening_fee: '300',
     invoice_fee: '9',
     included_services: '',
@@ -77,10 +79,78 @@ export default function FinancierApplicationDetail() {
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
   const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
+  
+  // Document request form (for accepted offers)
+  const [showDocumentRequest, setShowDocumentRequest] = useState(false);
+  const [isSendingDocumentRequest, setIsSendingDocumentRequest] = useState(false);
+  const [documentTypes, setDocumentTypes] = useState({
+    tilinpaatos: { selected: false, required: false },
+    tulosTase: { selected: false, required: false },
+    kuvaKohteesta: { selected: false, required: false },
+    urakkasopimus: { selected: false, required: false },
+    liiketoimintasuunnitelma: { selected: false, required: false },
+  });
+  const [documentRequestMessage, setDocumentRequestMessage] = useState('');
+
+  // DEMO DATA - Empty for fresh testing
+  const demoApplications: Application[] = [];
+
+  const demoOffers: Offer[] = [];
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
+      
+      // DEMO MODE: Check if using demo token
+      const token = localStorage.getItem('token');
+      if (token?.startsWith('demo-token-')) {
+        // Combine demo data + localStorage applications
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const allApps = [...demoApplications, ...storedApps];
+        // Find app - prefer localStorage version (more recent)
+        const storedApp = storedApps.find((a: any) => String(a.id) === id);
+        const demoApp = demoApplications.find(a => String(a.id) === id);
+        const app = storedApp || demoApp || null;
+        setApplication(app);
+        
+        // Combine demo offers + localStorage offers for this application
+        const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+        const appOffers = [
+          ...demoOffers.filter(o => String(o.application_id) === id),
+          ...storedOffers.filter((o: any) => String(o.application_id) === id)
+        ];
+        // Remove duplicates by id (prefer localStorage version)
+        const uniqueOffers = appOffers.reduce((acc: any[], offer: any) => {
+          const exists = acc.find(o => o.id === offer.id);
+          if (exists) {
+            // Replace with newer version (from localStorage)
+            return acc.map(o => o.id === offer.id ? offer : o);
+          }
+          return [...acc, offer];
+        }, []);
+        setOfferList(uniqueOffers);
+        
+        // Load contracts from localStorage
+        const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+        setContractList(storedContracts.filter((c: any) => String(c.application_id) === id));
+        
+        // Load info requests from localStorage
+        const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+        setInfoRequestList(storedInfoRequests.filter((ir: any) => String(ir.application_id) === id));
+        
+        setIsLoading(false);
+        
+        if (app) {
+          if (['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'SUBMITTED'].includes(app.status)) {
+            setActiveTab('details');
+          } else if (['OFFER_SENT', 'OFFER_ACCEPTED'].includes(app.status)) {
+            setActiveTab('offer');
+          } else if (app.status === 'CONTRACT_SENT') {
+            setActiveTab('contract');
+          }
+        }
+        return;
+      }
       
       try {
         const [appRes, offersRes, contractsRes, infoRes] = await Promise.all([
@@ -120,6 +190,56 @@ export default function FinancierApplicationDetail() {
     }
     
     setIsSendingInfoRequest(true);
+    
+    // DEMO MODE: Simulate info request
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const requestedItems = infoRequestItems.trim()
+        ? infoRequestItems.split('\n').filter(item => item.trim())
+        : [];
+      
+      const newRequest = {
+        id: Date.now(),
+        application_id: parseInt(id),
+        financier_id: 1,
+        message: infoRequestMessage,
+        requested_items: requestedItems,
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+        sender: 'financier',
+        responses: [],
+      };
+      
+      // Save to localStorage so customer can see it
+      const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+      storedInfoRequests.push(newRequest);
+      localStorage.setItem('demo-info-requests', JSON.stringify(storedInfoRequests));
+      
+      setInfoRequestList([...infoRequestList, newRequest as any]);
+      
+      // Update application status
+      if (application) {
+        setApplication({ ...application, status: 'INFO_REQUESTED' });
+        
+        // Also update in localStorage
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex].status = 'INFO_REQUESTED';
+          localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+        }
+      }
+      
+      toast.success('Lisätietopyyntö lähetetty asiakkaalle!');
+      setShowInfoRequestForm(false);
+      setInfoRequestMessage('');
+      setInfoRequestItems('');
+      setIsSendingInfoRequest(false);
+      return;
+    }
+    
     try {
       const requestedItems = infoRequestItems.trim()
         ? infoRequestItems.split('\n').filter(item => item.trim())
@@ -157,6 +277,59 @@ export default function FinancierApplicationDetail() {
     }
     
     setIsSavingOffer(true);
+    
+    // DEMO MODE: Simulate offer creation
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const newOffer = {
+        id: Date.now(),
+        application_id: parseInt(id),
+        financier_id: 1,
+        financier_name: 'Rahoittaja Oy',
+        monthly_payment: parseFloat(offerData.monthly_payment),
+        term_months: parseInt(offerData.term_months),
+        upfront_payment: offerData.upfront_payment ? parseFloat(offerData.upfront_payment) : 0,
+        residual_value: offerData.residual_value ? parseFloat(offerData.residual_value) : 0,
+        opening_fee: offerData.opening_fee ? parseFloat(offerData.opening_fee) : 0,
+        invoice_fee: offerData.invoice_fee ? parseFloat(offerData.invoice_fee) : 0,
+        status: 'PENDING_ADMIN',
+        notes_to_customer: offerData.notes_to_customer || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        // Include application info for admin display
+        application: application,
+      };
+      
+      // Save to localStorage so admin can see it
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      storedOffers.push(newOffer);
+      localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      
+      setOfferList([...offerList, newOffer as any]);
+      
+      // Update application status
+      if (application) {
+        const updatedApp = { ...application, status: 'OFFER_RECEIVED' };
+        setApplication(updatedApp);
+        
+        // Update in localStorage
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex] = updatedApp;
+          localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+        }
+      }
+      
+      toast.success('Tarjous luotu ja lähetetty adminille hyväksyttäväksi');
+      setShowOfferForm(false);
+      setActiveTab('offer');
+      setIsSavingOffer(false);
+      return;
+    }
+    
     try {
       await offers.create({
         application_id: parseInt(id),
@@ -182,6 +355,97 @@ export default function FinancierApplicationDetail() {
     }
   };
 
+  const handleSendDocumentRequest = async () => {
+    if (!id || !application) return;
+    
+    // Check at least one document type is selected
+    const selectedDocs = Object.entries(documentTypes).filter(([_, v]) => v.selected);
+    if (selectedDocs.length === 0) {
+      toast.error('Valitse vähintään yksi liitetyyppi');
+      return;
+    }
+    
+    setIsSendingDocumentRequest(true);
+    
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const documentLabels: Record<string, string> = {
+        tilinpaatos: 'Tilinpäätös',
+        tulosTase: 'Tulos ja tase ajot',
+        kuvaKohteesta: 'Kuva kohteesta',
+        urakkasopimus: 'Urakkasopimus',
+        liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
+      };
+      
+      const requestedDocs = selectedDocs.map(([key, val]) => ({
+        type: key,
+        label: documentLabels[key],
+        required: val.required,
+      }));
+      
+      const newInfoRequest = {
+        id: Date.now(),
+        application_id: parseInt(id),
+        type: 'DOCUMENT_REQUEST',
+        message: documentRequestMessage || 'Pyydämme seuraavia liitteitä luottopäätöstä varten:',
+        documents: requestedDocs,
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+        sender: 'financier',
+      };
+      
+      const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+      storedInfoRequests.push(newInfoRequest);
+      localStorage.setItem('demo-info-requests', JSON.stringify(storedInfoRequests));
+      
+      setInfoRequestList([...infoRequestList, newInfoRequest as any]);
+      
+      // Update application status to indicate documents requested
+      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+      const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+      if (appIndex >= 0) {
+        storedApps[appIndex].status = 'INFO_REQUESTED';
+        localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+        setApplication({ ...application, status: 'INFO_REQUESTED' });
+      }
+      
+      toast.success('Liitepyyntö lähetetty asiakkaalle!');
+      setShowDocumentRequest(false);
+      setIsSendingDocumentRequest(false);
+      
+      // Reset form
+      setDocumentTypes({
+        tilinpaatos: { selected: false, required: false },
+        tulosTase: { selected: false, required: false },
+        kuvaKohteesta: { selected: false, required: false },
+        urakkasopimus: { selected: false, required: false },
+        liiketoimintasuunnitelma: { selected: false, required: false },
+      });
+      setDocumentRequestMessage('');
+      return;
+    }
+    
+    // API call for production
+    try {
+      await infoRequests.create(parseInt(id), {
+        message: documentRequestMessage,
+        items: Object.entries(documentTypes)
+          .filter(([_, v]) => v.selected)
+          .map(([key, val]) => `${key}:${val.required ? 'required' : 'optional'}`)
+          .join(',')
+      });
+      toast.success('Liitepyyntö lähetetty');
+      setShowDocumentRequest(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Virhe pyynnön lähetyksessä');
+    } finally {
+      setIsSendingDocumentRequest(false);
+    }
+  };
+
   const handleSendOffer = async (offerId: number) => {
     try {
       await offers.send(offerId);
@@ -203,6 +467,53 @@ export default function FinancierApplicationDetail() {
     if (!id) return;
     
     setIsCreatingContract(true);
+    
+    // DEMO MODE: Simulate contract creation
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED');
+      
+      const newContract: Contract = {
+        id: Date.now(),
+        application_id: parseInt(id),
+        contract_number: `KNT-SOP-${Date.now().toString().slice(-6)}`,
+        status: 'DRAFT',
+        lessor_company_name: 'Rahoittaja Oy',
+        lessor_business_id: '1234567-8',
+        lessor_address: 'Rahoittajankatu 1',
+        lessor_city: 'Helsinki',
+        lessor_postal_code: '00100',
+        lessee_company_name: application?.company_name || '',
+        lessee_business_id: application?.business_id || '',
+        lessee_address: data.lessee_address || '',
+        lessee_city: data.lessee_city || '',
+        lessee_postal_code: data.lessee_postal_code || '',
+        equipment_description: application?.equipment_description || '',
+        equipment_value: application?.equipment_price || 0,
+        lease_period_months: acceptedOffer?.term_months || 36,
+        monthly_rent: acceptedOffer?.monthly_payment || 0,
+        advance_payment: acceptedOffer?.upfront_payment || 0,
+        residual_value: acceptedOffer?.residual_value || 0,
+        processing_fee: 300,
+        arrangement_fee: 9,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      
+      // Save to localStorage
+      const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+      storedContracts.push(newContract);
+      localStorage.setItem('demo-contracts', JSON.stringify(storedContracts));
+      
+      setContractList([...contractList, newContract]);
+      toast.success('Sopimus luotu! Lähetä se asiakkaalle allekirjoitettavaksi.');
+      setShowContractForm(false);
+      setIsCreatingContract(false);
+      return;
+    }
+    
     try {
       const response = await contracts.create(data);
       
@@ -255,6 +566,43 @@ export default function FinancierApplicationDetail() {
   };
 
   const handleSendContract = async (contractId: number) => {
+    // DEMO MODE: Simulate contract sending
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Update contract status in localStorage
+      const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+      const contractIndex = storedContracts.findIndex((c: any) => c.id === contractId);
+      if (contractIndex >= 0) {
+        storedContracts[contractIndex].status = 'SENT';
+        storedContracts[contractIndex].sent_at = new Date().toISOString();
+        localStorage.setItem('demo-contracts', JSON.stringify(storedContracts));
+        
+        // Update local state
+        setContractList(prev => prev.map(c => 
+          c.id === contractId ? { ...c, status: 'SENT', sent_at: new Date().toISOString() } : c
+        ));
+      }
+      
+      // Update application status
+      if (application) {
+        const updatedApp = { ...application, status: 'CONTRACT_SENT' };
+        setApplication(updatedApp);
+        
+        // Update in localStorage
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex] = updatedApp;
+        } else {
+          storedApps.push(updatedApp);
+        }
+        localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+      }
+      
+      toast.success('Sopimus lähetetty asiakkaalle allekirjoitettavaksi!');
+      return;
+    }
+    
     try {
       await contracts.send(contractId);
       toast.success('Sopimus lähetetty asiakkaalle');
@@ -372,27 +720,105 @@ export default function FinancierApplicationDetail() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-purple-50 border border-purple-200 rounded-xl p-4"
         >
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between mb-4">
             <div className="flex items-start space-x-3">
               <CheckCircle className="w-5 h-5 text-purple-600 mt-0.5" />
               <div>
                 <p className="font-medium text-purple-900">Tarjous hyväksytty!</p>
                 <p className="text-purple-700 text-sm mt-1">
-                  Asiakas on hyväksynyt tarjouksen. Lähetä sopimus allekirjoitettavaksi.
+                  Asiakas <strong>{application.contact_person || application.company_name}</strong> on hyväksynyt tarjouksen.
+                </p>
+                <p className="text-purple-600 text-xs mt-1">
+                  Pyydä asiakkaalta tarvittavat liitteet luottopäätöstä varten.
                 </p>
               </div>
             </div>
             <button
-              onClick={() => {
-                setShowContractForm(true);
-                setActiveTab('contract');
-              }}
+              onClick={() => setShowDocumentRequest(!showDocumentRequest)}
               className="btn-primary bg-purple-600 hover:bg-purple-700"
             >
               <FileCheck className="w-4 h-4 mr-2" />
-              Lähetä sopimus
+              {showDocumentRequest ? 'Sulje' : 'Tee luottopäätös'}
             </button>
           </div>
+          
+          {/* Document request form */}
+          {showDocumentRequest && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="border-t border-purple-200 pt-4 mt-4"
+            >
+              <h4 className="font-semibold text-purple-900 mb-3">Pyydä liitteitä luottopäätöstä varten</h4>
+              <p className="text-sm text-purple-700 mb-4">Valitse pyydettävät liitteet ja merkitse pakolliset:</p>
+              
+              <div className="space-y-3 mb-4">
+                {[
+                  { key: 'tilinpaatos', label: 'Tilinpäätös' },
+                  { key: 'tulosTase', label: 'Tulos ja tase ajot' },
+                  { key: 'kuvaKohteesta', label: 'Kuva kohteesta' },
+                  { key: 'urakkasopimus', label: 'Urakkasopimus' },
+                  { key: 'liiketoimintasuunnitelma', label: 'Liiketoimintasuunnitelma' },
+                ].map(({ key, label }) => (
+                  <div key={key} className="flex items-center justify-between bg-white p-3 rounded-lg border border-purple-100">
+                    <label className="flex items-center cursor-pointer flex-1">
+                      <input
+                        type="checkbox"
+                        checked={documentTypes[key as keyof typeof documentTypes].selected}
+                        onChange={(e) => setDocumentTypes(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key as keyof typeof prev], selected: e.target.checked }
+                        }))}
+                        className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded mr-3"
+                      />
+                      <span className="text-slate-800">{label}</span>
+                    </label>
+                    {documentTypes[key as keyof typeof documentTypes].selected && (
+                      <label className="flex items-center text-sm text-purple-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={documentTypes[key as keyof typeof documentTypes].required}
+                          onChange={(e) => setDocumentTypes(prev => ({
+                            ...prev,
+                            [key]: { ...prev[key as keyof typeof prev], required: e.target.checked }
+                          }))}
+                          className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded mr-2"
+                        />
+                        Pakollinen
+                      </label>
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-purple-900 mb-1">Viesti asiakkaalle (valinnainen)</label>
+                <textarea
+                  value={documentRequestMessage}
+                  onChange={(e) => setDocumentRequestMessage(e.target.value)}
+                  placeholder="Esim. lisätietoja pyynnöstä..."
+                  className="input min-h-[80px]"
+                />
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowDocumentRequest(false)}
+                  className="btn-ghost"
+                >
+                  Peruuta
+                </button>
+                <button
+                  onClick={handleSendDocumentRequest}
+                  disabled={isSendingDocumentRequest}
+                  className="btn-primary bg-purple-600 hover:bg-purple-700"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {isSendingDocumentRequest ? 'Lähetetään...' : 'Lähetä lisätietopyyntö'}
+                </button>
+              </div>
+            </motion.div>
+          )}
         </motion.div>
       )}
 
@@ -429,101 +855,120 @@ export default function FinancierApplicationDetail() {
       {/* Tab content */}
       <div>
         {activeTab === 'details' && (
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* Application info */}
-            <div className="card">
-              <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-emerald-600" />
-                Hakemuksen tiedot
-              </h3>
-              <dl className="space-y-3">
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Tyyppi</dt>
-                  <dd className="font-medium text-midnight-900">
-                    <span className={`inline-flex items-center ${
-                      application.application_type === 'LEASING' ? 'text-blue-600' : 'text-emerald-600'
-                    }`}>
-                      {application.application_type === 'LEASING' ? (
-                        <TrendingUp className="w-4 h-4 mr-1" />
-                      ) : (
-                        <RefreshCw className="w-4 h-4 mr-1" />
-                      )}
-                      {getApplicationTypeLabel(application.application_type)}
-                    </span>
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Kohde</dt>
-                  <dd className="font-medium text-midnight-900 text-right max-w-xs">{application.equipment_description}</dd>
-                </div>
-                {application.equipment_supplier && (
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">Toimittaja</dt>
-                    <dd className="font-medium text-midnight-900">{application.equipment_supplier}</dd>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Hankintahinta</dt>
-                  <dd className="font-bold text-lg text-midnight-900">{formatCurrency(application.equipment_price)}</dd>
-                </div>
-                {application.requested_term_months && (
-                  <div className="flex justify-between">
-                    <dt className="text-slate-500">Toivottu sopimuskausi</dt>
-                    <dd className="font-medium text-midnight-900">{application.requested_term_months} kk</dd>
-                  </div>
-                )}
-                {application.additional_info && (
-                  <div className="pt-3 border-t">
-                    <dt className="text-slate-500 mb-1">Lisätiedot</dt>
-                    <dd className="text-midnight-900">{application.additional_info}</dd>
-                  </div>
-                )}
-              </dl>
+          <div className="space-y-6">
+            {/* Excel-like Application Data Grid */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-4 py-3 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-white" />
+                <h3 className="font-semibold text-white">Hakemuksen tiedot</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-40 border-r border-slate-200">Tyyppi</td>
+                      <td className="px-4 py-3 font-semibold">
+                        <span className={`inline-flex items-center ${application.application_type === 'LEASING' ? 'text-blue-600' : 'text-emerald-600'}`}>
+                          {application.application_type === 'LEASING' ? <TrendingUp className="w-4 h-4 mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+                          {getApplicationTypeLabel(application.application_type)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-40 border-r border-l border-slate-200">Status</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(application.status)}`}>
+                          {getStatusLabel(application.status)}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Kohde</td>
+                      <td className="px-4 py-3 font-semibold text-midnight-900" colSpan={3}>{application.equipment_description}</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Hankintahinta</td>
+                      <td className="px-4 py-3">
+                        <span className="text-lg font-bold text-emerald-700">{formatCurrency(application.equipment_price)}</span>
+                        <span className="text-slate-500 ml-1">alv 0%</span>
+                      </td>
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Toivottu kausi</td>
+                      <td className="px-4 py-3 font-semibold">{application.requested_term_months ? `${application.requested_term_months} kk` : '-'}</td>
+                    </tr>
+                    {(application as any).downpayment_amount > 0 && (
+                      <tr className="border-b border-slate-100">
+                        <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Käsiraha</td>
+                        <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency((application as any).downpayment_amount)} alv 0%</td>
+                        <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Rahoitettava</td>
+                        <td className="px-4 py-3 font-semibold text-emerald-700">{formatCurrency(application.equipment_price - ((application as any).downpayment_amount || 0))} alv 0%</td>
+                      </tr>
+                    )}
+                    {application.equipment_supplier && (
+                      <tr className="border-b border-slate-100">
+                        <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Toimittaja</td>
+                        <td className="px-4 py-3 font-semibold" colSpan={3}>{application.equipment_supplier}</td>
+                      </tr>
+                    )}
+                    {(application as any).link_to_item && (
+                      <tr className="border-b border-slate-100">
+                        <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Linkki kohteeseen</td>
+                        <td className="px-4 py-3" colSpan={3}>
+                          <a href={(application as any).link_to_item} target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 underline font-medium">
+                            {(application as any).link_to_item}
+                          </a>
+                        </td>
+                      </tr>
+                    )}
+                    {application.additional_info && (
+                      <tr>
+                        <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200 align-top">Lisätiedot</td>
+                        <td className="px-4 py-3 text-midnight-900" colSpan={3}>{application.additional_info}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            {/* Company info */}
-            <div className="card">
-              <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
-                <Building2 className="w-5 h-5 mr-2 text-emerald-600" />
-                Yrityksen tiedot
-              </h3>
-              <dl className="space-y-3">
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Yritys</dt>
-                  <dd className="font-medium text-midnight-900">{application.company_name}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Y-tunnus</dt>
-                  <dd className="font-mono text-midnight-900">{application.business_id}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Yhteyshenkilö</dt>
-                  <dd className="font-medium text-midnight-900">{application.contact_person || '-'}</dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Sähköposti</dt>
-                  <dd className="font-medium text-midnight-900">
-                    <a href={`mailto:${application.contact_email}`} className="text-emerald-600 hover:text-emerald-700">
-                      {application.contact_email}
-                    </a>
-                  </dd>
-                </div>
-                <div className="flex justify-between">
-                  <dt className="text-slate-500">Puhelin</dt>
-                  <dd className="font-medium text-midnight-900">{application.contact_phone || '-'}</dd>
-                </div>
-              </dl>
+            {/* Excel-like Company Data Grid */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 flex items-center">
+                <Building2 className="w-5 h-5 mr-2 text-white" />
+                <h3 className="font-semibold text-white">Yrityksen tiedot</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-40 border-r border-slate-200">Yritys</td>
+                      <td className="px-4 py-3 font-bold text-midnight-900">{application.company_name}</td>
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-40 border-r border-l border-slate-200">Y-tunnus</td>
+                      <td className="px-4 py-3 font-mono font-semibold text-midnight-900">{application.business_id}</td>
+                    </tr>
+                    <tr className="border-b border-slate-100">
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Yhteyshenkilö</td>
+                      <td className="px-4 py-3 font-semibold text-midnight-900">{application.contact_person || '-'}</td>
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Puhelin</td>
+                      <td className="px-4 py-3 font-semibold text-midnight-900">{application.contact_phone || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Sähköposti</td>
+                      <td className="px-4 py-3" colSpan={3}>
+                        <a href={`mailto:${application.contact_email}`} className="text-blue-600 hover:text-blue-700 font-semibold">
+                          {application.contact_email}
+                        </a>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* YTJ/PRH Company Data */}
             {application.extra_data?.ytj_data && (
-              <div className="lg:col-span-2">
-                <YTJInfoCard ytjData={application.extra_data.ytj_data as CompanyInfo} />
-              </div>
+              <YTJInfoCard ytjData={application.extra_data.ytj_data as CompanyInfo} />
             )}
 
             {/* Quick actions */}
-            <div className="card lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
               <h3 className="font-semibold text-midnight-900 mb-4">Toiminnot</h3>
               <div className="flex flex-wrap gap-3">
                 <button
@@ -671,14 +1116,56 @@ export default function FinancierApplicationDetail() {
                   </div>
                 </div>
 
-                <div className="mb-4">
-                  <label className="label">Lisäpalvelut / Huomiot</label>
-                  <textarea
-                    value={offerData.included_services}
-                    onChange={(e) => setOfferData({ ...offerData, included_services: e.target.value })}
-                    className="input min-h-[80px]"
-                    placeholder="Esim. huolto, vakuutus..."
-                  />
+                <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <label className="label mb-3">Lisäpalvelut / Huomiot</label>
+                  
+                  {/* Insurance checkbox */}
+                  <div className="flex items-start space-x-3 mb-4">
+                    <input
+                      type="checkbox"
+                      id="insuranceByLessee"
+                      checked={insuranceByLessee}
+                      onChange={(e) => setInsuranceByLessee(e.target.checked)}
+                      className="w-5 h-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 mt-0.5"
+                    />
+                    <label htmlFor="insuranceByLessee" className="text-sm text-slate-700 leading-relaxed">
+                      Vuokrakohde tullaan vakuuttamaan vuokralleottajan kustannuksella. 
+                      Vakuutuksen hinta lisätään edellämainittuihin veloituksiin.
+                    </label>
+                  </div>
+                  
+                  {/* Customer's own insurance field - shown when checkbox is unchecked */}
+                  {!insuranceByLessee && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                        <p className="text-sm text-yellow-800 font-medium">⚠️ Asiakas hoitaa vakuutuksen itse</p>
+                      </div>
+                      <label className="label">Asiakkaan oma vakuutus</label>
+                      <input
+                        type="text"
+                        value={customerOwnInsurance}
+                        onChange={(e) => setCustomerOwnInsurance(e.target.value)}
+                        className="input"
+                        placeholder="Esim. vakuutusyhtiö ja vakuutusnumero"
+                      />
+                    </motion.div>
+                  )}
+                  
+                  {/* Additional services text */}
+                  <div className="mt-4">
+                    <label className="label">Muut lisäpalvelut</label>
+                    <textarea
+                      value={offerData.included_services}
+                      onChange={(e) => setOfferData({ ...offerData, included_services: e.target.value })}
+                      className="input min-h-[60px]"
+                      placeholder="Esim. huolto, ylläpito..."
+                    />
+                  </div>
                 </div>
 
                 <div className="mb-4">
@@ -724,7 +1211,8 @@ export default function FinancierApplicationDetail() {
                     Peruuta
                   </button>
                   <button onClick={handleCreateOffer} disabled={isSavingOffer} className="btn-primary">
-                    {isSavingOffer ? 'Tallennetaan...' : 'Luo tarjous'}
+                    <Send className="w-4 h-4 mr-2" />
+                    {isSavingOffer ? 'Lähetetään...' : 'Luo ja lähetä tarjous'}
                   </button>
                 </div>
               </motion.div>
@@ -925,7 +1413,7 @@ export default function FinancierApplicationDetail() {
                   {offer.status === 'PENDING_ADMIN' && (
                     <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
                       <p className="text-orange-700">
-                        Tarjous on lähetetty Kantama-adminille. Saat ilmoituksen kun tarjous on lähetetty asiakkaalle.
+                        Tarjous on lähetetty adminille. Saat ilmoituksen kun tarjous on lähetetty asiakkaalle.
                       </p>
                     </div>
                   )}
@@ -944,7 +1432,7 @@ export default function FinancierApplicationDetail() {
                 className="btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Luo sopimus
+                Tee sopimus
               </button>
             )}
 
@@ -1045,7 +1533,7 @@ export default function FinancierApplicationDetail() {
                         className="btn-primary"
                       >
                         <Send className="w-4 h-4 mr-2" />
-                        Lähetä asiakkaalle
+                        Lähetä sopimus asiakkaalle: {application.contact_person || application.company_name}
                       </button>
                     )}
                   </div>
@@ -1116,7 +1604,7 @@ export default function FinancierApplicationDetail() {
                           className="btn-primary"
                         >
                           <Send className="w-4 h-4 mr-2" />
-                          Lähetä asiakkaalle
+                          Lähetä sopimus asiakkaalle: {application.contact_person || application.company_name}
                         </button>
                       </div>
                     </div>
@@ -1219,15 +1707,42 @@ export default function FinancierApplicationDetail() {
 
                   {ir.responses && ir.responses.length > 0 && (
                     <div className="space-y-2">
-                      {ir.responses.map((resp) => (
+                      {ir.responses.map((resp: any) => (
                         <div key={resp.id} className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-sm font-medium text-blue-600">
-                              Asiakas: {resp.user.first_name || resp.user.email}
+                              Asiakas: {resp.user?.first_name || resp.user?.email || 'Asiakas'}
                             </span>
                             <span className="text-xs text-blue-500">{formatDateTime(resp.created_at)}</span>
                           </div>
                           <p className="text-blue-800">{resp.message}</p>
+                          {/* Show attachments if any */}
+                          {resp.attachments && resp.attachments.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-blue-200">
+                              <p className="text-sm font-medium text-blue-700 mb-2">📎 Liitetyt tiedostot:</p>
+                              <ul className="space-y-2">
+                                {resp.attachments.map((att: any, i: number) => (
+                                  <li key={i} className="flex items-center justify-between bg-white rounded-lg p-2 border border-blue-100">
+                                    <div className="flex items-center text-sm text-blue-600">
+                                      <FileText className="w-4 h-4 mr-2" />
+                                      <span className="font-medium">{att.filename}</span>
+                                    </div>
+                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                                      {att.type === 'tilinpaatos' ? 'Tilinpäätös' :
+                                       att.type === 'tulosTase' ? 'Tulos ja tase' :
+                                       att.type === 'kuvaKohteesta' ? 'Kuva kohteesta' :
+                                       att.type === 'urakkasopimus' ? 'Urakkasopimus' :
+                                       att.type === 'liiketoimintasuunnitelma' ? 'Liiketoimintasuunnitelma' :
+                                       att.type}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                              <p className="text-xs text-blue-500 mt-2 italic">
+                                ℹ️ Demo-tilassa tiedostoja ei voi ladata. Tuotantoversiossa tiedostot ovat ladattavissa.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

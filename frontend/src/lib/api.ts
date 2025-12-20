@@ -5,10 +5,8 @@ import type {
 } from '../types';
 import type { Contract, ContractCreateData } from '../types/contract';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: '/api',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -31,7 +29,11 @@ api.interceptors.response.use(
     const isAuthEndpoint = error.config?.url?.startsWith('/auth/login') || 
                            error.config?.url?.startsWith('/auth/register');
     
-    if (error.response?.status === 401 && !isAuthEndpoint) {
+    // Don't clear demo tokens - they are client-side only
+    const token = localStorage.getItem('token');
+    const isDemoToken = token?.startsWith('demo-token-');
+    
+    if (error.response?.status === 401 && !isAuthEndpoint && !isDemoToken) {
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

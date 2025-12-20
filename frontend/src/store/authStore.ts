@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 import type { User } from '../types';
 import { auth } from '../lib/api';
 
@@ -20,66 +19,80 @@ interface AuthState {
     business_id?: string;
   }) => Promise<void>;
   logout: () => void;
-  checkAuth: () => Promise<void>;
-  updateUser: (user: Partial<User>) => void;
+  setDemoUser: (user: User, token: string) => void;
+  initFromStorage: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      isLoading: true,
-      isAuthenticated: false,
-
-      login: async (email, password) => {
-        const response = await auth.login(email, password);
-        const { access_token, user } = response.data;
-        
-        localStorage.setItem('token', access_token);
-        set({ user, token: access_token, isAuthenticated: true, isLoading: false });
-      },
-
-      register: async (data) => {
-        const response = await auth.register(data);
-        const { access_token, user } = response.data;
-        
-        localStorage.setItem('token', access_token);
-        set({ user, token: access_token, isAuthenticated: true, isLoading: false });
-      },
-
-      logout: () => {
-        localStorage.removeItem('token');
-        set({ user: null, token: null, isAuthenticated: false });
-      },
-
-      checkAuth: async () => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          set({ isLoading: false, isAuthenticated: false });
-          return;
+// Initialize from localStorage on page load
+const getInitialState = () => {
+  const token = localStorage.getItem('token');
+  if (token?.startsWith('demo-token-')) {
+    try {
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        const parsed = JSON.parse(authStorage);
+        if (parsed?.state?.user) {
+          return {
+            user: parsed.state.user,
+            token,
+            isAuthenticated: true,
+            isLoading: false,
+          };
         }
-
-        try {
-          const response = await auth.me();
-          set({ user: response.data, token, isAuthenticated: true, isLoading: false });
-        } catch {
-          localStorage.removeItem('token');
-          set({ user: null, token: null, isAuthenticated: false, isLoading: false });
-        }
-      },
-
-      updateUser: (userData) => {
-        const currentUser = get().user;
-        if (currentUser) {
-          set({ user: { ...currentUser, ...userData } });
-        }
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({ token: state.token }),
+      }
+    } catch {
+      // Ignore parse errors
     }
-  )
-);
+  }
+  return {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    isLoading: false,
+  };
+};
 
+const initialState = getInitialState();
+
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: initialState.user,
+  token: initialState.token,
+  isLoading: initialState.isLoading,
+  isAuthenticated: initialState.isAuthenticated,
+
+  login: async (email, password) => {
+    const response = await auth.login(email, password);
+    const { access_token, user } = response.data;
+    
+    localStorage.setItem('token', access_token);
+    set({ user, token: access_token, isAuthenticated: true, isLoading: false });
+  },
+
+  register: async (data) => {
+    const response = await auth.register(data);
+    const { access_token, user } = response.data;
+    
+    localStorage.setItem('token', access_token);
+    set({ user, token: access_token, isAuthenticated: true, isLoading: false });
+  },
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('auth-storage');
+    set({ user: null, token: null, isAuthenticated: false });
+  },
+
+  setDemoUser: (user, token) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('auth-storage', JSON.stringify({
+      state: { token, user, isAuthenticated: true },
+      version: 0
+    }));
+    set({ user, token, isAuthenticated: true, isLoading: false });
+  },
+
+  initFromStorage: () => {
+    const newState = getInitialState();
+    set(newState);
+  },
+}));

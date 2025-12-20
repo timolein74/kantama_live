@@ -10,6 +10,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { applications } from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
   formatDate,
@@ -20,36 +21,39 @@ import {
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, ApplicationStatus, ApplicationType } from '../../types';
 
+// DEMO DATA - Empty for fresh testing
+const demoCustomerApplications: Application[] = [];
+
 export default function CustomerApplications() {
+  const { user } = useAuthStore();
+  // DEMO MODE: Combine static + localStorage data
   const [appList, setAppList] = useState<Application[]>([]);
   const [filteredApps, setFilteredApps] = useState<Application[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
+  // Load applications
   useEffect(() => {
-    const fetchApps = async () => {
-      try {
-        const response = await applications.list();
-        setAppList(response.data);
-        setFilteredApps(response.data);
-      } catch (error) {
-        console.error('Failed to fetch applications');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchApps();
-  }, []);
+    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+    const userEmail = user?.email?.toLowerCase();
+    const userApps = storedApps.filter((app: any) => 
+      app.contact_email?.toLowerCase() === userEmail
+    );
+    const allApps = [...demoCustomerApplications, ...userApps];
+    setAppList(allApps);
+    setFilteredApps(allApps);
+  }, [user]);
 
+  // Filter applications
   useEffect(() => {
     let filtered = appList;
 
     if (searchTerm) {
       filtered = filtered.filter(app =>
-        app.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.equipment_description.toLowerCase().includes(searchTerm.toLowerCase())
+        (app.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (app.equipment_description || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -58,7 +62,7 @@ export default function CustomerApplications() {
     }
 
     if (typeFilter) {
-      filtered = filtered.filter(app => app.application_type === typeFilter);
+      filtered = filtered.filter(app => app.application_type === typeFilter || app.type === typeFilter);
     }
 
     setFilteredApps(filtered);
@@ -199,7 +203,6 @@ export default function CustomerApplications() {
     </div>
   );
 }
-
 
 
 

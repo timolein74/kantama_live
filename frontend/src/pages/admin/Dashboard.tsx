@@ -13,7 +13,12 @@ import {
   AlertCircle,
   Euro,
   FileCheck,
-  Send
+  Send,
+  Bell,
+  Sparkles,
+  PartyPopper,
+  Inbox,
+  Eye
 } from 'lucide-react';
 import api from '../../lib/api';
 import { applications, financiers, users } from '../../lib/api';
@@ -21,36 +26,32 @@ import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../.
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, Financier, User, Offer, Contract } from '../../types';
 
-export default function AdminDashboard() {
-  const [appList, setAppList] = useState<Application[]>([]);
-  const [financierList, setFinancierList] = useState<Financier[]>([]);
-  const [userList, setUserList] = useState<User[]>([]);
-  const [offerList, setOfferList] = useState<any[]>([]);
-  const [contractList, setContractList] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+// DEMO DATA - Empty for fresh testing
+const demoApps: Application[] = [];
+const demoFinanciers: Financier[] = [
+  { id: 1, name: 'Rahoittaja Oy', email: 'info@rahoittaja.fi', phone: '+358401234567', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+];
+const demoUsers: User[] = [
+  { id: 1, email: 'admin@Kantama.fi', role: 'ADMIN', first_name: 'Admin', last_name: 'Käyttäjä', is_active: true, is_verified: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+];
 
+export default function AdminDashboard() {
+  // DEMO MODE: Combine static + localStorage data
+  const [appList, setAppList] = useState<Application[]>([]);
+  const [financierList] = useState<Financier[]>(demoFinanciers);
+  const [userList] = useState<User[]>(demoUsers);
+  const [offerList, setOfferList] = useState<any[]>([]);
+  const [contractList] = useState<any[]>([]);
+  const [isLoading] = useState(false);
+
+  // Load applications and offers from localStorage + demo data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [appsRes, financiersRes, usersRes, offersRes, contractsRes] = await Promise.all([
-          applications.list(),
-          financiers.list(),
-          users.list(),
-          api.get('/offers/admin/all'),
-          api.get('/contracts/admin/all')
-        ]);
-        setAppList(appsRes.data);
-        setFinancierList(financiersRes.data);
-        setUserList(usersRes.data);
-        setOfferList(offersRes.data);
-        setContractList(contractsRes.data);
-      } catch (error) {
-        console.error('Failed to fetch data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+    setAppList([...demoApps, ...storedApps]);
+    
+    // Load offers from localStorage only
+    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+    setOfferList(storedOffers);
   }, []);
 
   // Calculate stats
@@ -92,6 +93,105 @@ export default function AdminDashboard() {
         <h1 className="text-2xl font-display font-bold text-midnight-900">Dashboard</h1>
         <p className="text-slate-600 mt-1">Yleiskatsaus järjestelmän tilasta</p>
       </div>
+
+      {/* NEW APPLICATION NOTIFICATION - Most important */}
+      {newApplications > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <Inbox className="w-8 h-8 text-white animate-bounce" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  {newApplications === 1 ? 'Uusi hakemus saapunut!' : `${newApplications} uutta hakemusta saapunut!`}
+                </h2>
+                <p className="text-blue-100 mt-1">
+                  Uusi rahoitushakemus odottaa käsittelyäsi. Tarkista tiedot ja lähetä rahoittajalle.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/admin/applications?status=SUBMITTED"
+              className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center"
+            >
+              <Eye className="w-5 h-5 mr-2" />
+              Käsittele hakemukset
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* NEW OFFER NOTIFICATION - Pending admin approval */}
+      {pendingOffers > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-orange-500 to-amber-500 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <Bell className="w-8 h-8 text-white animate-bounce" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  {pendingOffers === 1 ? 'Uusi tarjous odottaa hyväksyntää!' : `${pendingOffers} tarjousta odottaa hyväksyntää!`}
+                </h2>
+                <p className="text-orange-100 mt-1">
+                  Rahoittaja on lähettänyt tarjouksen. Tarkista ja hyväksy ennen kuin asiakas näkee sen.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/admin/offers"
+              className="bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold hover:bg-orange-50 transition-colors flex items-center"
+            >
+              Hyväksy tarjoukset
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ACCEPTED OFFER NOTIFICATION */}
+      {acceptedOffers > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <PartyPopper className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  {acceptedOffers === 1 ? 'Asiakas on hyväksynyt tarjouksen!' : `${acceptedOffers} tarjousta hyväksytty!`}
+                </h2>
+                <p className="text-green-100 mt-1">
+                  Sopimuksen tekeminen on nyt mahdollista.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/admin/offers"
+              className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors flex items-center"
+            >
+              Katso tarjoukset
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

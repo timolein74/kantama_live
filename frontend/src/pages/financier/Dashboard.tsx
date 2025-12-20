@@ -11,7 +11,10 @@ import {
   RefreshCw,
   Euro,
   MessageSquare,
-  FileCheck
+  FileCheck,
+  PartyPopper,
+  Sparkles,
+  FileSignature
 } from 'lucide-react';
 import { applications, notifications as notificationsApi } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
@@ -19,35 +22,46 @@ import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../.
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, Notification } from '../../types';
 
+// DEMO DATA - Empty for fresh testing
+const demoApplications: Application[] = [];
+
 export default function FinancierDashboard() {
   const { user } = useAuthStore();
-  const [appList, setAppList] = useState<Application[]>([]);
-  const [notificationList, setNotificationList] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // DEMO MODE: Use static data + localStorage
+  const [appList, setAppList] = useState<Application[]>(demoApplications);
+  const [acceptedOfferApps, setAcceptedOfferApps] = useState<any[]>([]);
+  const [notificationList] = useState<Notification[]>([]);
+  const [isLoading] = useState(false);
 
+  // Load accepted offers with customer info
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [appsRes, notifsRes] = await Promise.all([
-          applications.list(),
-          notificationsApi.list()
-        ]);
-        setAppList(appsRes.data);
-        setNotificationList(notifsRes.data.slice(0, 5));
-      } catch (error) {
-        console.error('Failed to fetch data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+    const allApps = [...demoApplications, ...storedApps];
+    
+    // Find accepted offers and get customer info
+    const accepted = storedOffers.filter((o: any) => o.status === 'ACCEPTED');
+    const acceptedWithCustomer = accepted.map((offer: any) => {
+      const app = allApps.find(a => String(a.id) === String(offer.application_id)) || offer.application;
+      return {
+        ...offer,
+        customer_name: app?.contact_person || app?.company_name || 'Asiakas'
+      };
+    });
+    setAcceptedOfferApps(acceptedWithCustomer);
+    
+    // Update app list
+    setAppList(allApps);
   }, []);
 
-  // Calculate stats
+  // Calculate stats - count offers from localStorage as well
+  const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
   const newApplications = appList.filter(a => a.status === 'SUBMITTED_TO_FINANCIER').length;
   const infoRequested = appList.filter(a => a.status === 'INFO_REQUESTED').length;
-  const offersSent = appList.filter(a => a.status === 'OFFER_SENT').length;
-  const offersAccepted = appList.filter(a => a.status === 'OFFER_ACCEPTED').length;
+  // Tarjottu = offers pending with admin OR sent to customer
+  const offersSent = appList.filter(a => ['OFFER_RECEIVED', 'OFFER_SENT'].includes(a.status)).length + 
+    storedOffers.filter((o: any) => o.status === 'PENDING_ADMIN').length;
+  const offersAccepted = acceptedOfferApps.length || appList.filter(a => a.status === 'OFFER_ACCEPTED').length;
   const contractsSent = appList.filter(a => a.status === 'CONTRACT_SENT').length;
   const completed = appList.filter(a => ['SIGNED', 'CLOSED'].includes(a.status)).length;
   const totalValue = appList.reduce((sum, app) => sum + app.equipment_price, 0);
@@ -58,7 +72,7 @@ export default function FinancierDashboard() {
   const pendingActions = [
     { count: newApplications, label: 'Uusi hakemus', status: 'SUBMITTED_TO_FINANCIER', color: 'bg-orange-500' },
     { count: infoRequested, label: 'Vastauksia odottaa', status: 'INFO_REQUESTED', color: 'bg-yellow-500' },
-    { count: offersAccepted, label: 'Sopimus lähetettävä', status: 'OFFER_ACCEPTED', color: 'bg-purple-500' },
+    { count: offersAccepted, label: 'Luottopäätös tehtävä', status: 'OFFER_ACCEPTED', color: 'bg-purple-500' },
   ].filter(a => a.count > 0);
 
   if (isLoading) {
@@ -80,6 +94,49 @@ export default function FinancierDashboard() {
           Käsittele hakemuksia ja hallitse tarjouksia.
         </p>
       </div>
+
+      {/* CUSTOMER ACCEPTED OFFER - Prominent notification with customer names */}
+      {offersAccepted > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <PartyPopper className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Tarjous hyväksytty!
+                </h2>
+                {acceptedOfferApps.length > 0 ? (
+                  <div className="mt-2">
+                    {acceptedOfferApps.map((offer, idx) => (
+                      <p key={idx} className="text-green-100 font-medium">
+                        • <strong>{offer.customer_name}</strong> on hyväksynyt tarjouksen
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-green-100 mt-1">
+                    Asiakas on hyväksynyt tarjouksen. Tee luottopäätös.
+                  </p>
+                )}
+              </div>
+            </div>
+            <Link
+              to="/financier/applications?status=OFFER_ACCEPTED"
+              className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors flex items-center"
+            >
+              <FileSignature className="w-5 h-5 mr-2" />
+              Tee luottopäätös
+            </Link>
+          </div>
+        </motion.div>
+      )}
 
       {/* Pending actions */}
       {pendingActions.length > 0 && (

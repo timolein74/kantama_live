@@ -41,24 +41,18 @@ import FinancierApplicationDetail from './pages/financier/ApplicationDetail';
 import LoadingSpinner from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
 import { DemoPanel } from './components/DemoPanel';
+import { PasswordProtection } from './components/PasswordProtection';
 
 function App() {
-  const { checkAuth, isLoading } = useAuthStore();
+  // DEMO MODE: No checkAuth needed - DemoPanel handles auth directly
+  // const { checkAuth } = useAuthStore();
+  // useEffect(() => {
+  //   checkAuth().catch(() => {});
+  // }, [checkAuth]);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
+  // DEMO: Never show loading spinner
   return (
-    <>
+    <PasswordProtection>
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -120,9 +114,9 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* Demo panel for easy user switching */}
-      <DemoPanel />
-    </>
+      {/* Demo panel for easy user switching - only show in development or when explicitly enabled */}
+      {(import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_PANEL === 'true') && <DemoPanel />}
+    </PasswordProtection>
   );
 }
 

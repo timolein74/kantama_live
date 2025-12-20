@@ -23,7 +23,13 @@ import {
   Printer,
   Edit,
   Eye,
-  X
+  X,
+  Rocket,
+  Search,
+  FileEdit,
+  Gift,
+  PenTool,
+  PartyPopper
 } from 'lucide-react';
 import { applications, offers, contracts, infoRequests, files } from '../../lib/api';
 import {
@@ -41,8 +47,15 @@ import { ContractDocument } from '../../components/contract';
 import type { Application, Offer, InfoRequest } from '../../types';
 import type { Contract } from '../../types/contract';
 
+// DEMO DATA - Empty for fresh testing
+const demoApplications: Record<string, Application> = {};
+
+const demoOffers: Offer[] = [];
+
 export default function CustomerApplicationDetail() {
   const { id } = useParams<{ id: string }>();
+  
+  // DEMO MODE: Combine static + localStorage data
   const [application, setApplication] = useState<Application | null>(null);
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [contractList, setContractList] = useState<Contract[]>([]);
@@ -53,6 +66,21 @@ export default function CustomerApplicationDetail() {
   // Info request response
   const [responseMessage, setResponseMessage] = useState('');
   const [isResponding, setIsResponding] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<Record<string, { checked: boolean; file: File | null }>>({});
+  
+  // Initialize document checkboxes when info request changes
+  const initDocumentSelection = (docs: any[]) => {
+    const initial: Record<string, { checked: boolean; file: File | null }> = {};
+    docs.forEach(doc => {
+      initial[doc.type] = { checked: false, file: null };
+    });
+    setSelectedDocs(initial);
+  };
+  
+  // Offer question
+  const [showOfferQuestionForm, setShowOfferQuestionForm] = useState<number | null>(null);
+  const [offerQuestion, setOfferQuestion] = useState('');
+  const [isSendingQuestion, setIsSendingQuestion] = useState(false);
   
   // Contract upload
   const [signedFile, setSignedFile] = useState<File | null>(null);
@@ -62,45 +90,121 @@ export default function CustomerApplicationDetail() {
   const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
 
+  // Load application from demo data or localStorage
   useEffect(() => {
-    const fetchData = async () => {
-      if (!id) return;
-      
-      try {
-        const [appRes, offersRes, contractsRes, infoRes] = await Promise.all([
-          applications.get(parseInt(id)),
-          offers.getForApplication(parseInt(id)),
-          contracts.getForApplication(parseInt(id)),
-          infoRequests.getForApplication(parseInt(id))
-        ]);
-        
-        setApplication(appRes.data);
-        setOfferList(offersRes.data);
-        setContractList(contractsRes.data);
-        setInfoRequestList(infoRes.data);
-        
-        // Auto-select tab based on status
-        if (appRes.data.status === 'INFO_REQUESTED') {
-          setActiveTab('messages');
-        } else if (['OFFER_SENT', 'OFFER_ACCEPTED'].includes(appRes.data.status)) {
-          setActiveTab('offers');
-        } else if (appRes.data.status === 'CONTRACT_SENT') {
-          setActiveTab('contracts');
-        }
-      } catch (error) {
-        toast.error('Virhe hakemuksen latauksessa');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!id) return;
     
-    fetchData();
+    // Check localStorage first (may have updated status), then static demo data
+    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+    const storedApp = storedApps.find((a: any) => String(a.id) === id);
+    const demoApp = demoApplications[id];
+    
+    // Prefer localStorage version (more recent)
+    setApplication(storedApp || demoApp || null);
+    
+    // Load offers for this application from localStorage + demo
+    // Customer only sees offers that have been APPROVED by admin or SENT/ACCEPTED
+    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+    const appOffers = storedOffers.filter((o: any) => 
+      (String(o.application_id) === id || 
+       o.application?.id === id ||
+       String(o.application?.id) === id) &&
+      // Only show offers that admin has approved
+      ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'].includes(o.status)
+    );
+    
+    // Add demo offers for specific applications (these are already approved)
+    if (id === '101') {
+      // Merge - prefer localStorage version, filter demoOffers to approved ones
+      const approvedDemoOffers = demoOffers.filter(o => 
+        ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'].includes(o.status)
+      );
+      const merged = [...approvedDemoOffers];
+      appOffers.forEach((ao: any) => {
+        const idx = merged.findIndex(m => m.id === ao.id);
+        if (idx >= 0) {
+          merged[idx] = ao;
+        } else {
+          merged.push(ao);
+        }
+      });
+      setOfferList(merged);
+    } else {
+      setOfferList(appOffers);
+    }
+    
+    // Load contracts from localStorage
+    const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+    const appContracts = storedContracts.filter((c: any) => String(c.application_id) === id);
+    setContractList(appContracts);
+    
+    // Load info requests from localStorage
+    const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+    const appInfoRequests = storedInfoRequests.filter((ir: any) => String(ir.application_id) === id);
+    setInfoRequestList(appInfoRequests);
+    
+    // Auto-select contracts tab if contract is sent
+    const currentApp = storedApp || demoApp;
+    if (currentApp?.status === 'CONTRACT_SENT' && appContracts.length > 0) {
+      setActiveTab('contracts');
+    }
+    
+    // Auto-select messages tab if there's a pending info request
+    if (appInfoRequests.some((ir: any) => ir.status === 'PENDING' && ir.sender === 'financier')) {
+      setActiveTab('messages');
+    }
+    
+    setIsLoading(false);
   }, [id]);
 
   const handleAcceptOffer = async (offerId: number) => {
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Update offer in localStorage - find in existing or add new entry
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      const offerIndex = storedOffers.findIndex((o: any) => o.id === offerId);
+      
+      // Find the offer from current state
+      const currentOffer = offerList.find(o => o.id === offerId);
+      
+      if (offerIndex >= 0) {
+        storedOffers[offerIndex].status = 'ACCEPTED';
+      } else if (currentOffer) {
+        // If offer was from demoOffers (not in localStorage), add it with ACCEPTED status
+        storedOffers.push({ ...currentOffer, status: 'ACCEPTED' });
+      }
+      localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      
+      // Update local state
+      setOfferList(prev => prev.map(o => 
+        o.id === offerId ? { ...o, status: 'ACCEPTED' } : o
+      ));
+      
+      // Update application status
+      if (application) {
+        const updatedApp = { ...application, status: 'OFFER_ACCEPTED' };
+        setApplication(updatedApp);
+        
+        // Update in localStorage - add or update
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex] = updatedApp;
+        } else {
+          // If from demo data, add it to localStorage
+          storedApps.push(updatedApp);
+        }
+        localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+      }
+      
+      toast.success('Luottopäätös on haettu! Rahoittaja ottaa sinuun yhteyttä.');
+      return;
+    }
+    
     try {
       await offers.accept(offerId);
-      toast.success('Tarjous hyväksytty!');
+      toast.success('Luottopäätös on haettu!');
       // Refresh data
       const [appRes, offersRes] = await Promise.all([
         applications.get(parseInt(id!)),
@@ -113,7 +217,64 @@ export default function CustomerApplicationDetail() {
     }
   };
 
+  const handleSendOfferQuestion = async (offerId: number) => {
+    if (!offerQuestion.trim()) {
+      toast.error('Kirjoita kysymyksesi');
+      return;
+    }
+    
+    setIsSendingQuestion(true);
+    
+    // DEMO MODE: Simulate question sending
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Store question in localStorage
+      const questions = JSON.parse(localStorage.getItem('demo-offer-questions') || '[]');
+      questions.push({
+        id: Date.now(),
+        offer_id: offerId,
+        application_id: id,
+        message: offerQuestion,
+        created_at: new Date().toISOString(),
+        status: 'PENDING',
+      });
+      localStorage.setItem('demo-offer-questions', JSON.stringify(questions));
+      
+      toast.success('Kysymys lähetetty rahoittajalle!');
+      setOfferQuestion('');
+      setShowOfferQuestionForm(null);
+      setIsSendingQuestion(false);
+      return;
+    }
+    
+    // API call would go here
+    toast.success('Kysymys lähetetty');
+    setIsSendingQuestion(false);
+  };
+
   const handleRejectOffer = async (offerId: number) => {
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Update offer in localStorage
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      const offerIndex = storedOffers.findIndex((o: any) => o.id === offerId);
+      if (offerIndex >= 0) {
+        storedOffers[offerIndex].status = 'REJECTED';
+        localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      }
+      
+      // Update local state
+      setOfferList(prev => prev.map(o => 
+        o.id === offerId ? { ...o, status: 'REJECTED' } : o
+      ));
+      
+      toast.success('Tarjous hylätty');
+      return;
+    }
+    
     try {
       await offers.reject(offerId);
       toast.success('Tarjous hylätty');
@@ -136,6 +297,55 @@ export default function CustomerApplicationDetail() {
     }
     
     setIsResponding(true);
+    
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get the info request
+      const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+      const irIndex = storedInfoRequests.findIndex((ir: any) => ir.id === infoRequestId);
+      
+      if (irIndex >= 0) {
+        // Add response to info request
+        const newResponse = {
+          id: Date.now(),
+          message: responseMessage,
+          created_at: new Date().toISOString(),
+          user: { email: 'customer@example.com', first_name: 'Asiakas' },
+          // Include attached files info
+          attachments: Object.entries(selectedDocs)
+            .filter(([_, v]) => v.checked && v.file)
+            .map(([key, v]) => ({
+              type: key,
+              filename: v.file?.name
+            }))
+        };
+        
+        if (!storedInfoRequests[irIndex].responses) {
+          storedInfoRequests[irIndex].responses = [];
+        }
+        storedInfoRequests[irIndex].responses.push(newResponse);
+        storedInfoRequests[irIndex].status = 'RESPONDED';
+        
+        localStorage.setItem('demo-info-requests', JSON.stringify(storedInfoRequests));
+        
+        // Update local state
+        setInfoRequestList(prev => prev.map(ir => 
+          ir.id === infoRequestId 
+            ? { ...ir, status: 'RESPONDED', responses: [...(ir.responses || []), newResponse as any] }
+            : ir
+        ));
+      }
+      
+      toast.success('Vastaus ja liitteet lähetetty!');
+      setResponseMessage('');
+      setSelectedDocs({});
+      setIsResponding(false);
+      return;
+    }
+    
     try {
       await infoRequests.respond({
         info_request_id: infoRequestId,
@@ -184,6 +394,58 @@ export default function CustomerApplicationDetail() {
 
   const handleSignContract = async (contractId: number) => {
     setIsSigning(true);
+    
+    // DEMO MODE: Simulate contract signing
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Get user info from localStorage
+      const authData = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+      const user = authData.state?.user;
+      const signerName = user ? `${user.first_name} ${user.last_name}` : 'Asiakas';
+      
+      // Update contract in localStorage
+      const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+      const contractIndex = storedContracts.findIndex((c: any) => c.id === contractId);
+      if (contractIndex >= 0) {
+        storedContracts[contractIndex].status = 'SIGNED';
+        storedContracts[contractIndex].signed_at = new Date().toISOString();
+        storedContracts[contractIndex].lessee_signer_name = signerName;
+        localStorage.setItem('demo-contracts', JSON.stringify(storedContracts));
+        
+        // Update local state
+        setContractList(prev => prev.map(c => 
+          c.id === contractId ? { 
+            ...c, 
+            status: 'SIGNED', 
+            signed_at: new Date().toISOString(),
+            lessee_signer_name: signerName 
+          } : c
+        ));
+      }
+      
+      // Update application status to SIGNED
+      if (application) {
+        const updatedApp = { ...application, status: 'SIGNED' };
+        setApplication(updatedApp);
+        
+        // Update in localStorage
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex] = updatedApp;
+        } else {
+          storedApps.push(updatedApp);
+        }
+        localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+      }
+      
+      toast.success('Sopimus allekirjoitettu onnistuneesti!');
+      setIsSigning(false);
+      return;
+    }
+    
     try {
       await contracts.sign(contractId, 'Finland');
       toast.success('Sopimus allekirjoitettu!');
@@ -361,11 +623,129 @@ export default function CustomerApplicationDetail() {
       {/* Tab content */}
       <div>
         {activeTab === 'details' && (
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Application Timeline */}
+            <div className="card">
+              <h3 className="font-semibold text-midnight-900 mb-6 flex items-center">
+                <Clock className="w-5 h-5 mr-2 text-efund-600" />
+                Hakemuksen eteneminen
+              </h3>
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-200" />
+                
+                {/* Timeline steps */}
+                <div className="space-y-6">
+                  {(() => {
+                    // Map application status to timeline step index (0-5)
+                    const getStepForStatus = (status: string): number => {
+                      switch(status) {
+                        case 'SUBMITTED': return 0;
+                        case 'SUBMITTED_TO_FINANCIER': return 1;
+                        case 'INFO_REQUESTED': return 1;
+                        case 'OFFER_RECEIVED': return 2;
+                        case 'OFFER_SENT': return 3;
+                        case 'OFFER_ACCEPTED': return 4;
+                        case 'CONTRACT_SENT': return 4;
+                        case 'SIGNED': return 5;
+                        case 'CLOSED': return 5;
+                        default: return 0;
+                      }
+                    };
+                    
+                    const currentStepIndex = getStepForStatus(application.status);
+                    
+                    return [
+                      { 
+                        id: 'submitted', 
+                        label: 'Hakemus lähetetty', 
+                        description: 'Hakemuksesi on vastaanotettu',
+                        icon: Rocket,
+                      },
+                      { 
+                        id: 'processing', 
+                        label: 'Käsittelyssä', 
+                        description: 'Rahoittaja käsittelee hakemustasi',
+                        icon: Search,
+                      },
+                      { 
+                        id: 'offer_preparing', 
+                        label: 'Tarjousta valmistellaan', 
+                        description: 'Rahoittaja valmistelee tarjousta',
+                        icon: FileEdit,
+                      },
+                      { 
+                        id: 'offer_ready', 
+                        label: 'Tarjous saatavilla', 
+                        description: 'Tarkista ja hyväksy tarjous',
+                        icon: Gift,
+                      },
+                      { 
+                        id: 'contract', 
+                        label: 'Sopimus', 
+                        description: 'Allekirjoita sopimus',
+                        icon: PenTool,
+                      },
+                      { 
+                        id: 'complete', 
+                        label: 'Valmis', 
+                        description: 'Rahoitus on valmis!',
+                        icon: PartyPopper,
+                      },
+                    ].map((step, index) => {
+                      const isCompleted = index < currentStepIndex;
+                      const isCurrentStep = index === currentStepIndex;
+                      const isActive = index <= currentStepIndex;
+                    
+                    return (
+                      <div key={step.id} className="relative flex items-start pl-14">
+                        {/* Step icon */}
+                        <div className={`absolute left-0 w-12 h-12 rounded-full flex items-center justify-center border-4 ${
+                          isCurrentStep 
+                            ? 'bg-efund-600 border-efund-200 text-white animate-pulse'
+                            : isCompleted
+                              ? 'bg-green-500 border-green-200 text-white'
+                              : 'bg-slate-100 border-slate-200 text-slate-400'
+                        }`}>
+                          {isCompleted ? (
+                            <CheckCircle className="w-6 h-6" />
+                          ) : (
+                            <step.icon className="w-5 h-5" />
+                          )}
+                        </div>
+                        
+                        {/* Step content */}
+                        <div className={`pb-6 ${isActive ? '' : 'opacity-50'}`}>
+                          <h4 className={`font-semibold ${isActive ? 'text-midnight-900' : 'text-slate-500'}`}>
+                            {step.label}
+                            {isCurrentStep && (
+                              <span className="ml-2 text-xs bg-efund-100 text-efund-700 px-2 py-0.5 rounded-full">
+                                Nyt
+                              </span>
+                            )}
+                          </h4>
+                          <p className={`text-sm ${isActive ? 'text-slate-600' : 'text-slate-400'}`}>
+                            {step.description}
+                          </p>
+                          {isCurrentStep && application.updated_at && (
+                            <p className="text-xs text-slate-400 mt-1">
+                              Päivitetty: {formatDateTime(application.updated_at)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
             {/* Application info */}
             <div className="card">
               <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-Kantama-600" />
+                <FileText className="w-5 h-5 mr-2 text-efund-600" />
                 Hakemuksen tiedot
               </h3>
               <dl className="space-y-3">
@@ -404,6 +784,22 @@ export default function CustomerApplicationDetail() {
                     <dd className="font-medium text-midnight-900">{application.requested_term_months} kk</dd>
                   </div>
                 )}
+                {(application as any).link_to_item && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Linkki kohteeseen</dt>
+                    <dd className="font-medium">
+                      <a href={(application as any).link_to_item} target="_blank" rel="noopener noreferrer" className="text-Kantama-600 hover:text-Kantama-700 underline">
+                        Avaa linkki →
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {(application as any).additional_info && (
+                  <div className="pt-3 border-t">
+                    <dt className="text-slate-500 mb-1">Lisätiedot kohteesta</dt>
+                    <dd className="text-midnight-900">{(application as any).additional_info}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="text-slate-500">Luotu</dt>
                   <dd className="font-medium text-midnight-900">{formatDateTime(application.created_at)}</dd>
@@ -440,6 +836,52 @@ export default function CustomerApplicationDetail() {
                 </div>
               </dl>
             </div>
+
+            {/* Pending offer section on details tab */}
+            {offerList.filter(o => o.status === 'SENT').length > 0 && (
+              <div className="lg:col-span-2">
+                <div className="card border-2 border-green-200 bg-green-50">
+                  <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
+                    <Euro className="w-5 h-5 mr-2 text-green-600" />
+                    Sinulla on hyväksymätön tarjous!
+                  </h3>
+                  {offerList.filter(o => o.status === 'SENT').map((offer) => (
+                    <div key={offer.id} className="bg-white rounded-xl p-4 mb-4">
+                      <div className="grid md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                          <span className="text-slate-500 text-sm">Kuukausimaksu</span>
+                          <p className="font-bold text-green-700 text-xl">{formatCurrency(offer.monthly_payment)}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Sopimuskausi</span>
+                          <p className="font-semibold text-midnight-900">{offer.term_months} kk</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Rahoitettava summa</span>
+                          <p className="font-semibold text-midnight-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setActiveTab('offers')}
+                          className="btn-secondary flex-1"
+                        >
+                          Katso tarjouksen tiedot
+                        </button>
+                        <button
+                          onClick={() => handleAcceptOffer(offer.id)}
+                          className="btn-primary bg-green-600 hover:bg-green-700 flex-1"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Hae virallinen luottopäätös
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            </div>
           </div>
         )}
 
@@ -457,61 +899,79 @@ export default function CustomerApplicationDetail() {
                   key={offer.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="card"
+                  className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
                 >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-midnight-900">Rahoitustarjous</h3>
-                    <span className={`badge ${
-                      offer.status === 'SENT' ? 'badge-blue' :
-                      offer.status === 'ACCEPTED' ? 'badge-green' :
-                      offer.status === 'REJECTED' ? 'badge-red' : 'badge-gray'
-                    }`}>
-                      {getOfferStatusLabel(offer.status)}
-                    </span>
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-bold text-white text-lg flex items-center">
+                        <Euro className="w-5 h-5 mr-2" />
+                        Alustava rahoitustarjous
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
+                        offer.status === 'SENT' ? 'bg-white/20 text-white' :
+                        offer.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
+                        offer.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
+                      }`}>
+                        {getOfferStatusLabel(offer.status)}
+                      </span>
+                    </div>
+                    {/* Equipment name */}
+                    <p className="text-green-100 mt-2 flex items-center">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Kohde: <span className="font-semibold text-white ml-1">{application.equipment_description}</span>
+                    </p>
+                  </div>
+                  
+                  {/* Preliminary offer notice */}
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
+                    <p className="text-amber-800 text-sm">
+                      <strong>Huom!</strong> Tämä on alustava tarjous. Hyväksymällä tarjouksen haet virallisen luottopäätöksen, 
+                      jonka jälkeen saat sopimuksen luettavaksi ja allekirjoitettavaksi.
+                    </p>
                   </div>
 
-                  {/* Tarjouksen tiedot */}
-                  <div className="bg-slate-50 rounded-xl p-5 mb-4">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Kauppasumma:</span>
-                        <span className="font-semibold text-midnight-900">{formatCurrency(application.equipment_price)} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Käsiraha:</span>
-                        <span className="font-semibold text-midnight-900">{formatCurrency(offer.upfront_payment || 0)} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Rahoitettava osuus:</span>
-                        <span className="font-semibold text-midnight-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} alv 0 %</span>
-                      </div>
-                      <hr className="my-2 border-slate-200" />
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-600">Kk-maksu:</span>
-                        <span className="font-bold text-green-700 text-xl">{formatCurrency(offer.monthly_payment)} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Sopimusaika:</span>
-                        <span className="font-semibold text-midnight-900">{offer.term_months} kk</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Avausmaksu:</span>
-                        <span className="font-semibold text-midnight-900">300 € alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Laskutuslisä:</span>
-                        <span className="font-semibold text-midnight-900">9 €/kk</span>
-                      </div>
-                      {offer.residual_value && application.equipment_price && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Jäännösarvo:</span>
-                          <span className="font-semibold text-midnight-900">
-                            {((offer.residual_value / application.equipment_price) * 100).toFixed(1)} %
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <p className="text-xs text-slate-500 mt-3 italic">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+                  {/* Excel-like Grid */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        <tr className="border-b border-slate-100">
+                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-48 border-r border-slate-200">Kauppasumma</td>
+                          <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency(application.equipment_price)} <span className="text-slate-500">alv 0%</span></td>
+                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-48 border-r border-l border-slate-200">Sopimusaika</td>
+                          <td className="px-4 py-3 font-semibold text-midnight-900">{offer.term_months} kk</td>
+                        </tr>
+                        <tr className="border-b border-slate-100">
+                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Käsiraha</td>
+                          <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency(offer.upfront_payment || 0)} <span className="text-slate-500">alv 0%</span></td>
+                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Rahoitettava osuus</td>
+                          <td className="px-4 py-3 font-semibold text-emerald-700">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} <span className="text-slate-500">alv 0%</span></td>
+                        </tr>
+                        <tr className="border-b border-slate-100 bg-green-50">
+                          <td className="px-4 py-4 bg-green-100 font-bold text-green-800 border-r border-green-200">Kuukausierä</td>
+                          <td className="px-4 py-4 font-bold text-green-700 text-xl" colSpan={3}>
+                            {formatCurrency(offer.monthly_payment)} <span className="text-green-600 text-base">alv 0%</span>
+                          </td>
+                        </tr>
+                        <tr className="border-b border-slate-100">
+                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Avausmaksu</td>
+                          <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency(offer.opening_fee || 300)} <span className="text-slate-500">alv 0%</span></td>
+                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Laskutuslisä</td>
+                          <td className="px-4 py-3 font-semibold text-midnight-900">{offer.invoice_fee || 9} €/kk</td>
+                        </tr>
+                        {offer.residual_value && application.equipment_price && (
+                          <tr className="border-b border-slate-100">
+                            <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Jäännösarvo</td>
+                            <td className="px-4 py-3 font-semibold text-midnight-900" colSpan={3}>
+                              {((offer.residual_value / application.equipment_price) * 100).toFixed(1)}%
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-4 py-2 bg-slate-50 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 italic">Hintoihin lisätään voimassa oleva arvonlisävero</p>
                   </div>
 
                   {offer.notes_to_customer && (
@@ -619,6 +1079,13 @@ export default function CustomerApplicationDetail() {
                     {offer.status === 'SENT' && (
                       <div className="flex space-x-3">
                         <button
+                          onClick={() => setShowOfferQuestionForm(showOfferQuestionForm === offer.id ? null : offer.id)}
+                          className="btn-ghost text-blue-600"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Kysy lisätietoja
+                        </button>
+                        <button
                           onClick={() => handleRejectOffer(offer.id)}
                           className="btn-ghost text-red-600"
                         >
@@ -627,14 +1094,46 @@ export default function CustomerApplicationDetail() {
                         </button>
                         <button
                           onClick={() => handleAcceptOffer(offer.id)}
-                          className="btn-primary"
+                          className="btn-primary bg-green-600 hover:bg-green-700"
                         >
                           <CheckCircle className="w-4 h-4 mr-2" />
-                          Hyväksy tarjous
+                          Hae virallinen luottopäätös
                         </button>
                       </div>
                     )}
                   </div>
+
+                  {/* Question form */}
+                  {showOfferQuestionForm === offer.id && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      <h4 className="font-medium text-midnight-900 mb-2">Kysy lisätietoja tarjouksesta</h4>
+                      <textarea
+                        value={offerQuestion}
+                        onChange={(e) => setOfferQuestion(e.target.value)}
+                        placeholder="Kirjoita kysymyksesi rahoittajalle..."
+                        className="input min-h-[100px] mb-3"
+                      />
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => {
+                            setShowOfferQuestionForm(null);
+                            setOfferQuestion('');
+                          }}
+                          className="btn-ghost"
+                        >
+                          Peruuta
+                        </button>
+                        <button
+                          onClick={() => handleSendOfferQuestion(offer.id)}
+                          disabled={isSendingQuestion}
+                          className="btn-primary"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          {isSendingQuestion ? 'Lähetetään...' : 'Lähetä kysymys'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               ))
             )}
@@ -903,11 +1402,84 @@ export default function CustomerApplicationDetail() {
                     </span>
                   </div>
 
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg mb-4">
-                    <p className="text-sm text-yellow-600 mb-1">Rahoittajan pyyntö:</p>
-                    <p className="text-yellow-800">{ir.message}</p>
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-4">
+                    <p className="text-sm text-amber-600 mb-1 font-medium">Rahoittajan pyyntö:</p>
+                    <p className="text-amber-800 mb-3">{ir.message}</p>
+                    {/* Show document list with interactive checkboxes */}
+                    {(ir as any).documents && (ir as any).documents.length > 0 && ir.status === 'PENDING' && (
+                      <div className="mt-3 space-y-3">
+                        <p className="text-sm font-medium text-amber-700 mb-2">Liitä pyydetyt dokumentit:</p>
+                        {(ir as any).documents.map((doc: any, i: number) => (
+                          <div key={i} className="bg-white rounded-lg p-3 border border-amber-200">
+                            <label className="flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                className="mr-3 h-5 w-5 text-amber-600 rounded"
+                                checked={selectedDocs[doc.type]?.checked || false}
+                                onChange={(e) => {
+                                  setSelectedDocs(prev => ({
+                                    ...prev,
+                                    [doc.type]: { ...prev[doc.type], checked: e.target.checked, file: e.target.checked ? prev[doc.type]?.file : null }
+                                  }));
+                                }}
+                              />
+                              <span className="font-medium text-amber-900">{doc.label}</span>
+                              {doc.required && (
+                                <span className="ml-2 text-xs text-red-600 font-medium">(pakollinen)</span>
+                              )}
+                            </label>
+                            {/* Show file input when checked */}
+                            {selectedDocs[doc.type]?.checked && (
+                              <div className="mt-3 ml-8">
+                                <label className="block">
+                                  <span className="text-sm text-amber-700 mb-1 block">Liitä {doc.label.toLowerCase()}:</span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0] || null;
+                                      setSelectedDocs(prev => ({
+                                        ...prev,
+                                        [doc.type]: { ...prev[doc.type], file }
+                                      }));
+                                    }}
+                                    className="block w-full text-sm text-slate-500
+                                      file:mr-4 file:py-2 file:px-4
+                                      file:rounded-lg file:border-0
+                                      file:text-sm file:font-semibold
+                                      file:bg-amber-100 file:text-amber-700
+                                      hover:file:bg-amber-200 cursor-pointer"
+                                  />
+                                </label>
+                                {selectedDocs[doc.type]?.file && (
+                                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    {selectedDocs[doc.type]?.file?.name}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Show static document list for already responded requests */}
+                    {(ir as any).documents && (ir as any).documents.length > 0 && ir.status !== 'PENDING' && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium text-amber-700 mb-2">Pyydetyt liitteet:</p>
+                        <ul className="space-y-2">
+                          {(ir as any).documents.map((doc: any, i: number) => (
+                            <li key={i} className="flex items-center text-amber-800">
+                              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                              <span>{doc.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Fallback for old format */}
                     {ir.requested_items && ir.requested_items.length > 0 && (
-                      <ul className="mt-2 list-disc list-inside text-yellow-700">
+                      <ul className="mt-2 list-disc list-inside text-amber-700">
                         {ir.requested_items.map((item, i) => (
                           <li key={i}>{item}</li>
                         ))}

@@ -1,174 +1,97 @@
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import api from '../lib/api';
 
 interface DemoUser {
   email: string;
-  password: string;
   role: 'ADMIN' | 'CUSTOMER' | 'FINANCIER';
   label: string;
+  firstName: string;
+  lastName: string;
   icon: string;
   color: string;
 }
 
 const demoUsers: DemoUser[] = [
   {
-    email: 'admin@Kantama.fi',  // Case sensitive - must match exactly!
-    password: 'admin123',
+    email: 'admin@Kantama.fi',
     role: 'ADMIN',
     label: 'Admin',
+    firstName: 'Admin',
+    lastName: 'Kantama',
     icon: '👑',
     color: 'from-purple-500 to-indigo-600',
   },
   {
-    email: 'demo.financier@kantama.fi',
-    password: 'demo123',
+    email: 'demo.financier@Kantama.fi',
     role: 'FINANCIER',
     label: 'Rahoittaja',
+    firstName: 'Demo',
+    lastName: 'Rahoittaja',
     icon: '🏦',
     color: 'from-emerald-500 to-teal-600',
   },
   {
-    email: 'demo.customer@kantama.fi',
-    password: 'demo123',
+    email: 'demo.customer@Kantama.fi',
     role: 'CUSTOMER',
     label: 'Asiakas',
+    firstName: 'Demo',
+    lastName: 'Asiakas',
     icon: '👤',
     color: 'from-blue-500 to-cyan-600',
+  },
+  {
+    email: 't.leinonen@yahoo.com',
+    role: 'CUSTOMER',
+    label: 'T. Leinonen',
+    firstName: 'Timo',
+    lastName: 'Leinonen',
+    icon: '🧑‍💼',
+    color: 'from-amber-500 to-orange-600',
   },
 ];
 
 export function DemoPanel() {
   const [isOpen, setIsOpen] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { user, login, logout } = useAuthStore();
+  const { user, logout, setDemoUser } = useAuthStore();
 
-  const handleLogin = async (demoUser: DemoUser) => {
-    setLoading(demoUser.email);
-    setError(null);
+  // DEMO MODE: Direct login with localStorage sync
+  const handleLogin = (demoUser: DemoUser) => {
+    const fakeUser = {
+      id: demoUser.role === 'ADMIN' ? 1 : demoUser.role === 'FINANCIER' ? 2 : demoUser.email === 't.leinonen@yahoo.com' ? 4 : 3,
+      email: demoUser.email,
+      role: demoUser.role,
+      first_name: demoUser.firstName,
+      last_name: demoUser.lastName,
+      is_active: true,
+      is_verified: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
     
-    try {
-      // First logout if already logged in
-      if (user) {
-        logout();
-      }
-      
-      // Try to login
-      await login(demoUser.email, demoUser.password);
-      
-      // Redirect based on role
-      const redirectMap = {
-        ADMIN: '/admin',
-        FINANCIER: '/financier',
-        CUSTOMER: '/dashboard',
-      };
-      window.location.href = redirectMap[demoUser.role];
-    } catch (err: any) {
-      // If login fails, user might not exist - create it
-      if (err.response?.status === 401 || err.response?.status === 404) {
-        try {
-          await createDemoUser(demoUser);
-          await login(demoUser.email, demoUser.password);
-          
-          const redirectMap = {
-            ADMIN: '/admin',
-            FINANCIER: '/financier',
-            CUSTOMER: '/dashboard',
-          };
-          window.location.href = redirectMap[demoUser.role];
-        } catch (createErr: any) {
-          setError(`Virhe luotaessa käyttäjää: ${createErr.message}`);
-        }
-      } else {
-        setError(`Kirjautuminen epäonnistui: ${err.response?.data?.detail || err.message}`);
-      }
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const createDemoUser = async (demoUser: DemoUser) => {
-    if (demoUser.role === 'ADMIN') {
-      // Admin already exists from startup
-      throw new Error('Admin-käyttäjä on jo olemassa');
-    }
+    const fakeToken = `demo-token-${demoUser.role.toLowerCase()}`;
     
-    if (demoUser.role === 'CUSTOMER') {
-      // Register as customer
-      await api.post('/auth/register', {
-        email: demoUser.email,
-        password: demoUser.password,
-        first_name: 'Demo',
-        last_name: 'Asiakas',
-        company_name: 'Demo Yritys Oy',
-        business_id: '1234567-8',
-      });
-      
-      // Auto-verify (in real app, this would be email verification)
-      // For demo, we'll use admin to activate
-      const adminLogin = await api.post('/auth/login', {
-        email: 'admin@Kantama.fi',
-        password: 'admin123',
-      });
-      
-      const adminToken = adminLogin.data.access_token;
-      
-      // Get users list to find the new user
-      const usersResponse = await api.get('/users/', {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-      
-      const newUser = usersResponse.data.find((u: any) => u.email === demoUser.email);
-      if (newUser) {
-        await api.put(`/users/${newUser.id}/activate`, {}, {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        });
-      }
-    }
+    // Set localStorage FIRST - synchronously before any navigation
+    localStorage.setItem('token', fakeToken);
+    localStorage.setItem('auth-storage', JSON.stringify({
+      state: { token: fakeToken, user: fakeUser, isAuthenticated: true },
+      version: 0
+    }));
     
-    if (demoUser.role === 'FINANCIER') {
-      // First login as admin to create financier and user
-      const adminLogin = await api.post('/auth/login', {
-        email: 'admin@Kantama.fi',
-        password: 'admin123',
-      });
-      
-      const adminToken = adminLogin.data.access_token;
-      
-      // Check if financier exists
-      const financiersResponse = await api.get('/financiers/', {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-      
-      let financier = financiersResponse.data.find((f: any) => f.name === 'Demo Rahoitus Oy');
-      
-      if (!financier) {
-        // Create financier
-        const createFinancierResponse = await api.post('/financiers/', {
-          name: 'Demo Rahoitus Oy',
-          email: 'info@demorahoitus.fi',
-          phone: '+358 40 123 4567',
-          address: 'Rahoituskatu 1, 00100 Helsinki',
-          notes: 'Demo-rahoittaja testausta varten',
-        }, {
-          headers: { Authorization: `Bearer ${adminToken}` },
-        });
-        financier = createFinancierResponse.data;
-      }
-      
-      // Create financier user
-      await api.post('/users/financier-user', {
-        email: demoUser.email,
-        password: demoUser.password,
-        first_name: 'Demo',
-        last_name: 'Rahoittaja',
-        financier_id: financier.id,
-      }, {
-        headers: { Authorization: `Bearer ${adminToken}` },
-      });
-    }
+    // Also update Zustand (for components that might read from it)
+    setDemoUser(fakeUser as any, fakeToken);
+    
+    // Navigate based on role
+    const urls: Record<string, string> = {
+      ADMIN: '/admin',
+      FINANCIER: '/financier', 
+      CUSTOMER: '/dashboard',
+    };
+    
+    // Small delay to ensure localStorage is written before navigation
+    setTimeout(() => {
+      window.location.href = urls[demoUser.role];
+    }, 50);
   };
 
   if (!isOpen) {
@@ -243,13 +166,6 @@ export function DemoPanel() {
               </div>
             )}
 
-            {/* Error message */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-                {error}
-              </div>
-            )}
-
             {/* Demo users */}
             <div className="space-y-2">
               <div className="text-xs text-gray-500 mb-2">Vaihda käyttäjää:</div>
@@ -257,7 +173,7 @@ export function DemoPanel() {
                 <button
                   key={demoUser.email}
                   onClick={() => handleLogin(demoUser)}
-                  disabled={loading !== null}
+                  disabled={false}
                   className={`w-full p-3 rounded-xl bg-gradient-to-r ${demoUser.color} text-white font-medium 
                     hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-200
                     disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
@@ -268,12 +184,6 @@ export function DemoPanel() {
                     <div className="font-semibold">{demoUser.label}</div>
                     <div className="text-xs opacity-80">{demoUser.email}</div>
                   </div>
-                  {loading === demoUser.email && (
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  )}
                 </button>
               ))}
             </div>
@@ -294,6 +204,26 @@ export function DemoPanel() {
                 Kirjaudu ulos
               </button>
             )}
+
+            {/* Clear data button */}
+            <button
+              onClick={() => {
+                // Clear all demo data from localStorage
+                localStorage.removeItem('demo-applications');
+                localStorage.removeItem('demo-offers');
+                localStorage.removeItem('demo-contracts');
+                localStorage.removeItem('demo-assignments');
+                alert('Demo-data tyhjennetty! Hakemukset, tarjoukset ja sopimukset poistettu.');
+                window.location.reload();
+              }}
+              className="w-full mt-2 p-2 rounded-xl border-2 border-red-200 text-red-600 font-medium
+                hover:bg-red-50 hover:border-red-300 transition-all flex items-center justify-center gap-2"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Tyhjennä demo-data
+            </button>
 
             {/* Info */}
             <div className="mt-4 text-xs text-gray-400 text-center">

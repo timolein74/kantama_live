@@ -69,9 +69,35 @@ export default function AdminApplicationDetail() {
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
 
+  // Demo data for demo mode - Empty for fresh testing
+  const demoApplications: Application[] = [];
+
+  const demoFinanciers: Financier[] = [
+    { id: 1, name: 'Rahoittaja Oy', contact_email: 'info@rahoittaja.fi', is_active: true, created_at: '', updated_at: '' },
+  ];
+
+  const demoOffers: Offer[] = [];
+
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
+      
+      // DEMO MODE: Check if using demo token
+      const token = localStorage.getItem('token');
+      if (token?.startsWith('demo-token-')) {
+        // Combine demo data + localStorage applications
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const allApps = [...demoApplications, ...storedApps];
+        const app = allApps.find(a => String(a.id) === id);
+        setApplication(app || null);
+        setFinancierList(demoFinanciers);
+        setAssignmentList([]);
+        setOfferList(demoOffers.filter(o => String(o.application_id) === id));
+        setContractList([]);
+        setInfoRequestList([]);
+        setIsLoading(false);
+        return;
+      }
       
       try {
         const [appRes, financiersRes, assignmentsRes, offersRes, contractsRes, infoRes] = await Promise.all([
@@ -106,6 +132,45 @@ export default function AdminApplicationDetail() {
     }
     
     setIsAssigning(true);
+    
+    // DEMO MODE: Simulate assignment
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Update application status in localStorage
+      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+      const updatedApps = storedApps.map((app: any) => {
+        if (String(app.id) === id) {
+          return { ...app, status: 'SUBMITTED_TO_FINANCIER' };
+        }
+        return app;
+      });
+      localStorage.setItem('demo-applications', JSON.stringify(updatedApps));
+      
+      // Also update static demo data in memory
+      if (application) {
+        setApplication({ ...application, status: 'SUBMITTED_TO_FINANCIER' });
+      }
+      
+      // Add to assignment list
+      const newAssignment = {
+        id: Date.now(),
+        application_id: parseInt(id),
+        financier_id: selectedFinancierId,
+        status: 'PENDING',
+        notes: assignmentNotes || null,
+        created_at: new Date().toISOString(),
+      };
+      setAssignmentList([...assignmentList, newAssignment]);
+      
+      toast.success('Hakemus lähetetty rahoittajalle');
+      setSelectedFinancierId(null);
+      setAssignmentNotes('');
+      setIsAssigning(false);
+      return;
+    }
+    
     try {
       await assignments.create({
         application_id: parseInt(id),
@@ -344,9 +409,25 @@ export default function AdminApplicationDetail() {
                     <dd className="font-medium text-midnight-900">{application.requested_term_months} kk</dd>
                   </div>
                 )}
+                {application.link_to_item && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Linkki kohteeseen</dt>
+                    <dd className="font-medium">
+                      <a href={application.link_to_item} target="_blank" rel="noopener noreferrer" className="text-Kantama-600 hover:text-Kantama-700 underline">
+                        Avaa linkki →
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {(application as any).downpayment_amount > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Asiakkaan käsiraha</dt>
+                    <dd className="font-medium text-midnight-900">{formatCurrency((application as any).downpayment_amount)}</dd>
+                  </div>
+                )}
                 {application.additional_info && (
                   <div className="pt-3 border-t">
-                    <dt className="text-slate-500 mb-1">Lisätiedot</dt>
+                    <dt className="text-slate-500 mb-1">Lisätiedot kohteesta</dt>
                     <dd className="text-midnight-900">{application.additional_info}</dd>
                   </div>
                 )}
@@ -513,6 +594,11 @@ export default function AdminApplicationDetail() {
                       <p className="text-sm text-slate-500">
                         Rahoittaja: {getFinancierName(offer.financier_id)}
                       </p>
+                      {(offer as any).application?.equipment_description && (
+                        <p className="text-sm text-midnight-700 mt-1 font-medium">
+                          Kohde: {(offer as any).application?.equipment_description}
+                        </p>
+                      )}
                     </div>
                     <span className={`badge ${
                       offer.status === 'DRAFT' ? 'badge-gray' :
@@ -524,52 +610,79 @@ export default function AdminApplicationDetail() {
                       {getOfferStatusLabel(offer.status)}
                     </span>
                   </div>
-                  {/* Tarjouksen tiedot */}
-                  <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                    <div className="grid md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Kauppasumma:</span>
-                        <span className="font-semibold text-midnight-900">{formatCurrency(application.equipment_price)} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Käsiraha:</span>
-                        <span className="font-semibold text-midnight-900">{formatCurrency(offer.upfront_payment || 0)} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Rahoitettava osuus:</span>
-                        <span className="font-semibold text-midnight-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Kk-maksu:</span>
-                        <span className="font-bold text-emerald-700">{formatCurrency(offer.monthly_payment)} alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Sopimusaika:</span>
-                        <span className="font-semibold text-midnight-900">{offer.term_months} kk</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Avausmaksu:</span>
-                        <span className="font-semibold text-midnight-900">300 € alv 0 %</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Laskutuslisä:</span>
-                        <span className="font-semibold text-midnight-900">9 €/kk</span>
-                      </div>
-                      {offer.residual_value && application.equipment_price && (
-                        <div className="flex justify-between">
-                          <span className="text-slate-600">Jäännösarvo:</span>
-                          <span className="font-semibold text-midnight-900">
-                            {((offer.residual_value / application.equipment_price) * 100).toFixed(1)} %
-                          </span>
+                  
+                  {/* Excel-like table view for offer details */}
+                  <div className="overflow-x-auto mb-4">
+                    <table className="min-w-full divide-y divide-slate-200 border border-slate-200 rounded-lg">
+                      <tbody className="bg-white divide-y divide-slate-100">
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 w-1/4">Kohde</td>
+                          <td className="px-4 py-2 text-sm text-midnight-900">{application.equipment_description || '-'}</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 w-1/4">Yritys</td>
+                          <td className="px-4 py-2 text-sm text-midnight-900">{application.company_name}</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Kauppasumma</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">{formatCurrency(application.equipment_price)} alv 0 %</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Käsiraha</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">{formatCurrency(offer.upfront_payment || 0)} alv 0 %</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Rahoitettava osuus</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} alv 0 %</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Kk-maksu</td>
+                          <td className="px-4 py-2 text-lg font-bold text-emerald-700">{formatCurrency(offer.monthly_payment)} alv 0 %</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Sopimusaika</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">{offer.term_months} kk</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Avausmaksu</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">{formatCurrency(offer.opening_fee || 0)} alv 0 %</td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Laskutuslisä</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">{formatCurrency(offer.invoice_fee || 0)}/kk</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Jäännösarvo</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-midnight-900">
+                            {offer.residual_value && application.equipment_price 
+                              ? `${((offer.residual_value / application.equipment_price) * 100).toFixed(1)} %`
+                              : '-'}
+                          </td>
+                        </tr>
+                        <tr className="hover:bg-slate-50">
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Luotu</td>
+                          <td className="px-4 py-2 text-sm text-midnight-900">{formatDateTime(offer.created_at)}</td>
+                          <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Status</td>
+                          <td className="px-4 py-2 text-sm">{getOfferStatusLabel(offer.status)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <p className="text-xs text-slate-500 mt-2 italic">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+                  </div>
+
+                  {/* Viestit */}
+                  {(offer.notes_to_customer || offer.notes_internal || (offer as any).included_services) && (
+                    <div className="space-y-2 mb-4">
+                      {(offer as any).included_services && (
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                          <p className="text-sm font-medium text-emerald-700 mb-1">Lisäpalvelut:</p>
+                          <p className="text-emerald-900 text-sm">{(offer as any).included_services}</p>
                         </div>
                       )}
-                      <div className="flex justify-between">
-                        <span className="text-slate-600">Luotu:</span>
-                        <span className="font-medium text-midnight-900">{formatDate(offer.created_at)}</span>
-                      </div>
+                      {offer.notes_to_customer && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                          <p className="text-sm font-medium text-blue-700 mb-1">Viesti asiakkaalle:</p>
+                          <p className="text-blue-900 text-sm">{offer.notes_to_customer}</p>
+                        </div>
+                      )}
+                      {offer.notes_internal && (
+                        <div className="bg-slate-100 border border-slate-200 rounded-lg p-3">
+                          <p className="text-sm font-medium text-slate-700 mb-1">Sisäiset muistiinpanot (ei näy asiakkaalle):</p>
+                          <p className="text-slate-900 text-sm">{offer.notes_internal}</p>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-3 italic">Hintoihin lisätään voimassa oleva arvonlisävero</p>
-                  </div>
+                  )}
 
                   {/* Print button */}
                   <div className="mb-4">
@@ -678,17 +791,53 @@ export default function AdminApplicationDetail() {
                   
                   {/* Approve button for PENDING_ADMIN offers */}
                   {offer.status === 'PENDING_ADMIN' && (
-                    <div className="border-t pt-4 mt-4">
+                    <div className="border-t border-orange-200 pt-4 mt-4 bg-orange-50 -mx-6 -mb-6 px-6 pb-6 rounded-b-xl">
                       <div className="flex items-center justify-between">
-                        <p className="text-orange-700 font-medium">
-                          Tämä tarjous odottaa hyväksyntääsi ennen asiakkaalle lähettämistä.
-                        </p>
+                        <div>
+                          <p className="text-orange-800 font-semibold">
+                            ⚠️ Odottaa hyväksyntääsi
+                          </p>
+                          <p className="text-orange-600 text-sm">
+                            Asiakas näkee tarjouksen vasta kun hyväksyt sen.
+                          </p>
+                        </div>
                         <button
                           onClick={async () => {
+                            // DEMO MODE
+                            const token = localStorage.getItem('token');
+                            if (token?.startsWith('demo-token-')) {
+                              // Update offer status in localStorage
+                              const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+                              const offerIndex = storedOffers.findIndex((o: any) => o.id === offer.id);
+                              if (offerIndex >= 0) {
+                                storedOffers[offerIndex].status = 'SENT';
+                                storedOffers[offerIndex].approved_at = new Date().toISOString();
+                                localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+                              }
+                              
+                              // Update application status
+                              const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+                              const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+                              if (appIndex >= 0) {
+                                storedApps[appIndex].status = 'OFFER_SENT';
+                                localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+                              }
+                              
+                              // Update local state
+                              setOfferList(prev => prev.map(o => 
+                                o.id === offer.id ? { ...o, status: 'SENT' } : o
+                              ));
+                              if (application) {
+                                setApplication({ ...application, status: 'OFFER_SENT' });
+                              }
+                              
+                              toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
+                              return;
+                            }
+                            
                             try {
                               await offers.approve(offer.id);
                               toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
-                              // Refresh
                               const [offersRes, appRes] = await Promise.all([
                                 offers.getForApplication(parseInt(id!)),
                                 applications.get(parseInt(id!))
@@ -699,10 +848,10 @@ export default function AdminApplicationDetail() {
                               toast.error(error.response?.data?.detail || 'Virhe tarjouksen hyväksymisessä');
                             }
                           }}
-                          className="btn-primary"
+                          className="btn-primary bg-green-600 hover:bg-green-700"
                         >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Hyväksy ja lähetä asiakkaalle
+                          <Send className="w-4 h-4 mr-2" />
+                          Lähetä tarjous asiakkaalle
                         </button>
                       </div>
                     </div>

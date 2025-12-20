@@ -204,5 +204,3 @@ openssl s_client -connect kantama.fi:443
 
 Ongelmatilanteissa ota yhteyttä: admin@kantama.fi
 
-
-

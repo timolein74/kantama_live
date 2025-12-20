@@ -153,7 +153,7 @@ export default function PublicLayout() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-sm">
-            <p>© 2025 Kantama. Kaikki oikeudet pidätetään.</p>
+            <p>© 2025 Kantama Rahoitus. Kaikki oikeudet pidätetään.</p>
           </div>
         </div>
       </footer>
