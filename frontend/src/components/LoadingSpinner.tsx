@@ -1,4 +1,4 @@
-import { cn } from '../lib/utils';
+﻿import { cn } from '../lib/utils';
 
 interface LoadingSpinnerProps {
   size?: 'sm' | 'md' | 'lg';
@@ -16,11 +16,13 @@ export default function LoadingSpinner({ size = 'md', className }: LoadingSpinne
     <div className={cn('flex items-center justify-center', className)}>
       <div
         className={cn(
-          'animate-spin rounded-full border-2 border-slate-200 border-t-Kantama-600',
+          'animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600',
           sizeClasses[size]
         )}
       />
     </div>
   );
 }
+
+
 

@@ -35,8 +35,9 @@ export function PasswordProtection({ children }: PasswordProtectionProps) {
     }
   };
 
-  // Skip password protection in development
-  if (import.meta.env.DEV) {
+  // Skip password protection in development or production
+  // Production is now live - no password needed
+  if (import.meta.env.DEV || import.meta.env.PROD) {
     return <>{children}</>;
   }
 

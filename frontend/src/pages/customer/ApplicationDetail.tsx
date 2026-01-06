@@ -31,7 +31,8 @@ import {
   PenTool,
   PartyPopper
 } from 'lucide-react';
-import { applications, offers, contracts, infoRequests, files } from '../../lib/api';
+import { contracts, infoRequests, files } from '../../lib/api';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   formatCurrency,
   formatDate,
@@ -90,71 +91,82 @@ export default function CustomerApplicationDetail() {
   const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
 
-  // Load application from demo data or localStorage
+  // Load application from Supabase
   useEffect(() => {
     if (!id) return;
     
-    // Check localStorage first (may have updated status), then static demo data
-    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-    const storedApp = storedApps.find((a: any) => String(a.id) === id);
-    const demoApp = demoApplications[id];
-    
-    // Prefer localStorage version (more recent)
-    setApplication(storedApp || demoApp || null);
-    
-    // Load offers for this application from localStorage + demo
-    // Customer only sees offers that have been APPROVED by admin or SENT/ACCEPTED
-    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
-    const appOffers = storedOffers.filter((o: any) => 
-      (String(o.application_id) === id || 
-       o.application?.id === id ||
-       String(o.application?.id) === id) &&
-      // Only show offers that admin has approved
-      ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'].includes(o.status)
-    );
-    
-    // Add demo offers for specific applications (these are already approved)
-    if (id === '101') {
-      // Merge - prefer localStorage version, filter demoOffers to approved ones
-      const approvedDemoOffers = demoOffers.filter(o => 
-        ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'].includes(o.status)
-      );
-      const merged = [...approvedDemoOffers];
-      appOffers.forEach((ao: any) => {
-        const idx = merged.findIndex(m => m.id === ao.id);
-        if (idx >= 0) {
-          merged[idx] = ao;
-        } else {
-          merged.push(ao);
+    const fetchData = async () => {
+      if (!isSupabaseConfigured()) {
+        // Fallback to localStorage for demo
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const storedApp = storedApps.find((a: any) => String(a.id) === id);
+        setApplication(storedApp || null);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch application from Supabase
+        const { data: appData, error: appError } = await supabase
+          .from('applications')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (appError || !appData) {
+          console.error('Application fetch error:', appError);
+          setApplication(null);
+          setIsLoading(false);
+          return;
         }
-      });
-      setOfferList(merged);
-    } else {
-      setOfferList(appOffers);
-    }
-    
-    // Load contracts from localStorage
-    const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
-    const appContracts = storedContracts.filter((c: any) => String(c.application_id) === id);
-    setContractList(appContracts);
-    
-    // Load info requests from localStorage
-    const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
-    const appInfoRequests = storedInfoRequests.filter((ir: any) => String(ir.application_id) === id);
-    setInfoRequestList(appInfoRequests);
-    
-    // Auto-select contracts tab if contract is sent
-    const currentApp = storedApp || demoApp;
-    if (currentApp?.status === 'CONTRACT_SENT' && appContracts.length > 0) {
-      setActiveTab('contracts');
-    }
-    
-    // Auto-select messages tab if there's a pending info request
-    if (appInfoRequests.some((ir: any) => ir.status === 'PENDING' && ir.sender === 'financier')) {
-      setActiveTab('messages');
-    }
-    
-    setIsLoading(false);
+
+        setApplication(appData as Application);
+
+        // Fetch offers for this application
+        const { data: offersData } = await supabase
+          .from('offers')
+          .select('*')
+          .eq('application_id', id)
+          .in('status', ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'])
+          .order('created_at', { ascending: false });
+
+        setOfferList((offersData || []) as Offer[]);
+
+        // Fetch contracts
+        const { data: contractsData } = await supabase
+          .from('contracts')
+          .select('*')
+          .eq('application_id', id)
+          .order('created_at', { ascending: false });
+
+        setContractList((contractsData || []) as Contract[]);
+
+        // Fetch messages/info requests
+        const { data: messagesData } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('application_id', id)
+          .order('created_at', { ascending: true });
+
+        setInfoRequestList((messagesData || []) as InfoRequest[]);
+
+        // Auto-select contracts tab if contract is sent
+        if (appData?.status === 'CONTRACT_SENT' && (contractsData?.length || 0) > 0) {
+          setActiveTab('contracts');
+        }
+
+        // Auto-select messages tab if there's a pending info request
+        if ((messagesData || []).some((m: any) => m.is_info_request && !m.is_read)) {
+          setActiveTab('messages');
+        }
+      } catch (error) {
+        console.error('Error fetching application data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id]);
 
   const handleAcceptOffer = async (offerId: number) => {

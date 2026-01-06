@@ -18,41 +18,74 @@ import {
   Sparkles,
   PartyPopper,
   Inbox,
-  Eye
+  Eye,
+  MessageSquare
 } from 'lucide-react';
-import api from '../../lib/api';
-import { applications, financiers, users } from '../../lib/api';
+import { applications, financiers, offers as offersApi, notifications as notificationsApi } from '../../lib/api';
+import { useAuthStore } from '../../store/authStore';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../../lib/utils';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, Financier, User, Offer, Contract } from '../../types';
 
-// DEMO DATA - Empty for fresh testing
-const demoApps: Application[] = [];
-const demoFinanciers: Financier[] = [
-  { id: 1, name: 'Rahoittaja Oy', email: 'info@rahoittaja.fi', phone: '+358401234567', is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-];
-const demoUsers: User[] = [
-  { id: 1, email: 'admin@Kantama.fi', role: 'ADMIN', first_name: 'Admin', last_name: 'Käyttäjä', is_active: true, is_verified: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-];
-
 export default function AdminDashboard() {
-  // DEMO MODE: Combine static + localStorage data
+  const { user } = useAuthStore();
   const [appList, setAppList] = useState<Application[]>([]);
-  const [financierList] = useState<Financier[]>(demoFinanciers);
-  const [userList] = useState<User[]>(demoUsers);
+  const [financierList, setFinancierList] = useState<Financier[]>([]);
   const [offerList, setOfferList] = useState<any[]>([]);
   const [contractList] = useState<any[]>([]);
-  const [isLoading] = useState(false);
+  const [customerResponseNotifications, setCustomerResponseNotifications] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load applications and offers from localStorage + demo data
+  // Load data from Supabase
   useEffect(() => {
-    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-    setAppList([...demoApps, ...storedApps]);
+    const fetchData = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Fetch applications from Supabase (admin sees all)
+        const { data: supabaseApps, error: appsError } = await applications.list();
+        if (!appsError && supabaseApps) {
+          setAppList(supabaseApps as Application[]);
+        }
+        
+        // Fetch financiers
+        const { data: financiersData } = await financiers.list();
+        if (financiersData) {
+          const formattedFinanciers = financiersData.map((f: any) => ({
+            id: f.id,
+            name: f.company_name || [f.first_name, f.last_name].filter(Boolean).join(' ') || f.email,
+            email: f.email,
+            is_active: f.is_active !== false,
+          }));
+          setFinancierList(formattedFinanciers);
+        }
+        
+        // Fetch all offers (admin sees all pending offers)
+        const { data: offersData } = await offersApi.listAll();
+        if (offersData) {
+          setOfferList(offersData);
+        }
+        
+        // Fetch unread notifications for admin (customer responses)
+        if (user?.id) {
+          const { data: notifData } = await notificationsApi.list(user.id);
+          if (notifData) {
+            // Filter for unread customer response notifications
+            const responseNotifs = notifData.filter((n: any) => 
+              !n.is_read && n.title?.includes('vastasi')
+            );
+            setCustomerResponseNotifications(responseNotifs);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+      
+      setIsLoading(false);
+    };
     
-    // Load offers from localStorage only
-    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
-    setOfferList(storedOffers);
-  }, []);
+    fetchData();
+  }, [user?.id]);
 
   // Calculate stats
   const newApplications = appList.filter(a => a.status === 'SUBMITTED').length;
@@ -60,10 +93,12 @@ export default function AdminDashboard() {
     ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'CONTRACT_SENT'].includes(a.status)
   ).length;
   const completed = appList.filter(a => ['SIGNED', 'CLOSED'].includes(a.status)).length;
-  const totalValue = appList.reduce((sum, app) => sum + app.equipment_price, 0);
+  const totalValue = appList.reduce((sum, app) => sum + (app.equipment_price || 0), 0);
 
   const activeFinanciers = financierList.filter(f => f.is_active).length;
-  const totalCustomers = userList.filter(u => u.role === 'CUSTOMER').length;
+
+  // Calculate unique customers from applications
+  const totalCustomers = new Set(appList.map(app => app.contact_email || app.user_id)).size;
 
   // Offer stats
   const pendingOffers = offerList.filter(o => o.status === 'PENDING_ADMIN').length;
@@ -188,6 +223,43 @@ export default function AdminDashboard() {
             >
               Katso tarjoukset
               <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* CUSTOMER RESPONSE NOTIFICATION */}
+      {customerResponseNotifications.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-purple-600 to-violet-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 text-white animate-bounce" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  {customerResponseNotifications.length === 1 
+                    ? 'Asiakas vastasi lisätietopyyntöön!' 
+                    : `${customerResponseNotifications.length} asiakasta vastasi lisätietopyyntöön!`}
+                </h2>
+                <p className="text-purple-100 mt-1">
+                  {customerResponseNotifications.length === 1 
+                    ? customerResponseNotifications[0].message 
+                    : 'Asiakkaat ovat toimittaneet pyydetyt lisätiedot.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              to={customerResponseNotifications[0]?.action_url || '/admin/applications'}
+              className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-colors flex items-center"
+            >
+              <Eye className="w-5 h-5 mr-2" />
+              Katso vastaukset
             </Link>
           </div>
         </motion.div>

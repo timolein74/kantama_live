@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import {
@@ -18,9 +18,13 @@ import {
   Download,
   Printer,
   Eye,
-  X
+  X,
+  Upload,
+  AlertCircle
 } from 'lucide-react';
-import { applications, financiers, assignments, offers, contracts, infoRequests } from '../../lib/api';
+import { applications, financiers, assignments, offers, contracts, infoRequests, messages, notifications as notificationsApi, files as filesApi, emailNotifications } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
   formatDate,
@@ -49,73 +53,126 @@ interface Assignment {
 
 export default function AdminApplicationDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const { user } = useAuthStore();
   const [application, setApplication] = useState<Application | null>(null);
   const [financierList, setFinancierList] = useState<Financier[]>([]);
   const [assignmentList, setAssignmentList] = useState<Assignment[]>([]);
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [contractList, setContractList] = useState<Contract[]>([]);
   const [infoRequestList, setInfoRequestList] = useState<InfoRequest[]>([]);
+  const [applicationFiles, setApplicationFiles] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   // Assignment form
-  const [selectedFinancierId, setSelectedFinancierId] = useState<number | null>(null);
+  const [selectedFinancierId, setSelectedFinancierId] = useState<string | null>(null);
   const [assignmentNotes, setAssignmentNotes] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   
-  const [activeTab, setActiveTab] = useState<'details' | 'financiers' | 'offers' | 'contracts' | 'messages'>('details');
+  // Read initial tab from URL parameter
+  const urlTab = searchParams.get('tab') as 'details' | 'financiers' | 'offers' | 'contracts' | 'messages' | null;
+  const [activeTab, setActiveTab] = useState<'details' | 'financiers' | 'offers' | 'contracts' | 'messages'>(urlTab || 'details');
   
   // Contract modal
   const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
+  
+  // Admin info request
+  const [showAdminInfoRequest, setShowAdminInfoRequest] = useState(false);
+  const [adminInfoMessage, setAdminInfoMessage] = useState('');
+  const [adminInfoFiles, setAdminInfoFiles] = useState<File[]>([]);
+  const [isSendingAdminInfo, setIsSendingAdminInfo] = useState(false);
+  
+  // Reply to customer message
+  const [replyToMessageId, setReplyToMessageId] = useState<string | null>(null);
+  const [adminReplyMessage, setAdminReplyMessage] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
 
-  // Demo data for demo mode - Empty for fresh testing
-  const demoApplications: Application[] = [];
-
-  const demoFinanciers: Financier[] = [
-    { id: 1, name: 'Rahoittaja Oy', contact_email: 'info@rahoittaja.fi', is_active: true, created_at: '', updated_at: '' },
-  ];
-
-  const demoOffers: Offer[] = [];
+  // Helper function to get customer user_id (from application or by email lookup)
+  const getCustomerUserId = async (): Promise<string | null> => {
+    // First try application.user_id
+    if (application?.user_id) {
+      console.log('Using application user_id:', application.user_id);
+      return application.user_id;
+    }
+    
+    // Fall back to looking up by email
+    if (application?.contact_email) {
+      console.log('Looking up user by email:', application.contact_email);
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .ilike('email', application.contact_email)
+        .single();
+      
+      if (profile?.id) {
+        console.log('Found user by email:', profile.id);
+        // Update the application with the user_id for future use
+        await applications.update(id!, { user_id: profile.id } as any);
+        return profile.id;
+      }
+    }
+    
+    console.warn('Could not find customer user_id');
+    return null;
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
       
-      // DEMO MODE: Check if using demo token
-      const token = localStorage.getItem('token');
-      if (token?.startsWith('demo-token-')) {
-        // Combine demo data + localStorage applications
-        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-        const allApps = [...demoApplications, ...storedApps];
-        const app = allApps.find(a => String(a.id) === id);
-        setApplication(app || null);
-        setFinancierList(demoFinanciers);
-        setAssignmentList([]);
-        setOfferList(demoOffers.filter(o => String(o.application_id) === id));
-        setContractList([]);
-        setInfoRequestList([]);
-        setIsLoading(false);
-        return;
-      }
+      setIsLoading(true);
       
       try {
-        const [appRes, financiersRes, assignmentsRes, offersRes, contractsRes, infoRes] = await Promise.all([
-          applications.get(parseInt(id)),
-          financiers.listActive(),
-          assignments.getForApplication(parseInt(id)),
-          offers.getForApplication(parseInt(id)),
-          contracts.getForApplication(parseInt(id)),
-          infoRequests.getForApplication(parseInt(id))
+        // Fetch application and financiers from Supabase in parallel
+        const [appRes, financiersRes] = await Promise.all([
+          applications.get(id),
+          financiers.list()
         ]);
         
-        setApplication(appRes.data);
-        setFinancierList(financiersRes.data);
-        setAssignmentList(assignmentsRes.data);
-        setOfferList(offersRes.data);
-        setContractList(contractsRes.data);
-        setInfoRequestList(infoRes.data);
+        if (appRes.error || !appRes.data) {
+          toast.error('Hakemusta ei löytynyt');
+          setIsLoading(false);
+          return;
+        }
+        
+        setApplication(appRes.data as Application);
+        
+        // Transform financier profiles to Financier type
+        const financierProfiles = (financiersRes.data || []).map((f: any) => ({
+          id: f.id,
+          name: f.company_name || [f.first_name, f.last_name].filter(Boolean).join(' ') || f.email,
+          email: f.email,
+          phone: f.phone,
+          business_id: f.business_id,
+          is_active: f.is_active !== false,
+          created_at: f.created_at,
+          updated_at: f.updated_at,
+        }));
+        setFinancierList(financierProfiles);
+        
+        setAssignmentList([]);
+        setOfferList([]);
+        setContractList([]);
+        
+        // Fetch messages for this application
+        const { data: messagesData } = await messages.listByApplication(id);
+        if (messagesData) {
+          // Sort all messages by date (oldest first for conversation flow)
+          const sortedMessages = [...messagesData].sort((a: any, b: any) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          
+          // Store all messages in infoRequestList for display
+          setInfoRequestList(sortedMessages as InfoRequest[]);
+        }
+        
+        // Fetch application files
+        const filesRes = await filesApi.list(id);
+        setApplicationFiles(filesRes.data || []);
       } catch (error) {
+        console.error('Error fetching data:', error);
         toast.error('Virhe hakemuksen latauksessa');
       } finally {
         setIsLoading(false);
@@ -133,72 +190,247 @@ export default function AdminApplicationDetail() {
     
     setIsAssigning(true);
     
-    // DEMO MODE: Simulate assignment
-    const token = localStorage.getItem('token');
-    if (token?.startsWith('demo-token-')) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      // Update application status to SUBMITTED_TO_FINANCIER
+      const { error: updateError } = await applications.update(id, {
+        status: 'SUBMITTED_TO_FINANCIER'
+      } as any);
       
-      // Update application status in localStorage
-      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-      const updatedApps = storedApps.map((app: any) => {
-        if (String(app.id) === id) {
-          return { ...app, status: 'SUBMITTED_TO_FINANCIER' };
-        }
-        return app;
-      });
-      localStorage.setItem('demo-applications', JSON.stringify(updatedApps));
+      if (updateError) {
+        throw new Error(updateError.message || 'Virhe hakemuksen päivityksessä');
+      }
       
-      // Also update static demo data in memory
+      // Update local state
       if (application) {
         setApplication({ ...application, status: 'SUBMITTED_TO_FINANCIER' });
       }
       
-      // Add to assignment list
+      // Add to assignment list (local tracking)
       const newAssignment = {
         id: Date.now(),
-        application_id: parseInt(id),
+        application_id: id,
         financier_id: selectedFinancierId,
         status: 'PENDING',
         notes: assignmentNotes || null,
         created_at: new Date().toISOString(),
       };
-      setAssignmentList([...assignmentList, newAssignment]);
+      setAssignmentList([...assignmentList, newAssignment as any]);
+      
+      // Mark any admin notifications related to this application as read
+      if (user?.id) {
+        try {
+          const { data: adminNotifs } = await notificationsApi.list(user.id);
+          const appNotifs = (adminNotifs || []).filter((n: any) => 
+            n.action_url?.includes(`/admin/applications/${id}`) && !n.is_read
+          );
+          for (const notif of appNotifs) {
+            await notificationsApi.markAsRead(notif.id);
+          }
+        } catch (err) {
+          console.warn('Could not mark notifications as read:', err);
+        }
+      }
       
       toast.success('Hakemus lähetetty rahoittajalle');
       setSelectedFinancierId(null);
       setAssignmentNotes('');
-      setIsAssigning(false);
-      return;
-    }
-    
-    try {
-      await assignments.create({
-        application_id: parseInt(id),
-        financier_id: selectedFinancierId,
-        notes: assignmentNotes || undefined
-      });
-      
-      toast.success('Hakemus lähetetty rahoittajalle');
-      setSelectedFinancierId(null);
-      setAssignmentNotes('');
-      
-      // Refresh data
-      const [appRes, assignmentsRes] = await Promise.all([
-        applications.get(parseInt(id)),
-        assignments.getForApplication(parseInt(id))
-      ]);
-      setApplication(appRes.data);
-      setAssignmentList(assignmentsRes.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe hakemuksen lähetyksessä');
+      console.error('Assignment error:', error);
+      toast.error(error.message || 'Virhe hakemuksen lähetyksessä');
     } finally {
       setIsAssigning(false);
     }
   };
 
-  const getFinancierName = (financierId: number) => {
-    const financier = financierList.find(f => f.id === financierId);
+  const getFinancierName = (financierId: number | string) => {
+    const financier = financierList.find(f => String(f.id) === String(financierId));
     return financier?.name || 'Tuntematon';
+  };
+
+  const handleAdminSendInfoRequest = async () => {
+    if (!adminInfoMessage.trim() || !id) {
+      toast.error('Kirjoita viesti');
+      return;
+    }
+    
+    setIsSendingAdminInfo(true);
+    
+    try {
+      // Upload files if any
+      const fileNames: string[] = [];
+      for (const file of adminInfoFiles) {
+        try {
+          const result = await filesApi.upload(file, id);
+          if (result.data) {
+            fileNames.push(file.name);
+          }
+        } catch (err) {
+          console.warn('File upload failed:', err);
+        }
+      }
+      
+      // Create full message with file names
+      let fullMessage = adminInfoMessage;
+      if (fileNames.length > 0) {
+        fullMessage += '\n\nLiitetiedostot:\n' + fileNames.map(f => `- ${f}`).join('\n');
+      }
+      
+      // Send message with sender_id so customer can notify admin when responding
+      await messages.send({
+        application_id: id,
+        message: fullMessage,
+        sender_role: 'ADMIN',
+        sender_id: user?.id,
+        is_info_request: true,
+      });
+      
+      // Update application status to indicate waiting for customer info
+      await applications.update(id, { status: 'INFO_REQUESTED' } as any);
+      
+      // Create notification for customer - use helper to find user_id
+      const customerUserId = await getCustomerUserId();
+      if (customerUserId) {
+        try {
+          console.log('Creating notification for customer:', customerUserId);
+          const notifResult = await notificationsApi.create({
+            user_id: customerUserId,
+            title: 'Lisätietoja pyydetty',
+            message: 'Juuri Rahoitus pyytää lisätietoja hakemukseesi liittyen.',
+            type: 'INFO',
+            action_url: `/dashboard/applications/${id}?tab=messages`,
+          });
+          console.log('Notification result:', notifResult);
+        } catch (notifErr) {
+          console.error('Notification creation failed:', notifErr);
+        }
+      } else {
+        console.warn('No customer user_id found for notification');
+      }
+      
+      // Send email notification to customer
+      if (application?.contact_email) {
+        try {
+          await emailNotifications.send(application.contact_email, 'INFO_REQUEST', {
+            customerName: application.company_name,
+          });
+        } catch (emailErr) {
+          console.warn('Email notification failed:', emailErr);
+        }
+      }
+      
+      // Update local state
+      if (application) {
+        setApplication({ ...application, status: 'INFO_REQUESTED' });
+      }
+      
+      toast.success('Lisätietopyyntö lähetetty asiakkaalle!');
+      setShowAdminInfoRequest(false);
+      setAdminInfoMessage('');
+      setAdminInfoFiles([]);
+    } catch (error: any) {
+      console.error('Admin info request error:', error);
+      toast.error(error.message || 'Virhe lisätietopyynnön lähetyksessä');
+    } finally {
+      setIsSendingAdminInfo(false);
+    }
+  };
+
+  // Handle reply to customer message
+  const handleAdminReply = async () => {
+    if (!adminReplyMessage.trim() || !id || !replyToMessageId) {
+      toast.error('Kirjoita vastaus');
+      return;
+    }
+    
+    setIsSendingReply(true);
+    
+    try {
+      // Send reply message
+      await messages.send({
+        application_id: id,
+        message: adminReplyMessage,
+        sender_role: 'ADMIN',
+        sender_id: user?.id,
+        is_info_request: false,
+        is_read: false,
+      });
+      
+      // Create notification for customer - use helper to find user_id
+      const customerUserId = await getCustomerUserId();
+      if (customerUserId) {
+        try {
+          console.log('Creating reply notification for customer:', customerUserId);
+          const notifResult = await notificationsApi.create({
+            user_id: customerUserId,
+            title: 'Juuri Rahoitus vastasi viestiisi',
+            message: 'Olet saanut vastauksen kysymykseesi.',
+            type: 'INFO',
+            action_url: `/dashboard/applications/${id}?tab=messages`,
+          });
+          console.log('Reply notification result:', notifResult);
+        } catch (notifErr) {
+          console.error('Reply notification failed:', notifErr);
+        }
+      } else {
+        console.warn('No customer user_id found for reply notification');
+      }
+      
+      // Send email notification to customer
+      if (application?.contact_email) {
+        try {
+          await emailNotifications.send(application.contact_email, 'INFO_REQUEST', {
+            customerName: application.company_name,
+            message: 'Juuri Rahoitus on vastannut viestiisi.',
+          });
+        } catch (emailErr) {
+          console.warn('Email notification failed:', emailErr);
+        }
+      }
+      
+      toast.success('Vastaus lähetetty!');
+      setAdminReplyMessage('');
+      setReplyToMessageId(null);
+      
+      // Refresh messages
+      const { data: messagesData } = await messages.listByApplication(id);
+      if (messagesData) {
+        const infoReqs = messagesData.filter((m: any) => m.is_info_request);
+        const customerResponses = messagesData.filter((m: any) => 
+          !m.is_info_request && m.sender_role === 'CUSTOMER'
+        );
+        const adminReplies = messagesData.filter((m: any) => 
+          !m.is_info_request && m.sender_role === 'ADMIN' && !m.is_info_request
+        );
+        
+        const infoReqsWithResponses = infoReqs.map((ir: any) => ({
+          ...ir,
+          status: customerResponses.some((r: any) => 
+            new Date(r.created_at) > new Date(ir.created_at)
+          ) ? 'RESPONDED' : 'PENDING',
+          responses: customerResponses
+            .filter((r: any) => new Date(r.created_at) > new Date(ir.created_at))
+            .map((r: any) => ({
+              id: r.id,
+              message: r.message,
+              created_at: r.created_at,
+            })),
+          adminReplies: adminReplies
+            .filter((r: any) => new Date(r.created_at) > new Date(ir.created_at))
+            .map((r: any) => ({
+              id: r.id,
+              message: r.message,
+              created_at: r.created_at,
+            }))
+        }));
+        
+        setInfoRequestList(infoReqsWithResponses as InfoRequest[]);
+      }
+    } catch (error: any) {
+      console.error('Reply error:', error);
+      toast.error(error.message || 'Virhe vastauksen lähetyksessä');
+    } finally {
+      setIsSendingReply(false);
+    }
   };
 
   const handlePrintContract = (contract: Contract) => {
@@ -230,9 +462,9 @@ export default function AdminApplicationDetail() {
     }, 100);
   };
 
-  // Filter out already assigned financiers
+  // Filter out already assigned financiers and only show active ones
   const availableFinanciers = financierList.filter(
-    f => !assignmentList.some(a => a.financier_id === f.id)
+    f => f.is_active && !assignmentList.some(a => String(a.financier_id) === String(f.id))
   );
 
   if (isLoading) {
@@ -297,16 +529,16 @@ export default function AdminApplicationDetail() {
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-1">
               <label className="label">Valitse rahoittaja</label>
-              <select
-                value={selectedFinancierId || ''}
-                onChange={(e) => setSelectedFinancierId(e.target.value ? parseInt(e.target.value) : null)}
-                className="input"
-              >
-                <option value="">-- Valitse --</option>
-                {availableFinanciers.map(f => (
-                  <option key={f.id} value={f.id}>{f.name}</option>
-                ))}
-              </select>
+                <select
+                  value={selectedFinancierId || ''}
+                  onChange={(e) => setSelectedFinancierId(e.target.value || null)}
+                  className="input"
+                >
+                  <option value="">-- Valitse --</option>
+                  {availableFinanciers.map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))}
+                </select>
             </div>
             <div className="md:col-span-1">
               <label className="label">Muistiinpanot (valinnainen)</label>
@@ -318,17 +550,104 @@ export default function AdminApplicationDetail() {
                 className="input"
               />
             </div>
-            <div className="md:col-span-1 flex items-end">
+            <div className="md:col-span-1 flex items-end gap-2">
+              <button
+                onClick={() => setShowAdminInfoRequest(true)}
+                className="btn-secondary flex-1"
+              >
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Pyydä lisätietoja
+              </button>
               <button
                 onClick={handleAssignToFinancier}
                 disabled={!selectedFinancierId || isAssigning}
-                className="btn-primary w-full"
+                className="btn-primary flex-1"
               >
                 <Send className="w-4 h-4 mr-2" />
-                {isAssigning ? 'Lähetetään...' : 'Lähetä rahoittajalle'}
+                {isAssigning ? 'Lähetetään...' : 'Lähetä'}
               </button>
             </div>
           </div>
+          
+          {/* Admin info request form */}
+          {showAdminInfoRequest && (
+            <div className="mt-6 pt-6 border-t border-orange-200">
+              <h4 className="font-semibold text-orange-900 mb-3 flex items-center">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                Pyydä lisätietoja asiakkaalta
+              </h4>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Viesti asiakkaalle</label>
+                  <textarea
+                    value={adminInfoMessage}
+                    onChange={(e) => setAdminInfoMessage(e.target.value)}
+                    placeholder="Kirjoita mitä lisätietoja tarvitset asiakkaalta..."
+                    className="input min-h-[120px]"
+                  />
+                </div>
+                
+                <div>
+                  <label className="label">Liitä tiedostoja (valinnainen)</label>
+                  <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 hover:border-blue-400 transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setAdminInfoFiles(prev => [...prev, ...files]);
+                      }}
+                      className="hidden"
+                      id="admin-info-files"
+                    />
+                    <label htmlFor="admin-info-files" className="cursor-pointer flex flex-col items-center">
+                      <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                      <span className="text-slate-600 text-sm">Klikkaa lisätäksesi tiedostoja</span>
+                    </label>
+                  </div>
+                  {adminInfoFiles.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {adminInfoFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-slate-50 rounded px-3 py-1">
+                          <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => setAdminInfoFiles(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setShowAdminInfoRequest(false);
+                      setAdminInfoMessage('');
+                      setAdminInfoFiles([]);
+                    }}
+                    className="btn-ghost"
+                  >
+                    Peruuta
+                  </button>
+                  <button
+                    onClick={handleAdminSendInfoRequest}
+                    disabled={!adminInfoMessage.trim() || isSendingAdminInfo}
+                    className="btn-primary"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {isSendingAdminInfo ? 'Lähetetään...' : 'Lähetä pyyntö'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
 
@@ -475,6 +794,40 @@ export default function AdminApplicationDetail() {
               </div>
             )}
 
+            {/* Attached Files */}
+            {applicationFiles.length > 0 && (
+              <div className="card lg:col-span-2">
+                <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
+                  <FileText className="w-5 h-5 mr-2 text-emerald-600" />
+                  Liitetiedostot ({applicationFiles.length})
+                </h3>
+                <div className="space-y-2">
+                  {applicationFiles.map((file: any) => (
+                    <div key={file.id} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                      <div className="flex items-center">
+                        <FileText className="w-5 h-5 text-slate-400 mr-3" />
+                        <div>
+                          <p className="font-medium text-slate-900">{file.file_name}</p>
+                          <p className="text-xs text-slate-500">
+                            {file.document_type === 'tarjousliite' ? 'Tarjousliite' : file.document_type} • 
+                            {file.file_size ? ` ${Math.round(file.file_size / 1024)} KB` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <a 
+                        href={file.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="btn bg-emerald-500 text-white hover:bg-emerald-600 text-sm px-4 py-2"
+                      >
+                        Avaa
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Timeline */}
             <div className="card lg:col-span-2">
               <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
@@ -511,7 +864,7 @@ export default function AdminApplicationDetail() {
                   <div>
                     <select
                       value={selectedFinancierId || ''}
-                      onChange={(e) => setSelectedFinancierId(e.target.value ? parseInt(e.target.value) : null)}
+                      onChange={(e) => setSelectedFinancierId(e.target.value || null)}
                       className="input"
                     >
                       <option value="">-- Valitse rahoittaja --</option>
@@ -1018,41 +1371,187 @@ export default function AdminApplicationDetail() {
                 <p className="text-slate-500">Lisätietopyynnöt näkyvät tässä.</p>
               </div>
             ) : (
-              infoRequestList.map((ir) => (
-                <div key={ir.id} className="card">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h4 className="font-semibold text-midnight-900">Lisätietopyyntö</h4>
-                      <p className="text-sm text-slate-500">
-                        Rahoittaja: {getFinancierName(ir.financier_id)}
-                      </p>
-                    </div>
-                    <span className={`badge ${
-                      ir.status === 'PENDING' ? 'badge-yellow' :
-                      ir.status === 'RESPONDED' ? 'badge-green' : 'badge-gray'
-                    }`}>
-                      {ir.status === 'PENDING' ? 'Odottaa' :
-                       ir.status === 'RESPONDED' ? 'Vastattu' : 'Suljettu'}
-                    </span>
-                  </div>
-                  <div className="bg-slate-50 rounded-lg p-3 mb-3">
-                    <p className="text-slate-700">{ir.message}</p>
-                  </div>
-                  {ir.responses && ir.responses.length > 0 && (
-                    <div className="space-y-2">
-                      {ir.responses.map((resp) => (
-                        <div key={resp.id} className="bg-blue-50 rounded-lg p-3">
-                          <p className="text-sm text-blue-600 mb-1">
-                            {resp.user.first_name || resp.user.email} • {formatDateTime(resp.created_at)}
-                          </p>
-                          <p className="text-blue-800">{resp.message}</p>
+              <div className="card">
+                <h4 className="font-semibold text-midnight-900 mb-4 flex items-center">
+                  <MessageSquare className="w-5 h-5 mr-2 text-emerald-600" />
+                  Keskustelu ({infoRequestList.length} viestiä)
+                </h4>
+                
+                {/* Show all messages in chronological order */}
+                <div className="space-y-3">
+                  {infoRequestList.map((msg: any) => {
+                    const isAdmin = msg.sender_role === 'ADMIN';
+                    const isFinancier = msg.sender_role === 'FINANCIER';
+                    const isCustomer = msg.sender_role === 'CUSTOMER';
+                    const isInfoRequest = msg.is_info_request;
+                    
+                    // Determine styling based on sender
+                    let bgClass = 'bg-blue-50 border-blue-400';
+                    let textClass = 'text-blue-800';
+                    let labelClass = 'text-blue-600';
+                    let label = 'Asiakas';
+                    
+                    if (isAdmin) {
+                      bgClass = isInfoRequest ? 'bg-yellow-50 border-yellow-400' : 'bg-purple-50 border-purple-400';
+                      textClass = isInfoRequest ? 'text-yellow-800' : 'text-purple-800';
+                      labelClass = isInfoRequest ? 'text-yellow-600' : 'text-purple-600';
+                      label = isInfoRequest ? 'Admin (lisätietopyyntö)' : 'Admin';
+                    } else if (isFinancier) {
+                      bgClass = isInfoRequest ? 'bg-orange-50 border-orange-400' : 'bg-emerald-50 border-emerald-400';
+                      textClass = isInfoRequest ? 'text-orange-800' : 'text-emerald-800';
+                      labelClass = isInfoRequest ? 'text-orange-600' : 'text-emerald-600';
+                      label = isInfoRequest ? 'Rahoittaja (lisätietopyyntö)' : 'Rahoittaja';
+                    }
+                    
+                    return (
+                      <div key={msg.id} className={`${bgClass} border-l-4 p-3 rounded-r-lg`}>
+                        <p className={`text-xs ${labelClass} mb-1`}>
+                          {label} • {formatDateTime(msg.created_at)}
+                        </p>
+                        <p className={`${textClass} whitespace-pre-wrap`}>{msg.message}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Show attached files */}
+                {applicationFiles.length > 0 && (
+                  <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                    <p className="text-sm font-medium text-slate-700 mb-2">📎 Liitetiedostot:</p>
+                    <div className="space-y-1">
+                      {applicationFiles.map((file: any) => (
+                        <div key={file.id} className="flex items-center justify-between bg-white rounded p-2">
+                          <span className="text-sm text-slate-700">{file.file_name}</span>
+                          <a 
+                            href={file.url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600"
+                          >
+                            Avaa
+                          </a>
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              ))
+                  </div>
+                )}
+              </div>
             )}
+
+            {/* General message form - always available */}
+            <div className="card mt-6 border-2 border-dashed border-blue-300">
+              <h4 className="font-semibold text-midnight-900 mb-3 flex items-center">
+                <Send className="w-5 h-5 mr-2 text-blue-600" />
+                Lähetä uusi viesti asiakkaalle
+              </h4>
+              <textarea
+                value={adminReplyMessage}
+                onChange={(e) => setAdminReplyMessage(e.target.value)}
+                placeholder="Kirjoita viestisi tähän..."
+                className="input min-h-[100px] mb-3"
+              />
+              <div className="flex justify-end">
+                <button
+                  onClick={async () => {
+                    if (!adminReplyMessage.trim() || !id) {
+                      toast.error('Kirjoita viesti');
+                      return;
+                    }
+                    setIsSendingReply(true);
+                    try {
+                      await messages.send({
+                        application_id: id,
+                        message: adminReplyMessage,
+                        sender_role: 'ADMIN',
+                        sender_id: user?.id,
+                        is_info_request: false,
+                        is_read: false,
+                      });
+                      
+                      // Create notification - try user_id first, then find by email
+                      let targetUserId = application?.user_id;
+                      
+                      if (!targetUserId && application?.contact_email) {
+                        // Try to find user by email
+                        try {
+                          const { data: profiles } = await supabase
+                            .from('profiles')
+                            .select('id')
+                            .eq('email', application.contact_email)
+                            .single();
+                          if (profiles?.id) {
+                            targetUserId = profiles.id;
+                          }
+                        } catch (e) {
+                          console.warn('Could not find user by email');
+                        }
+                      }
+                      
+                      if (targetUserId) {
+                        try {
+                          await notificationsApi.create({
+                            user_id: targetUserId,
+                            title: 'Uusi viesti Juuri Rahoitukselta',
+                            message: 'Olet saanut uuden viestin hakemukseesi liittyen.',
+                            type: 'INFO',
+                            action_url: `/dashboard/applications/${id}?tab=messages`,
+                          });
+                        } catch (notifErr) {
+                          console.error('Failed to create notification:', notifErr);
+                        }
+                      }
+                      
+                      if (application?.contact_email) {
+                        await emailNotifications.send(application.contact_email, 'INFO_REQUEST', {
+                          customerName: application.company_name,
+                          message: 'Olet saanut uuden viestin hakemukseesi liittyen.',
+                        });
+                      }
+                      
+                      toast.success('Viesti lähetetty!');
+                      setAdminReplyMessage('');
+                      
+                      // Refresh messages
+                      const { data: messagesData } = await messages.listByApplication(id);
+                      if (messagesData) {
+                        const infoReqs = messagesData.filter((m: any) => m.is_info_request);
+                        const customerResponses = messagesData.filter((m: any) => 
+                          !m.is_info_request && m.sender_role === 'CUSTOMER'
+                        );
+                        const adminReplies = messagesData.filter((m: any) => 
+                          !m.is_info_request && m.sender_role === 'ADMIN'
+                        );
+                        
+                        const infoReqsWithResponses = infoReqs.map((ir: any) => ({
+                          ...ir,
+                          status: customerResponses.some((r: any) => 
+                            new Date(r.created_at) > new Date(ir.created_at)
+                          ) ? 'RESPONDED' : 'PENDING',
+                          responses: customerResponses
+                            .filter((r: any) => new Date(r.created_at) > new Date(ir.created_at))
+                            .map((r: any) => ({ id: r.id, message: r.message, created_at: r.created_at })),
+                          adminReplies: adminReplies
+                            .filter((r: any) => new Date(r.created_at) > new Date(ir.created_at))
+                            .map((r: any) => ({ id: r.id, message: r.message, created_at: r.created_at }))
+                        }));
+                        
+                        setInfoRequestList(infoReqsWithResponses as InfoRequest[]);
+                      }
+                    } catch (error: any) {
+                      console.error('Send message error:', error);
+                      toast.error(error.message || 'Virhe viestin lähetyksessä');
+                    } finally {
+                      setIsSendingReply(false);
+                    }
+                  }}
+                  disabled={isSendingReply || !adminReplyMessage.trim()}
+                  className="btn-primary"
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {isSendingReply ? 'Lähetetään...' : 'Lähetä viesti'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

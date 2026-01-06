@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+﻿import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
   LayoutDashboard,
@@ -26,13 +26,15 @@ export default function FinancierLayout() {
 
   useEffect(() => {
     const fetchNotifications = async () => {
+      if (!user?.id) return;
+      
       try {
         const [countRes, listRes] = await Promise.all([
-          notificationsApi.getUnreadCount(),
-          notificationsApi.list()
+          notificationsApi.getUnreadCount(user.id),
+          notificationsApi.list(user.id)
         ]);
-        setUnreadCount(countRes.data.count);
-        setNotificationsList(listRes.data.slice(0, 10));
+        setUnreadCount(countRes.count || 0);
+        setNotificationsList((listRes.data || []).slice(0, 10));
       } catch (error) {
         console.error('Failed to fetch notifications');
       }
@@ -40,11 +42,11 @@ export default function FinancierLayout() {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id]);
 
-  const handleMarkAsRead = async (id: number) => {
+  const handleMarkAsRead = async (id: number | string) => {
     try {
-      await notificationsApi.markAsRead(id);
+      await notificationsApi.markAsRead(String(id));
       setNotificationsList(prev => 
         prev.map(n => n.id === id ? { ...n, is_read: true } : n)
       );
@@ -55,8 +57,10 @@ export default function FinancierLayout() {
   };
 
   const handleMarkAllAsRead = async () => {
+    if (!user?.id) return;
+    
     try {
-      await notificationsApi.markAllAsRead();
+      await notificationsApi.markAllAsRead(user.id);
       setNotificationsList(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -65,8 +69,7 @@ export default function FinancierLayout() {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    logout(); // logout() handles redirect to '/'
   };
 
   const navItems = [
@@ -90,7 +93,7 @@ export default function FinancierLayout() {
                 <Building2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="text-white font-display font-bold text-lg">Kantama</span>
+                <span className="text-white font-display font-bold text-lg">Juuri</span>
                 <span className="block text-xs text-emerald-400">Rahoittaja</span>
               </div>
             </Link>
@@ -278,4 +281,5 @@ export default function FinancierLayout() {
     </div>
   );
 }
+
 

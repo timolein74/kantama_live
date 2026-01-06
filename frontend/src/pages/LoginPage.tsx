@@ -66,15 +66,15 @@ export default function LoginPage() {
         <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10">
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center space-x-2 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">e</span>
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-2xl">J</span>
               </div>
             </Link>
             <h1 className="text-2xl font-display font-bold text-midnight-900 mb-2">
               Kirjaudu sisään
             </h1>
             <p className="text-slate-600">
-              Tervetuloa takaisin Kantamaiin
+              Tervetuloa takaisin Juuri Rahoitukseen
             </p>
           </div>
 
@@ -118,13 +118,13 @@ export default function LoginPage() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 rounded border-slate-300 text-Kantama-600 focus:ring-Kantama-500"
+                  className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                 />
                 <span className="ml-2 text-sm text-slate-600">Muista minut</span>
               </label>
               <Link
                 to="/forgot-password"
-                className="text-sm text-Kantama-600 hover:text-Kantama-700"
+                className="text-sm text-emerald-600 hover:text-emerald-700"
               >
                 Unohditko salasanan?
               </Link>
@@ -143,7 +143,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-slate-600">
               Eikö sinulla ole tiliä?{' '}
-              <Link to="/register" className="text-Kantama-600 font-medium hover:text-Kantama-700">
+              <Link to="/register" className="text-emerald-600 font-medium hover:text-emerald-700">
                 Rekisteröidy
               </Link>
             </p>

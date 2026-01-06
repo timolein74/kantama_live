@@ -1,4 +1,4 @@
-import { Building2, MapPin, Phone, Globe, Mail, Briefcase, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
+﻿import { Building2, MapPin, Phone, Globe, Mail, Briefcase, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 import type { CompanyInfo } from '../lib/api';
 
 interface YTJInfoCardProps {
@@ -246,6 +246,13 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -9,7 +9,7 @@ import {
   RefreshCw,
   ChevronRight
 } from 'lucide-react';
-import { applications } from '../../lib/api';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
@@ -21,29 +21,53 @@ import {
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, ApplicationStatus, ApplicationType } from '../../types';
 
-// DEMO DATA - Empty for fresh testing
-const demoCustomerApplications: Application[] = [];
-
 export default function CustomerApplications() {
   const { user } = useAuthStore();
-  // DEMO MODE: Combine static + localStorage data
   const [appList, setAppList] = useState<Application[]>([]);
   const [filteredApps, setFilteredApps] = useState<Application[]>([]);
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
-  // Load applications
+  // Load applications from Supabase
   useEffect(() => {
-    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-    const userEmail = user?.email?.toLowerCase();
-    const userApps = storedApps.filter((app: any) => 
-      app.contact_email?.toLowerCase() === userEmail
-    );
-    const allApps = [...demoCustomerApplications, ...userApps];
-    setAppList(allApps);
-    setFilteredApps(allApps);
+    const fetchApplications = async () => {
+      if (!isSupabaseConfigured()) {
+        // Fallback to localStorage for demo
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const userEmail = user?.email?.toLowerCase();
+        const userApps = storedApps.filter((app: any) => 
+          app.contact_email?.toLowerCase() === userEmail
+        );
+        setAppList(userApps);
+        setFilteredApps(userApps);
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('applications')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching applications:', error);
+          setAppList([]);
+          setFilteredApps([]);
+        } else {
+          setAppList(data || []);
+          setFilteredApps(data || []);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchApplications();
   }, [user]);
 
   // Filter applications
@@ -203,6 +227,7 @@ export default function CustomerApplications() {
     </div>
   );
 }
+
 
 
 

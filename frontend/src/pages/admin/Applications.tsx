@@ -36,23 +36,14 @@ export default function AdminApplications() {
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
   useEffect(() => {
-    // DEMO MODE: Check if using demo token
-    const token = localStorage.getItem('token');
-    if (token?.startsWith('demo-token-')) {
-      // Combine static demo data + localStorage applications
-      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-      const allApps = [...demoApplications, ...storedApps] as any;
-      setAppList(allApps);
-      setFilteredApps(allApps);
-      setIsLoading(false);
-      return;
-    }
-    
     const fetchApps = async () => {
+      setIsLoading(true);
       try {
-        const response = await applications.list();
-        setAppList(response.data);
-        setFilteredApps(response.data);
+        const { data, error } = await applications.list();
+        if (!error && data) {
+          setAppList(data as Application[]);
+          setFilteredApps(data as Application[]);
+        }
       } catch (error) {
         console.error('Failed to fetch applications');
       } finally {

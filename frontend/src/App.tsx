@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import { isSupabaseConfigured } from './lib/supabase';
 
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
@@ -14,6 +15,7 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyPage from './pages/VerifyPage';
+import SetPasswordPage from './pages/SetPasswordPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 
@@ -44,13 +46,18 @@ import { DemoPanel } from './components/DemoPanel';
 import { PasswordProtection } from './components/PasswordProtection';
 
 function App() {
-  // DEMO MODE: No checkAuth needed - DemoPanel handles auth directly
-  // const { checkAuth } = useAuthStore();
-  // useEffect(() => {
-  //   checkAuth().catch(() => {});
-  // }, [checkAuth]);
+  const { checkAuth } = useAuthStore();
 
-  // DEMO: Never show loading spinner
+  useEffect(() => {
+    // Don't check auth if on set-password page (let it handle its own flow)
+    if (window.location.pathname.includes('/set-password')) {
+      return;
+    }
+    // Check authentication on app load (non-blocking)
+    checkAuth().catch(() => {});
+  }, [checkAuth]);
+
+  // No loading screen - app renders immediately
   return (
     <PasswordProtection>
       <Toaster 
@@ -73,6 +80,9 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify" element={<VerifyPage />} />
         </Route>
+
+        {/* Set password page (after magic link) */}
+        <Route path="/set-password" element={<SetPasswordPage />} />
 
         {/* Legal pages (standalone) */}
         <Route path="/tietosuoja" element={<PrivacyPolicy />} />
@@ -121,4 +131,5 @@ function App() {
 }
 
 export default App;
+
 

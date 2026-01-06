@@ -104,9 +104,9 @@ export const financiers = {
   delete: (id: number) => api.delete(`/financiers/${id}`),
 };
 
-// Applications
-export const applications = {
-  list: (params?: { status_filter?: string; type_filter?: string }) =>
+// Applications - axios-based functions (kept for compatibility)
+const applicationsAxios = {
+  listAxios: (params?: { status_filter?: string; type_filter?: string }) =>
     api.get<Application[]>('/applications/', { params }),
   
   get: (id: number) => api.get<Application>(`/applications/${id}`),
@@ -219,17 +219,17 @@ export const contracts = {
   getAllAdmin: () => api.get('/contracts/admin/all'),
 };
 
-// Notifications
-export const notifications = {
-  list: (unreadOnly = false) =>
+// Notifications - axios-based (kept for compatibility)
+const notificationsAxios = {
+  listAxios: (unreadOnly = false) =>
     api.get<Notification[]>('/notifications/', { params: { unread_only: unreadOnly } }),
   
-  getUnreadCount: () =>
+  getUnreadCountAxios: () =>
     api.get<{ count: number }>('/notifications/unread-count'),
   
-  markAsRead: (id: number) => api.put(`/notifications/${id}/read`),
+  markAsReadAxios: (id: number) => api.put(`/notifications/${id}/read`),
   
-  markAllAsRead: () => api.put('/notifications/read-all'),
+  markAllAsReadAxios: () => api.put('/notifications/read-all'),
 };
 
 // Files
@@ -357,5 +357,156 @@ export const ytj = {
       params: { name, limit: limit || 10 } 
     }),
 };
+
+// ============== SUPABASE-BASED FUNCTIONS ==============
+// These work directly with Supabase, not through axios backend
+import { supabase, isSupabaseConfigured } from './supabase';
+
+// Messages (Supabase-based)
+export const messages = {
+  listByApplication: async (applicationId: string) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('application_id', applicationId)
+      .order('created_at', { ascending: true });
+    return { data, error };
+  },
+  
+  send: async (messageData: {
+    application_id: string;
+    message: string;
+    sender_role: string;
+    sender_id?: string;
+    is_info_request?: boolean;
+    is_read?: boolean;
+    reply_to_id?: string;
+    documents?: any;
+  }) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const { data, error } = await supabase
+      .from('messages')
+      .insert(messageData)
+      .select()
+      .single();
+    return { data, error };
+  },
+  
+  markAsRead: async (id: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const { data, error } = await supabase
+      .from('messages')
+      .update({ is_read: true })
+      .eq('id', id);
+    return { data, error };
+  }
+};
+
+// Applications export with Supabase-based list function
+export const applications = {
+  ...applicationsAxios,
+  list: async (userId?: string, role?: string, email?: string) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    let query = supabase.from('applications').select('*');
+    
+    // For customers, filter by user_id or email
+    if (role === 'CUSTOMER' && (userId || email)) {
+      if (userId && email) {
+        query = query.or(`user_id.eq.${userId},contact_email.ilike.${email}`);
+      } else if (userId) {
+        query = query.eq('user_id', userId);
+      } else if (email) {
+        query = query.ilike('contact_email', email);
+      }
+    }
+    
+    const { data, error } = await query.order('created_at', { ascending: false });
+    return { data, error };
+  }
+};
+
+// Override notifications to use Supabase
+const notificationsSupabase = {
+  list: async (userId?: string) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    let query = supabase.from('notifications').select('*');
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
+    return { data, error };
+  },
+  
+  getUnreadCount: async (userId?: string) => {
+    if (!isSupabaseConfigured()) return { data: { count: 0 }, error: null };
+    
+    let query = supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false);
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    const { count, error } = await query;
+    return { data: { count: count || 0 }, error };
+  },
+  
+  markAsRead: async (id: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const { data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', id);
+    return { data, error };
+  },
+  
+  create: async (notificationData: {
+    user_id: string;
+    title: string;
+    message: string;
+    type: string;
+    action_url?: string;
+  }) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert(notificationData)
+      .select()
+      .single();
+    return { data, error };
+  },
+  
+  markAllAsRead: async (userId?: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    let query = supabase.from('notifications').update({ is_read: true });
+    if (userId) {
+      query = query.eq('user_id', userId);
+    }
+    const { data, error } = await query;
+    return { data, error };
+  }
+};
+
+// Email Notifications (via Vercel Edge Function)
+export const emailNotifications = {
+  send: async (to: string, type: string, data?: { customerName?: string; message?: string; applicationRef?: string }) => {
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, type, data })
+      });
+      if (!response.ok) {
+        console.warn('Email notification failed:', response.status);
+      }
+      return response;
+    } catch (error) {
+      console.warn('Email notification error:', error);
+      return null;
+    }
+  }
+};
+
+export { notificationsSupabase as notifications };
 
 export default api;

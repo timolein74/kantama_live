@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
   FileText,
   Clock,
@@ -14,60 +15,102 @@ import {
   FileCheck,
   PartyPopper,
   Sparkles,
-  FileSignature
+  FileSignature,
+  Bell
 } from 'lucide-react';
-import { applications, notifications as notificationsApi } from '../../lib/api';
+import { applications, notifications as notificationsApi, offers } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../../lib/utils';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import type { Application, Notification } from '../../types';
+import type { Notification } from '../../types';
 
-// DEMO DATA - Empty for fresh testing
-const demoApplications: Application[] = [];
+// Type for application from Supabase
+interface DbApplication {
+  id: string;
+  reference_number?: string;
+  company_name: string;
+  business_id: string;
+  contact_email: string;
+  contact_phone: string | null;
+  equipment_description: string | null;
+  equipment_price: number;
+  application_type: 'LEASING' | 'SALE_LEASEBACK';
+  status: string;
+  requested_term_months: number;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function FinancierDashboard() {
   const { user } = useAuthStore();
-  // DEMO MODE: Use static data + localStorage
-  const [appList, setAppList] = useState<Application[]>(demoApplications);
+  const [appList, setAppList] = useState<DbApplication[]>([]);
   const [acceptedOfferApps, setAcceptedOfferApps] = useState<any[]>([]);
-  const [notificationList] = useState<Notification[]>([]);
-  const [isLoading] = useState(false);
+  const [notificationList, setNotificationList] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load accepted offers with customer info
+  // Load data from Supabase
   useEffect(() => {
-    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
-    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-    const allApps = [...demoApplications, ...storedApps];
-    
-    // Find accepted offers and get customer info
-    const accepted = storedOffers.filter((o: any) => o.status === 'ACCEPTED');
-    const acceptedWithCustomer = accepted.map((offer: any) => {
-      const app = allApps.find(a => String(a.id) === String(offer.application_id)) || offer.application;
-      return {
-        ...offer,
-        customer_name: app?.contact_person || app?.company_name || 'Asiakas'
-      };
-    });
-    setAcceptedOfferApps(acceptedWithCustomer);
-    
-    // Update app list
-    setAppList(allApps);
-  }, []);
+    const fetchData = async () => {
+      if (!isSupabaseConfigured()) {
+        setIsLoading(false);
+        return;
+      }
 
-  // Calculate stats - count offers from localStorage as well
-  const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      try {
+        // Fetch applications assigned to this financier or with status SUBMITTED_TO_FINANCIER
+        const { data: apps, error: appsError } = await applications.list();
+        
+        if (appsError) {
+          console.error('Error fetching applications:', appsError);
+          toast.error('Virhe hakemusten latauksessa');
+        } else {
+          // Filter applications that are relevant for financier
+          const financierApps = (apps || []).filter((app: DbApplication) => 
+            ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'OFFER_RECEIVED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'CONTRACT_SENT', 'SIGNED', 'CLOSED'].includes(app.status)
+          );
+          setAppList(financierApps);
+          
+          // Find applications with accepted offers
+          const acceptedApps = financierApps.filter((app: DbApplication) => app.status === 'OFFER_ACCEPTED');
+          setAcceptedOfferApps(acceptedApps.map((app: DbApplication) => ({
+            customer_name: app.company_name,
+            application_id: app.id
+          })));
+        }
+
+        // Fetch notifications
+        if (user?.id) {
+          const { data: notifications, error: notifError } = await notificationsApi.list(user.id);
+          if (!notifError && notifications) {
+            setNotificationList(notifications);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching financier data:', error);
+        toast.error('Virhe tietojen latauksessa');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.id]);
+
+  // Calculate stats
   const newApplications = appList.filter(a => a.status === 'SUBMITTED_TO_FINANCIER').length;
   const infoRequested = appList.filter(a => a.status === 'INFO_REQUESTED').length;
-  // Tarjottu = offers pending with admin OR sent to customer
-  const offersSent = appList.filter(a => ['OFFER_RECEIVED', 'OFFER_SENT'].includes(a.status)).length + 
-    storedOffers.filter((o: any) => o.status === 'PENDING_ADMIN').length;
-  const offersAccepted = acceptedOfferApps.length || appList.filter(a => a.status === 'OFFER_ACCEPTED').length;
+  const offersSent = appList.filter(a => ['OFFER_RECEIVED', 'OFFER_SENT'].includes(a.status)).length;
+  const offersAccepted = appList.filter(a => a.status === 'OFFER_ACCEPTED').length;
   const contractsSent = appList.filter(a => a.status === 'CONTRACT_SENT').length;
   const completed = appList.filter(a => ['SIGNED', 'CLOSED'].includes(a.status)).length;
-  const totalValue = appList.reduce((sum, app) => sum + app.equipment_price, 0);
+  const totalValue = appList.reduce((sum, app) => sum + (app.equipment_price || 0), 0);
 
   const recentApplications = appList.slice(0, 5);
 
+  // Count unread notifications (customer responses)
+  const unreadNotifications = notificationList.filter(n => !n.is_read).length;
+  
   // Pending actions
   const pendingActions = [
     { count: newApplications, label: 'Uusi hakemus', status: 'SUBMITTED_TO_FINANCIER', color: 'bg-orange-500' },
@@ -94,6 +137,60 @@ export default function FinancierDashboard() {
           Käsittele hakemuksia ja hallitse tarjouksia.
         </p>
       </div>
+
+      {/* CUSTOMER RESPONDED TO INFO REQUEST - Show if unread notifications */}
+      {unreadNotifications > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center animate-pulse">
+                <MessageSquare className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Bell className="w-5 h-5 mr-2 animate-bounce" />
+                  Lisätietoja saatavilla!
+                </h2>
+                <p className="text-blue-100 mt-1">
+                  {unreadNotifications === 1 
+                    ? 'Asiakas on toimittanut pyydetyt lisätiedot.'
+                    : `${unreadNotifications} asiakasta on toimittanut lisätietoja.`}
+                </p>
+              </div>
+            </div>
+          </div>
+          {/* Show each notification with customer name - clickable to go to messages */}
+          <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
+            {notificationList.filter(n => !n.is_read).slice(0, 5).map((notif) => (
+              <Link
+                key={notif.id}
+                to={notif.action_url || '/financier/applications'}
+                className="block bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-lg block">{notif.message?.split(' on ')[0] || 'Asiakas'}</span>
+                      <span className="text-sm text-blue-200">Lisätiedot toimitettu</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-white text-blue-700 px-4 py-2 rounded-lg font-semibold group-hover:bg-blue-50 transition-colors">
+                    <span>Avaa lisätiedot</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* CUSTOMER ACCEPTED OFFER - Prominent notification with customer names */}
       {offersAccepted > 0 && (
@@ -241,16 +338,16 @@ export default function FinancierDashboard() {
                       </div>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <p className="font-medium text-midnight-900">{app.reference_number}</p>
-                          <span className={getStatusColor(app.status)}>
-                            {getStatusLabel(app.status)}
+                          <p className="font-medium text-midnight-900">{app.reference_number || `#${app.id.slice(0, 8)}`}</p>
+                          <span className={getStatusColor(app.status as any)}>
+                            {getStatusLabel(app.status as any)}
                           </span>
                         </div>
                         <p className="text-sm text-slate-500">{app.company_name}</p>
                       </div>
                     </div>
                     <span className="font-semibold text-midnight-900">
-                      {formatCurrency(app.equipment_price)}
+                      {formatCurrency(app.equipment_price || 0)}
                     </span>
                   </div>
                 </Link>
@@ -321,5 +418,6 @@ export default function FinancierDashboard() {
     </div>
   );
 }
+
 
 

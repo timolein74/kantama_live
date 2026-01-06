@@ -7,36 +7,50 @@ import {
   Plus,
   Search,
   Edit2,
-  Trash2,
   CheckCircle,
   XCircle,
   Users,
   Mail,
   Phone,
-  X
+  X,
+  Send,
+  UserPlus
 } from 'lucide-react';
 import { financiers } from '../../lib/api';
 import { formatDate } from '../../lib/utils';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import type { Financier } from '../../types';
+
+// Financier profile type from Supabase
+interface FinancierProfile {
+  id: string;
+  email: string;
+  role: string;
+  first_name: string | null;
+  last_name: string | null;
+  company_name: string | null;
+  business_id: string | null;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 export default function AdminFinanciers() {
-  const [financierList, setFinancierList] = useState<Financier[]>([]);
-  const [filteredList, setFilteredList] = useState<Financier[]>([]);
+  const [financierList, setFinancierList] = useState<FinancierProfile[]>([]);
+  const [filteredList, setFilteredList] = useState<FinancierProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showInactive, setShowInactive] = useState(false);
   
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingFinancier, setEditingFinancier] = useState<Financier | null>(null);
+  const [editingFinancier, setEditingFinancier] = useState<FinancierProfile | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    address: '',
-    business_id: '',
-    notes: ''
+    company_name: '',
+    business_id: ''
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -56,33 +70,40 @@ export default function AdminFinanciers() {
     }
   };
 
+  // Helper to get display name
+  const getDisplayName = (f: FinancierProfile) => {
+    if (f.company_name) return f.company_name;
+    return [f.first_name, f.last_name].filter(Boolean).join(' ') || f.email;
+  };
+
   useEffect(() => {
     let filtered = financierList;
 
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(f =>
-        f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        f.email.toLowerCase().includes(searchTerm.toLowerCase())
+        getDisplayName(f).toLowerCase().includes(term) ||
+        f.email.toLowerCase().includes(term)
       );
     }
 
     if (!showInactive) {
-      filtered = filtered.filter(f => f.is_active);
+      filtered = filtered.filter(f => f.is_active !== false);
     }
 
     setFilteredList(filtered);
   }, [searchTerm, showInactive, financierList]);
 
-  const openModal = (financier?: Financier) => {
+  const openModal = (financier?: FinancierProfile) => {
     if (financier) {
       setEditingFinancier(financier);
+      const fullName = [financier.first_name, financier.last_name].filter(Boolean).join(' ');
       setFormData({
-        name: financier.name,
+        name: fullName || financier.company_name || '',
         email: financier.email,
         phone: financier.phone || '',
-        address: financier.address || '',
-        business_id: financier.business_id || '',
-        notes: financier.notes || ''
+        company_name: financier.company_name || '',
+        business_id: financier.business_id || ''
       });
     } else {
       setEditingFinancier(null);
@@ -90,9 +111,8 @@ export default function AdminFinanciers() {
         name: '',
         email: '',
         phone: '',
-        address: '',
-        business_id: '',
-        notes: ''
+        company_name: '',
+        business_id: ''
       });
     }
     setIsModalOpen(true);
@@ -105,9 +125,8 @@ export default function AdminFinanciers() {
       name: '',
       email: '',
       phone: '',
-      address: '',
-      business_id: '',
-      notes: ''
+      company_name: '',
+      business_id: ''
     });
   };
 
@@ -122,23 +141,47 @@ export default function AdminFinanciers() {
     setIsSaving(true);
     try {
       if (editingFinancier) {
-        await financiers.update(editingFinancier.id, formData);
+        // Update existing financier profile
+        const nameParts = formData.name.split(' ');
+        await financiers.update(editingFinancier.id, {
+          first_name: nameParts[0],
+          last_name: nameParts.slice(1).join(' ') || null,
+          phone: formData.phone || null,
+          company_name: formData.company_name || null,
+          business_id: formData.business_id || null
+        });
         toast.success('Rahoittaja päivitetty');
       } else {
-        await financiers.create(formData);
-        toast.success('Rahoittaja lisätty');
+        // Invite new financier - sends magic link email
+        const { error } = await financiers.invite({
+          email: formData.email,
+          name: formData.name,
+          phone: formData.phone || undefined,
+          company_name: formData.company_name || undefined,
+          business_id: formData.business_id || undefined
+        });
+        
+        if (error) {
+          throw error;
+        }
+        
+        toast.success(
+          `Kutsu lähetetty osoitteeseen ${formData.email}! Rahoittaja voi kirjautua linkin kautta.`,
+          { duration: 5000 }
+        );
       }
       closeModal();
       fetchFinanciers();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe tallennuksessa');
+      toast.error(error.message || 'Virhe tallennuksessa');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeactivate = async (financier: Financier) => {
-    if (!confirm(`Haluatko varmasti deaktivoida rahoittajan ${financier.name}?`)) {
+  const handleDeactivate = async (financier: FinancierProfile) => {
+    const displayName = financier.company_name || [financier.first_name, financier.last_name].filter(Boolean).join(' ');
+    if (!confirm(`Haluatko varmasti deaktivoida rahoittajan ${displayName}?`)) {
       return;
     }
 
@@ -147,17 +190,17 @@ export default function AdminFinanciers() {
       toast.success('Rahoittaja deaktivoitu');
       fetchFinanciers();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe deaktivoinnissa');
+      toast.error(error.message || 'Virhe deaktivoinnissa');
     }
   };
 
-  const handleActivate = async (financier: Financier) => {
+  const handleActivate = async (financier: FinancierProfile) => {
     try {
       await financiers.update(financier.id, { is_active: true });
       toast.success('Rahoittaja aktivoitu');
       fetchFinanciers();
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe aktivoinnissa');
+      toast.error(error.message || 'Virhe aktivoinnissa');
     }
   };
 
@@ -200,7 +243,7 @@ export default function AdminFinanciers() {
               type="checkbox"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-Kantama-600 focus:ring-Kantama-500"
+              className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
             />
             <span className="text-sm text-slate-600">Näytä deaktivoidut</span>
           </label>
@@ -231,15 +274,15 @@ export default function AdminFinanciers() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    financier.is_active ? 'bg-emerald-100' : 'bg-slate-200'
+                    financier.is_active !== false ? 'bg-emerald-100' : 'bg-slate-200'
                   }`}>
                     <Building2 className={`w-6 h-6 ${
-                      financier.is_active ? 'text-emerald-600' : 'text-slate-400'
+                      financier.is_active !== false ? 'text-emerald-600' : 'text-slate-400'
                     }`} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-midnight-900">{financier.name}</h3>
-                    {financier.is_active ? (
+                    <h3 className="font-semibold text-midnight-900">{getDisplayName(financier)}</h3>
+                    {financier.is_active !== false ? (
                       <span className="badge badge-green text-xs">Aktiivinen</span>
                     ) : (
                       <span className="badge badge-gray text-xs">Deaktivoitu</span>
@@ -254,7 +297,7 @@ export default function AdminFinanciers() {
                   >
                     <Edit2 className="w-4 h-4 text-slate-500" />
                   </button>
-                  {financier.is_active ? (
+                  {financier.is_active !== false ? (
                     <button
                       onClick={() => handleDeactivate(financier)}
                       className="p-2 hover:bg-red-50 rounded-lg"
@@ -277,7 +320,7 @@ export default function AdminFinanciers() {
               <div className="space-y-2 text-sm">
                 <div className="flex items-center text-slate-600">
                   <Mail className="w-4 h-4 mr-2 text-slate-400" />
-                  <a href={`mailto:${financier.email}`} className="hover:text-Kantama-600">
+                  <a href={`mailto:${financier.email}`} className="hover:text-emerald-600">
                     {financier.email}
                   </a>
                 </div>
@@ -287,10 +330,10 @@ export default function AdminFinanciers() {
                     {financier.phone}
                   </div>
                 )}
-                {financier.users && financier.users.length > 0 && (
+                {financier.business_id && (
                   <div className="flex items-center text-slate-600">
-                    <Users className="w-4 h-4 mr-2 text-slate-400" />
-                    {financier.users.length} käyttäjää
+                    <Building2 className="w-4 h-4 mr-2 text-slate-400" />
+                    Y-tunnus: {financier.business_id}
                   </div>
                 )}
               </div>
@@ -299,7 +342,7 @@ export default function AdminFinanciers() {
                 <span>Lisätty: {formatDate(financier.created_at)}</span>
                 <Link
                   to={`/admin/financiers/${financier.id}`}
-                  className="text-Kantama-600 hover:text-Kantama-700 font-medium"
+                  className="text-emerald-600 hover:text-emerald-700 font-medium"
                 >
                   Näytä lisää →
                 </Link>
@@ -332,14 +375,28 @@ export default function AdminFinanciers() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {!editingFinancier && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+                    <div className="flex items-start space-x-3">
+                      <Send className="w-5 h-5 text-emerald-600 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-emerald-900">Kutsu rahoittaja</p>
+                        <p className="text-sm text-emerald-700">
+                          Rahoittajalle lähetetään sähköpostiin kirjautumislinkki, jonka kautta hän voi asettaa salasanansa ja kirjautua portaaliin.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div>
-                  <label className="label">Nimi *</label>
+                  <label className="label">Yhteyshenkilön nimi *</label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input"
-                    placeholder="Rahoittaja Oy"
+                    placeholder="Matti Meikäläinen"
                     required
                   />
                 </div>
@@ -351,8 +408,23 @@ export default function AdminFinanciers() {
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     className="input"
-                    placeholder="info@rahoittaja.fi"
+                    placeholder="matti@rahoittaja.fi"
                     required
+                    disabled={!!editingFinancier}
+                  />
+                  {editingFinancier && (
+                    <p className="text-xs text-slate-500 mt-1">Sähköpostia ei voi muuttaa</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="label">Yrityksen nimi</label>
+                  <input
+                    type="text"
+                    value={formData.company_name}
+                    onChange={(e) => setFormData({ ...formData, company_name: e.target.value })}
+                    className="input"
+                    placeholder="Rahoittaja Oy"
                   />
                 </div>
 
@@ -364,7 +436,7 @@ export default function AdminFinanciers() {
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       className="input"
-                      placeholder="+358 9 123 4567"
+                      placeholder="+358 40 123 4567"
                     />
                   </div>
                   <div>
@@ -379,33 +451,21 @@ export default function AdminFinanciers() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="label">Osoite</label>
-                  <input
-                    type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="input"
-                    placeholder="Esimerkkikatu 1, 00100 Helsinki"
-                  />
-                </div>
-
-                <div>
-                  <label className="label">Muistiinpanot</label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    className="input min-h-[80px]"
-                    placeholder="Sisäiset muistiinpanot..."
-                  />
-                </div>
-
                 <div className="flex justify-end space-x-3 pt-4">
                   <button type="button" onClick={closeModal} className="btn-ghost">
                     Peruuta
                   </button>
                   <button type="submit" disabled={isSaving} className="btn-primary">
-                    {isSaving ? 'Tallennetaan...' : editingFinancier ? 'Tallenna' : 'Lisää'}
+                    {isSaving ? (
+                      editingFinancier ? 'Tallennetaan...' : 'Lähetetään kutsua...'
+                    ) : (
+                      editingFinancier ? 'Tallenna' : (
+                        <>
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Lähetä kutsu
+                        </>
+                      )
+                    )}
                   </button>
                 </div>
               </form>

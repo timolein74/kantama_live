@@ -18,7 +18,7 @@
   }
   
   .btn-primary {
-    @apply btn bg-efund-600 text-white hover:bg-efund-700 focus:ring-efund-500;
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500;
   }
   
   .btn-secondary {
@@ -34,7 +34,7 @@
   }
   
   .input {
-    @apply w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-efund-500 focus:border-transparent transition-all duration-200;
+    @apply w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200;
   }
   
   .input-error {
@@ -110,4 +110,3 @@
 .animation-delay-200 { animation-delay: 200ms; }
 .animation-delay-300 { animation-delay: 300ms; }
 .animation-delay-400 { animation-delay: 400ms; }
-

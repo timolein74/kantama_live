@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
   FileText,
   Search,
@@ -11,6 +12,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { applications } from '../../lib/api';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import {
   formatCurrency,
   formatDate,
@@ -19,10 +21,24 @@ import {
   getApplicationTypeLabel
 } from '../../lib/utils';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import type { Application, ApplicationStatus, ApplicationType } from '../../types';
+import type { ApplicationStatus, ApplicationType } from '../../types';
 
-// DEMO DATA - Empty for fresh testing
-const demoApplications: Application[] = [];
+// Type for application from Supabase
+interface DbApplication {
+  id: string;
+  reference_number?: string;
+  company_name: string;
+  business_id: string;
+  contact_email: string;
+  contact_phone: string | null;
+  equipment_description: string | null;
+  equipment_price: number;
+  application_type: 'LEASING' | 'SALE_LEASEBACK';
+  status: string;
+  requested_term_months: number;
+  created_at: string;
+  updated_at: string;
+}
 
 // Financier-specific status labels
 const getFinancierStatusLabel = (status: string): string => {
@@ -35,8 +51,8 @@ const getFinancierStatusLabel = (status: string): string => {
 
 export default function FinancierApplications() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [appList, setAppList] = useState<Application[]>([]);
-  const [filteredApps, setFilteredApps] = useState<Application[]>([]);
+  const [appList, setAppList] = useState<DbApplication[]>([]);
+  const [filteredApps, setFilteredApps] = useState<DbApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>(
@@ -45,25 +61,30 @@ export default function FinancierApplications() {
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
   useEffect(() => {
-    // DEMO MODE: Check if using demo token
-    const token = localStorage.getItem('token');
-    if (token?.startsWith('demo-token-')) {
-      // Combine demo data + localStorage applications
-      const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-      const allApps = [...demoApplications, ...storedApps] as any;
-      setAppList(allApps);
-      setFilteredApps(allApps);
-      setIsLoading(false);
-      return;
-    }
-    
     const fetchApps = async () => {
+      if (!isSupabaseConfigured()) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const response = await applications.list();
-        setAppList(response.data);
-        setFilteredApps(response.data);
+        const { data, error } = await applications.list();
+        if (error) {
+          console.error('Error fetching applications:', error);
+          toast.error('Virhe hakemusten latauksessa');
+          return;
+        }
+        
+        // Filter applications that are relevant for financier
+        const financierApps = (data || []).filter((app: DbApplication) => 
+          ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'OFFER_RECEIVED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'CONTRACT_SENT', 'SIGNED', 'CLOSED'].includes(app.status)
+        );
+        
+        setAppList(financierApps);
+        setFilteredApps(financierApps);
       } catch (error) {
-        console.error('Failed to fetch applications');
+        console.error('Failed to fetch applications:', error);
+        toast.error('Virhe hakemusten latauksessa');
       } finally {
         setIsLoading(false);
       }
@@ -75,9 +96,10 @@ export default function FinancierApplications() {
     let filtered = appList;
 
     if (searchTerm) {
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(app =>
-        app.reference_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (app.reference_number || '').toLowerCase().includes(term) ||
+        app.company_name.toLowerCase().includes(term) ||
         app.business_id.includes(searchTerm)
       );
     }
@@ -274,8 +296,8 @@ export default function FinancierApplications() {
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-medium text-midnight-900">{app.reference_number}</h3>
-                        <span className={getStatusColor(app.status)}>
+                        <h3 className="font-medium text-midnight-900">{app.reference_number || `#${app.id.slice(0, 8)}`}</h3>
+                        <span className={getStatusColor(app.status as ApplicationStatus)}>
                           {getFinancierStatusLabel(app.status)}
                         </span>
                       </div>
@@ -283,14 +305,14 @@ export default function FinancierApplications() {
                         <span className="font-medium">{app.company_name}</span>
                         {' • '}{app.business_id}
                       </p>
-                      <p className="text-sm text-slate-400">{app.equipment_description}</p>
+                      <p className="text-sm text-slate-400">{app.equipment_description || 'Ei kuvausta'}</p>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between md:justify-end space-x-6">
                     <div className="text-right">
                       <p className="text-lg font-bold text-midnight-900">
-                        {formatCurrency(app.equipment_price)}
+                        {formatCurrency(app.equipment_price || 0)}
                       </p>
                       <p className="text-sm text-slate-500">{formatDate(app.created_at)}</p>
                     </div>
@@ -309,6 +331,7 @@ export default function FinancierApplications() {
     </div>
   );
 }
+
 
 
 

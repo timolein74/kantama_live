@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 
 interface DemoUser {
@@ -13,16 +13,16 @@ interface DemoUser {
 
 const demoUsers: DemoUser[] = [
   {
-    email: 'admin@Kantama.fi',
+    email: 'admin@juurirahoitus.fi',
     role: 'ADMIN',
     label: 'Admin',
     firstName: 'Admin',
-    lastName: 'Kantama',
+    lastName: 'Juuri',
     icon: '👑',
     color: 'from-purple-500 to-indigo-600',
   },
   {
-    email: 'demo.financier@Kantama.fi',
+    email: 'demo.financier@juurirahoitus.fi',
     role: 'FINANCIER',
     label: 'Rahoittaja',
     firstName: 'Demo',
@@ -31,7 +31,7 @@ const demoUsers: DemoUser[] = [
     color: 'from-emerald-500 to-teal-600',
   },
   {
-    email: 'demo.customer@Kantama.fi',
+    email: 'demo.customer@juurirahoitus.fi',
     role: 'CUSTOMER',
     label: 'Asiakas',
     firstName: 'Demo',
@@ -98,7 +98,7 @@ export function DemoPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-50 bg-gradient-to-r from-orange-500 to-pink-500 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110"
+        className="fixed bottom-4 right-4 z-50 bg-gradient-to-r from-emerald-500 to-emerald-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110"
         title="Avaa demo-paneeli"
       >
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -112,10 +112,10 @@ export function DemoPanel() {
     <div className={`fixed bottom-4 right-4 z-50 transition-all duration-300 ${isMinimized ? 'w-auto' : 'w-80'}`}>
       <div className="bg-white/95 backdrop-blur-lg rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 to-pink-500 px-4 py-3 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-emerald-500 to-emerald-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <span className="text-xl">🎭</span>
-            <span className="font-bold">Demo-paneeli</span>
+            <span className="text-xl">🌱</span>
+            <span className="font-bold">Juuri Rahoitus Demo</span>
           </div>
           <div className="flex items-center gap-1">
             <button

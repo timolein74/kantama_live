@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import {
   ArrowRight,
   Check,
@@ -18,14 +19,20 @@ import {
   Upload,
   X,
   Image,
+  Mail,
+  Building2,
 } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { applications } from '../lib/api';
+import { CompanyAutocomplete } from '../components/CompanyAutocomplete';
+import { YTJCompanyDetails } from '../lib/ytj';
 
 // Form schemas - ei salasanaa, vain hakemus
 const leasingSchema = z.object({
   company_name: z.string().min(2, 'Yrityksen nimi vaaditaan'),
   business_id: z.string().regex(/^\d{7}-\d$/, 'Virheellinen Y-tunnus (muoto: 1234567-8)'),
   contact_email: z.string().email('Virheellinen sähköposti'),
-  contact_phone: z.string().optional(),
+  contact_phone: z.string().min(5, 'Puhelinnumero vaaditaan'),
   equipment_price: z.number().min(1000, 'Vähimmäissumma 1 000 €'),
   requested_term_months: z.number().optional(),
   additional_info: z.string().optional(),
@@ -39,12 +46,12 @@ const saleLeasebackSchema = z.object({
   company_name: z.string().min(2, 'Yrityksen nimi vaaditaan'),
   business_id: z.string().regex(/^\d{7}-\d$/, 'Virheellinen Y-tunnus (muoto: 1234567-8)'),
   contact_email: z.string().email('Virheellinen sähköposti'),
-  contact_phone: z.string().optional(),
+  contact_phone: z.string().min(5, 'Puhelinnumero vaaditaan'),
   equipment_description: z.string().min(10, 'Kuvaa kohde tarkemmin'),
   registration_number: z.string().optional(),
   year_model: z.number().min(1990, 'Vuosimalli vaaditaan').max(new Date().getFullYear() + 1, 'Virheellinen vuosimalli'),
-  hours: z.number().min(0).optional(),
-  kilometers: z.number().min(0).optional(),
+  hours: z.preprocess((val) => val === '' || val === undefined || Number.isNaN(val) ? undefined : Number(val), z.number().min(0).optional()),
+  kilometers: z.preprocess((val) => val === '' || val === undefined || Number.isNaN(val) ? undefined : Number(val), z.number().min(0).optional()),
   current_value: z.number().min(1000, 'Vähimmäissumma 1 000 €'),
   requested_term_months: z.number().optional(),
   additional_info: z.string().optional(),
@@ -58,8 +65,24 @@ export default function LandingPage() {
   const [activeForm, setActiveForm] = useState<'leasing' | 'slb'>('leasing');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [hasDownpayment, setHasDownpayment] = useState(false);
+  const [leasingFiles, setLeasingFiles] = useState<File[]>([]);
   const [slbFiles, setSlbFiles] = useState<File[]>([]);
+  const [submittedEmail, setSubmittedEmail] = useState('');
+  const [leasingYtjData, setLeasingYtjData] = useState<YTJCompanyDetails | null>(null);
+  const [slbYtjData, setSlbYtjData] = useState<YTJCompanyDetails | null>(null);
+  const navigate = useNavigate();
+
+  // Listen for form type changes from navigation
+  useEffect(() => {
+    const handleSetFormType = (e: CustomEvent<'leasing' | 'slb'>) => {
+      setActiveForm(e.detail);
+    };
+    
+    window.addEventListener('setFormType', handleSetFormType as EventListener);
+    return () => {
+      window.removeEventListener('setFormType', handleSetFormType as EventListener);
+    };
+  }, []);
 
   const leasingForm = useForm<LeasingFormData>({
     resolver: zodResolver(leasingSchema),
@@ -112,14 +135,80 @@ export default function LandingPage() {
     }
     
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // DEMO: Tallenna hakemus
-    const newApp = saveDemoApplication(data, 'LEASING');
-    console.log('Uusi hakemus tallennettu:', newApp);
+    try {
+      if (isSupabaseConfigured()) {
+        // 1. Lähetä magic link
+        const redirectUrl = window.location.origin + '/set-password';
+        const { error: authError } = await supabase.auth.signInWithOtp({
+          email: data.contact_email,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              first_name: data.company_name.split(' ')[0],
+              company_name: data.company_name,
+              business_id: data.business_id,
+            }
+          }
+        });
+
+        if (authError) {
+          console.error('Auth error:', authError);
+          toast.error('Virhe käyttäjän luonnissa: ' + authError.message);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 2. Tallenna hakemus tietokantaan (sisältäen YTJ-tiedot)
+        const { data: newApp, error: appError } = await applications.create({
+          application_type: 'LEASING',
+          status: 'SUBMITTED',
+          company_name: data.company_name,
+          business_id: data.business_id,
+          contact_email: data.contact_email,
+          contact_phone: data.contact_phone || null,
+          equipment_price: data.equipment_price,
+          equipment_description: 'Leasing-kohde',
+          requested_term_months: data.requested_term_months || 36,
+          additional_info: data.additional_info || null,
+          link_to_item: data.link_to_item || null,
+          down_payment: false,
+          ytj_data: leasingYtjData ? JSON.stringify(leasingYtjData) : null,
+        });
+
+        if (appError) {
+          console.error('Application error:', appError);
+          toast.error('Hakemuksen tallennus epäonnistui: ' + (appError.message || JSON.stringify(appError)));
+        }
+
+        // 3. Upload attached files if application was created
+        if (newApp && leasingFiles.length > 0) {
+          const { files } = await import('../lib/api');
+          for (const file of leasingFiles) {
+            try {
+              await files.upload(String(newApp.id), file, 'tarjousliite');
+            } catch (uploadErr) {
+              console.warn('File upload failed:', uploadErr);
+            }
+          }
+        }
+
+        setSubmittedEmail(data.contact_email);
+        setSubmitted(true);
+        toast.success('Hakemus lähetetty! Tarkista sähköpostisi.');
+      } else {
+        // Fallback: localStorage demo
+        const newApp = saveDemoApplication(data, 'LEASING');
+        console.log('Demo hakemus tallennettu:', newApp);
+        setSubmittedEmail(data.contact_email);
+        setSubmitted(true);
+        toast.success('Hakemus lähetetty!');
+      }
+    } catch (error: any) {
+      console.error('Submit error:', error);
+      toast.error(error.message || 'Virhe hakemuksen lähetyksessä');
+    }
     
-    setSubmitted(true);
-    toast.success('Hakemus lähetetty! Otamme yhteyttä pian.');
     setIsSubmitting(false);
   };
 
@@ -130,14 +219,80 @@ export default function LandingPage() {
     }
     
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // DEMO: Tallenna hakemus
-    const newApp = saveDemoApplication(data, 'SALE_LEASEBACK');
-    console.log('Uusi hakemus tallennettu:', newApp);
+    try {
+      if (isSupabaseConfigured()) {
+        // 1. Lähetä magic link
+        const redirectUrl = window.location.origin + '/set-password';
+        const { error: authError } = await supabase.auth.signInWithOtp({
+          email: data.contact_email,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              first_name: data.company_name.split(' ')[0],
+              company_name: data.company_name,
+              business_id: data.business_id,
+            }
+          }
+        });
+
+        if (authError) {
+          console.error('Auth error:', authError);
+          toast.error('Virhe käyttäjän luonnissa: ' + authError.message);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 2. Tallenna hakemus tietokantaan (sisältäen YTJ-tiedot)
+        const { data: newApp, error: appError } = await applications.create({
+          application_type: 'SALE_LEASEBACK',
+          status: 'SUBMITTED',
+          company_name: data.company_name,
+          business_id: data.business_id,
+          contact_email: data.contact_email,
+          contact_phone: data.contact_phone || null,
+          equipment_price: data.current_value,
+          current_value: data.current_value,
+          equipment_description: data.equipment_description,
+          requested_term_months: data.requested_term_months || 36,
+          additional_info: data.additional_info || null,
+          down_payment: false,
+          ytj_data: slbYtjData ? JSON.stringify(slbYtjData) : null,
+        });
+
+        if (appError) {
+          console.error('Application error:', appError);
+          toast.error('Hakemuksen tallennus epäonnistui: ' + (appError.message || JSON.stringify(appError)));
+        }
+
+        // 3. Upload attached files if application was created
+        if (newApp && slbFiles.length > 0) {
+          const { files } = await import('../lib/api');
+          for (const file of slbFiles) {
+            try {
+              await files.upload(String(newApp.id), file, 'tarjousliite');
+            } catch (uploadErr) {
+              console.warn('File upload failed:', uploadErr);
+            }
+          }
+        }
+
+        setSubmittedEmail(data.contact_email);
+        setSubmitted(true);
+        toast.success('Hakemus lähetetty! Tarkista sähköpostisi.');
+      } else {
+        // Fallback: localStorage demo
+        const newApp = saveDemoApplication(data, 'SALE_LEASEBACK');
+        console.log('Demo hakemus tallennettu:', newApp);
+        setSubmittedEmail(data.contact_email);
+        setSubmitted(true);
+        toast.success('Hakemus lähetetty!');
+      }
+    } catch (error: any) {
+      console.error('Submit error:', error);
+      toast.error(error.message || 'Virhe hakemuksen lähetyksessä');
+    }
     
-    setSubmitted(true);
-    toast.success('Hakemus lähetetty! Otamme yhteyttä pian.');
     setIsSubmitting(false);
   };
 
@@ -149,28 +304,31 @@ export default function LandingPage() {
           animate={{ opacity: 1, scale: 1 }}
           className="bg-white rounded-3xl p-8 md:p-12 text-center max-w-lg shadow-2xl"
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
-            <Check className="w-12 h-12 text-white" />
+          <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg">
+            <Mail className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-3xl font-display font-bold text-midnight-900 mb-4">
-            Kiitos hakemuksestasi!
+            Tarkista sähköpostisi!
           </h2>
-          <p className="text-slate-600 mb-4">
-            Hakemuksesi on vastaanotettu ja käsittelemme sen mahdollisimman pian.
+          <p className="text-slate-600 mb-2">
+            Lähetimme kirjautumislinkin osoitteeseen:
           </p>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-8">
-            <p className="text-blue-800 font-medium mb-2">
-              📧 Tarkista sähköpostisi!
+          <div className="bg-slate-100 rounded-xl p-4 mb-6">
+            <p className="font-semibold text-midnight-900 text-lg">{submittedEmail}</p>
+          </div>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-8">
+            <p className="text-emerald-800 font-medium mb-2">
+              ✅ Hakemuksesi on vastaanotettu!
             </p>
-            <p className="text-blue-700 text-sm mb-2">
-              Saat sähköpostiisi vahvistuslinkin, jolla pääset kirjautumaan ja seuraamaan hakemuksesi etenemistä.
+            <p className="text-emerald-700 text-sm mb-2">
+              Klikkaa sähköpostissa olevaa linkkiä kirjautuaksesi sisään ja luodaksesi salasanan.
             </p>
-            <p className="text-blue-600 text-xs">
-              Otamme yhteyttä kun hakemuksesi on käsitelty.
+            <p className="text-emerald-600 text-xs">
+              Linkki on voimassa 1 tunti. Tarkista myös roskaposti-kansio.
             </p>
           </div>
           <button
-            onClick={() => setSubmitted(false)}
+            onClick={() => navigate('/login')}
             className="btn-primary w-full py-4 text-lg"
           >
             Sulje viesti
@@ -205,7 +363,7 @@ export default function LandingPage() {
                 </span>
               </h1>
               <p className="text-xl text-slate-300 mb-8 max-w-lg">
-                Leasing ja Sale-Leaseback ratkaisut yrityksesi tarpeisiin. 
+                Leasing ja takaisinvuokraus ratkaisut yrityksesi tarpeisiin. 
                 Hae rahoitusta nopeasti ja helposti.
               </p>
               
@@ -250,14 +408,14 @@ export default function LandingPage() {
               id="forms"
               className="scroll-mt-20"
             >
-              <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+              <div id="application-form" className="bg-white rounded-3xl shadow-2xl overflow-hidden">
                 {/* Form tabs */}
                 <div className="flex">
                   <button
                     onClick={() => setActiveForm('leasing')}
                     className={`flex-1 py-4 text-center font-semibold transition-all ${
                       activeForm === 'leasing'
-                        ? 'bg-efund-600 text-white'
+                        ? 'bg-emerald-600 text-white'
                         : 'bg-slate-200 text-slate-500 hover:bg-slate-300 hover:text-slate-700'
                     }`}
                   >
@@ -268,12 +426,12 @@ export default function LandingPage() {
                     onClick={() => setActiveForm('slb')}
                     className={`flex-1 py-4 text-center font-semibold transition-all ${
                       activeForm === 'slb'
-                        ? 'bg-efund-600 text-white'
+                        ? 'bg-emerald-600 text-white'
                         : 'bg-slate-200 text-slate-500 hover:bg-slate-300 hover:text-slate-700'
                     }`}
                   >
                     <RefreshCw className="w-5 h-5 inline mr-2" />
-                    Sale-Leaseback
+                    Takaisinvuokraus
                   </button>
                 </div>
 
@@ -281,33 +439,58 @@ export default function LandingPage() {
                 <div className="p-6 md:p-8">
                   {activeForm === 'leasing' ? (
                     <form onSubmit={leasingForm.handleSubmit(handleLeasingSubmit)} className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Yrityksen nimi *</label>
-                          <input
-                            {...leasingForm.register('company_name')}
-                            className="input"
-                            placeholder="Oy Yritys Ab"
-                          />
-                          {leasingForm.formState.errors.company_name && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {leasingForm.formState.errors.company_name.message}
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="label">Y-tunnus *</label>
-                          <input
-                            {...leasingForm.register('business_id')}
-                            className="input"
-                            placeholder="1234567-8"
-                          />
-                          {leasingForm.formState.errors.business_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {leasingForm.formState.errors.business_id.message}
-                            </p>
-                          )}
-                        </div>
+                      {/* Yrityksen haku YTJ:stä */}
+                      <div>
+                        <label className="label flex items-center gap-2">
+                          <Building2 className="w-4 h-4" />
+                          Yrityksen nimi *
+                        </label>
+                        <CompanyAutocomplete
+                          value={leasingForm.watch('company_name') || ''}
+                          onChange={(value) => {
+                            leasingForm.setValue('company_name', value);
+                            // Jos käyttäjä muokkaa nimeä, tyhjennä Y-tunnus
+                            if (!leasingYtjData || leasingYtjData.name !== value) {
+                              leasingForm.setValue('business_id', '');
+                              setLeasingYtjData(null);
+                            }
+                          }}
+                          onCompanySelect={(company) => {
+                            try {
+                              leasingForm.setValue('company_name', company.name || '');
+                              leasingForm.setValue('business_id', company.businessId || '');
+                              setLeasingYtjData(company);
+                              toast.success(`${company.name || 'Yritys'} valittu!`);
+                            } catch (error) {
+                              console.error('Error setting company data:', error);
+                              toast.error('Virhe yritystietojen haussa');
+                            }
+                          }}
+                          placeholder="Yrityksen nimi"
+                          error={leasingForm.formState.errors.company_name?.message}
+                        />
+                      </div>
+
+                      {/* Y-tunnus - automaattisesti täytetty */}
+                      <div>
+                        <label className="label">Y-tunnus *</label>
+                        <input
+                          {...leasingForm.register('business_id')}
+                          className={`input ${leasingYtjData ? 'bg-emerald-50 border-emerald-300' : ''}`}
+                          placeholder="Täyttyy automaattisesti kun valitset yrityksen"
+                          readOnly={!!leasingYtjData}
+                        />
+                        {leasingForm.formState.errors.business_id && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {leasingForm.formState.errors.business_id.message}
+                          </p>
+                        )}
+                        {leasingYtjData && (
+                          <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            YTJ-tiedot haettu
+                          </p>
+                        )}
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-4">
@@ -326,12 +509,15 @@ export default function LandingPage() {
                           )}
                         </div>
                         <div>
-                          <label className="label">Puhelin</label>
+                          <label className="label">Puhelin *</label>
                           <input
                             {...leasingForm.register('contact_phone')}
-                            className="input"
+                            className={`input ${leasingForm.formState.errors.contact_phone ? 'border-red-500' : ''}`}
                             placeholder="+358 40 123 4567"
                           />
+                          {leasingForm.formState.errors.contact_phone && (
+                            <p className="text-red-500 text-sm mt-1">{leasingForm.formState.errors.contact_phone.message}</p>
+                          )}
                         </div>
                       </div>
 
@@ -350,28 +536,6 @@ export default function LandingPage() {
                         )}
                       </div>
 
-                      <div>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={hasDownpayment}
-                            onChange={(e) => setHasDownpayment(e.target.checked)}
-                            className="w-4 h-4 rounded border-slate-300 text-Kantama-600 focus:ring-Kantama-500"
-                          />
-                          <span className="text-sm text-slate-700">Haluan maksaa käsirahan</span>
-                        </label>
-                        {hasDownpayment && (
-                          <div className="mt-2">
-                            <label className="label">Käsirahan määrä (€) alv 0%</label>
-                            <input
-                              {...leasingForm.register('downpayment_amount', { valueAsNumber: true })}
-                              type="number"
-                              className="input"
-                              placeholder="10000"
-                            />
-                          </div>
-                        )}
-                      </div>
 
                       <div>
                         <label className="label">Toivottu sopimuskausi</label>
@@ -405,6 +569,45 @@ export default function LandingPage() {
                         />
                       </div>
 
+                      {/* File upload - Tarjousliite */}
+                      <div>
+                        <label className="label">Tarjousliite ja muut dokumentit</label>
+                        <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 hover:border-blue-400 transition-colors">
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*,.pdf,.doc,.docx"
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files || []);
+                              setLeasingFiles(prev => [...prev, ...files]);
+                            }}
+                            className="hidden"
+                            id="leasing-files"
+                          />
+                          <label htmlFor="leasing-files" className="cursor-pointer flex flex-col items-center">
+                            <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                            <span className="text-slate-600 text-sm">Klikkaa lisätäksesi tiedostoja</span>
+                            <span className="text-slate-400 text-xs mt-1">Tarjous, kuvat, dokumentit (PDF, DOC, kuvat)</span>
+                          </label>
+                        </div>
+                        {leasingFiles.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {leasingFiles.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-slate-50 rounded px-3 py-1">
+                                <span className="text-sm text-slate-700 truncate">{file.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setLeasingFiles(prev => prev.filter((_, i) => i !== idx))}
+                                  className="text-red-500 hover:text-red-700 ml-2"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
                       {/* Honeypot */}
                       <input
                         {...leasingForm.register('honeypot')}
@@ -433,33 +636,57 @@ export default function LandingPage() {
                     </form>
                   ) : (
                     <form onSubmit={slbForm.handleSubmit(handleSLBSubmit)} className="space-y-4">
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="label">Yrityksen nimi *</label>
-                          <input
-                            {...slbForm.register('company_name')}
-                            className="input"
-                            placeholder="Oy Yritys Ab"
-                          />
-                          {slbForm.formState.errors.company_name && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {slbForm.formState.errors.company_name.message}
-                            </p>
-                          )}
-                        </div>
-                        <div>
-                          <label className="label">Y-tunnus *</label>
-                          <input
-                            {...slbForm.register('business_id')}
-                            className="input"
-                            placeholder="1234567-8"
-                          />
-                          {slbForm.formState.errors.business_id && (
-                            <p className="text-red-500 text-sm mt-1">
-                              {slbForm.formState.errors.business_id.message}
-                            </p>
-                          )}
-                        </div>
+                      {/* Yrityksen haku YTJ:stä */}
+                      <div>
+                        <label className="label flex items-center gap-2">
+                          <Building2 className="w-4 h-4" />
+                          Yrityksen nimi *
+                        </label>
+                        <CompanyAutocomplete
+                          value={slbForm.watch('company_name') || ''}
+                          onChange={(value) => {
+                            slbForm.setValue('company_name', value);
+                            if (!slbYtjData || slbYtjData.name !== value) {
+                              slbForm.setValue('business_id', '');
+                              setSlbYtjData(null);
+                            }
+                          }}
+                          onCompanySelect={(company) => {
+                            try {
+                              slbForm.setValue('company_name', company.name || '');
+                              slbForm.setValue('business_id', company.businessId || '');
+                              setSlbYtjData(company);
+                              toast.success(`${company.name || 'Yritys'} valittu!`);
+                            } catch (error) {
+                              console.error('Error setting company data:', error);
+                              toast.error('Virhe yritystietojen haussa');
+                            }
+                          }}
+                          placeholder="Yrityksen nimi"
+                          error={slbForm.formState.errors.company_name?.message}
+                        />
+                      </div>
+
+                      {/* Y-tunnus - automaattisesti täytetty */}
+                      <div>
+                        <label className="label">Y-tunnus *</label>
+                        <input
+                          {...slbForm.register('business_id')}
+                          className={`input ${slbYtjData ? 'bg-emerald-50 border-emerald-300' : ''}`}
+                          placeholder="Täyttyy automaattisesti kun valitset yrityksen"
+                          readOnly={!!slbYtjData}
+                        />
+                        {slbForm.formState.errors.business_id && (
+                          <p className="text-red-500 text-sm mt-1">
+                            {slbForm.formState.errors.business_id.message}
+                          </p>
+                        )}
+                        {slbYtjData && (
+                          <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                            <Check className="w-3 h-3" />
+                            YTJ-tiedot haettu
+                          </p>
+                        )}
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-4">
@@ -478,12 +705,15 @@ export default function LandingPage() {
                           )}
                         </div>
                         <div>
-                          <label className="label">Puhelin</label>
+                          <label className="label">Puhelin *</label>
                           <input
                             {...slbForm.register('contact_phone')}
-                            className="input"
+                            className={`input ${slbForm.formState.errors.contact_phone ? 'border-red-500' : ''}`}
                             placeholder="+358 40 123 4567"
                           />
+                          {slbForm.formState.errors.contact_phone && (
+                            <p className="text-red-500 text-sm mt-1">{slbForm.formState.errors.contact_phone.message}</p>
+                          )}
                         </div>
                       </div>
 

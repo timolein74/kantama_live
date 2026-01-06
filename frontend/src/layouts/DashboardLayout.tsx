@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+﻿import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import {
   LayoutDashboard,
@@ -26,21 +26,28 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     const fetchNotifications = async () => {
+      if (!user?.id) {
+        console.log('No user id for notifications');
+        return;
+      }
       try {
+        console.log('Fetching notifications for user:', user.id);
         const [countRes, listRes] = await Promise.all([
-          notificationsApi.getUnreadCount(),
-          notificationsApi.list()
+          notificationsApi.getUnreadCount(user.id),
+          notificationsApi.list(user.id)
         ]);
-        setUnreadCount(countRes.data.count);
-        setNotificationsList(listRes.data.slice(0, 10));
+        console.log('Notifications count:', countRes.count, 'list:', listRes.data?.length);
+        setUnreadCount(countRes.count || 0);
+        setNotificationsList((listRes.data || []).slice(0, 10));
       } catch (error) {
-        console.error('Failed to fetch notifications');
+        console.error('Failed to fetch notifications:', error);
       }
     };
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
+    // Fetch more frequently - every 10 seconds
+    const interval = setInterval(fetchNotifications, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user?.id]);
 
   const handleMarkAsRead = async (id: number) => {
     try {
@@ -55,8 +62,9 @@ export default function DashboardLayout() {
   };
 
   const handleMarkAllAsRead = async () => {
+    if (!user?.id) return;
     try {
-      await notificationsApi.markAllAsRead();
+      await notificationsApi.markAllAsRead(user.id);
       setNotificationsList(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -65,8 +73,7 @@ export default function DashboardLayout() {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    logout(); // logout() handles redirect to '/'
   };
 
   const navItems = [
@@ -86,10 +93,10 @@ export default function DashboardLayout() {
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-white/10">
             <Link to="/dashboard" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">e</span>
+              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold">J</span>
               </div>
-              <span className="text-white font-display font-bold text-lg">Kantama</span>
+              <span className="text-white font-display font-bold text-lg">Juuri</span>
             </Link>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -109,7 +116,7 @@ export default function DashboardLayout() {
                   to={item.path}
                   className={`flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'bg-Kantama-600 text-white'
+                      ? 'bg-emerald-600 text-white'
                       : 'text-slate-400 hover:bg-white/5 hover:text-white'
                   }`}
                 >
@@ -123,7 +130,7 @@ export default function DashboardLayout() {
           {/* User info */}
           <div className="p-4 border-t border-white/10">
             <div className="flex items-center space-x-3 px-4 py-3">
-              <div className="w-10 h-10 bg-Kantama-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-emerald-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-medium">
                   {user?.first_name?.[0] || user?.email[0].toUpperCase()}
                 </span>
@@ -183,7 +190,7 @@ export default function DashboardLayout() {
                       {unreadCount > 0 && (
                         <button
                           onClick={handleMarkAllAsRead}
-                          className="text-xs text-Kantama-600 hover:text-Kantama-700 font-medium"
+                          className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
                         >
                           Merkitse kaikki luetuksi
                         </button>
@@ -200,7 +207,7 @@ export default function DashboardLayout() {
                           <div
                             key={notification.id}
                             className={`px-4 py-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${
-                              !notification.is_read ? 'bg-Kantama-50' : ''
+                              !notification.is_read ? 'bg-emerald-50' : ''
                             }`}
                             onClick={() => {
                               if (!notification.is_read) {
@@ -225,7 +232,7 @@ export default function DashboardLayout() {
                                 </p>
                               </div>
                               {!notification.is_read && (
-                                <span className="w-2 h-2 bg-Kantama-500 rounded-full mt-1.5 ml-2 flex-shrink-0"></span>
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full mt-1.5 ml-2 flex-shrink-0"></span>
                               )}
                             </div>
                           </div>
@@ -242,7 +249,7 @@ export default function DashboardLayout() {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center space-x-2 p-2 hover:bg-slate-100 rounded-lg"
                 >
-                  <div className="w-8 h-8 bg-Kantama-600 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-emerald-600 rounded-full flex items-center justify-center">
                     <span className="text-white text-sm font-medium">
                       {user?.first_name?.[0] || user?.email[0].toUpperCase()}
                     </span>
@@ -282,4 +289,5 @@ export default function DashboardLayout() {
     </div>
   );
 }
+
 

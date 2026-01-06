@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 
 interface LogoProps {
   to?: string;
@@ -24,7 +24,7 @@ export default function Logo({
 
   const content = (
     <span className={`${colors[variant]} font-display font-bold ${sizes[size].text} tracking-tight`}>
-      Kantama Rahoitus
+      <span className="text-emerald-400">Juuri</span> Rahoitus
     </span>
   );
 
@@ -38,3 +38,4 @@ export default function Logo({
 
   return content;
 }
+

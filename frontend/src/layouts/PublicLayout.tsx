@@ -1,12 +1,19 @@
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+﻿import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Menu, X, LogIn, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Logo from '../components/Logo';
+import ChatBot from '../components/ChatBot';
+
+// Custom event for changing form type
+export const setFormType = (type: 'leasing' | 'slb') => {
+  window.dispatchEvent(new CustomEvent('setFormType', { detail: type }));
+};
 
 export default function PublicLayout() {
   const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const getDashboardLink = () => {
@@ -18,10 +25,37 @@ export default function PublicLayout() {
     }
   };
 
+  // Handle navigation clicks
+  const handleNavClick = (type: 'leasing' | 'slb' | 'how-it-works') => {
+    setMobileMenuOpen(false);
+    
+    // If not on landing page, navigate there first
+    if (location.pathname !== '/') {
+      navigate('/');
+      // Wait for navigation then scroll
+      setTimeout(() => {
+        if (type === 'how-it-works') {
+          document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          setFormType(type);
+          document.getElementById('application-form')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+      return;
+    }
+    
+    if (type === 'how-it-works') {
+      document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      setFormType(type);
+      document.getElementById('application-form')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-midnight-950/80 backdrop-blur-xl border-b border-white/10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-slate-900/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
@@ -29,15 +63,24 @@ export default function PublicLayout() {
 
             {/* Desktop nav */}
             <nav className="hidden md:flex items-center space-x-8">
-              <a href="#leasing" className="text-slate-300 hover:text-white transition-colors">
+              <button 
+                onClick={() => handleNavClick('leasing')} 
+                className="text-slate-300 hover:text-white transition-colors"
+              >
                 Leasing
-              </a>
-              <a href="#sale-leaseback" className="text-slate-300 hover:text-white transition-colors">
-                Sale-Leaseback
-              </a>
-              <a href="#how-it-works" className="text-slate-300 hover:text-white transition-colors">
+              </button>
+              <button 
+                onClick={() => handleNavClick('slb')} 
+                className="text-slate-300 hover:text-white transition-colors"
+              >
+                Takaisinvuokraus
+              </button>
+              <button 
+                onClick={() => handleNavClick('how-it-works')} 
+                className="text-slate-300 hover:text-white transition-colors"
+              >
                 Näin se toimii
-              </a>
+              </button>
             </nav>
 
             {/* Auth buttons */}
@@ -78,17 +121,26 @@ export default function PublicLayout() {
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-midnight-950 border-t border-white/10">
+          <div className="md:hidden bg-slate-900 border-t border-white/10">
             <div className="px-4 py-4 space-y-4">
-              <a href="#leasing" className="block text-slate-300 hover:text-white">
+              <button 
+                onClick={() => handleNavClick('leasing')} 
+                className="block text-slate-300 hover:text-white w-full text-left"
+              >
                 Leasing
-              </a>
-              <a href="#sale-leaseback" className="block text-slate-300 hover:text-white">
-                Sale-Leaseback
-              </a>
-              <a href="#how-it-works" className="block text-slate-300 hover:text-white">
+              </button>
+              <button 
+                onClick={() => handleNavClick('slb')} 
+                className="block text-slate-300 hover:text-white w-full text-left"
+              >
+                Takaisinvuokraus
+              </button>
+              <button 
+                onClick={() => handleNavClick('how-it-works')} 
+                className="block text-slate-300 hover:text-white w-full text-left"
+              >
                 Näin se toimii
-              </a>
+              </button>
               <div className="pt-4 border-t border-white/10 space-y-2">
                 {isAuthenticated ? (
                   <button
@@ -119,7 +171,7 @@ export default function PublicLayout() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-midnight-950 text-slate-400 py-12 border-t border-white/10">
+      <footer className="bg-slate-900 text-slate-400 py-12 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
@@ -133,30 +185,26 @@ export default function PublicLayout() {
             <div>
               <h4 className="text-white font-semibold mb-4">Palvelut</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#leasing" className="hover:text-white transition-colors">Leasing</a></li>
-                <li><a href="#sale-leaseback" className="hover:text-white transition-colors">Sale-Leaseback</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-white font-semibold mb-4">Yhteystiedot</h4>
-              <ul className="space-y-2 text-sm">
-                <li>myynti@Kantama.fi</li>
-                <li>+358 9 123 4567</li>
+                <li><button onClick={() => handleNavClick('leasing')} className="hover:text-white transition-colors">Leasing</button></li>
+                <li><button onClick={() => handleNavClick('slb')} className="hover:text-white transition-colors">Takaisinvuokraus</button></li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-semibold mb-4">Tietoa</h4>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors">Tietosuoja</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Käyttöehdot</a></li>
+                <li><Link to="/privacy" className="hover:text-white transition-colors">Tietosuoja</Link></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">Käyttöehdot</Link></li>
               </ul>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-sm">
-            <p>© 2025 Kantama Rahoitus. Kaikki oikeudet pidätetään.</p>
+            <p>© 2025 Juuri Rahoitus. Kaikki oikeudet pidätetään.</p>
           </div>
         </div>
       </footer>
+
+      {/* AI Chatbot */}
+      <ChatBot />
     </div>
   );
 }

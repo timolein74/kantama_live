@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -29,6 +29,33 @@ interface ContractFormProps {
 
 type FormSection = 'lessee' | 'lessor' | 'seller' | 'objects' | 'delivery' | 'rent' | 'period' | 'special';
 
+// Helper function to parse YTJ data
+function getYtjAddress(ytjData: any): { street: string; postalCode: string; city: string } {
+  try {
+    if (!ytjData) return { street: '', postalCode: '', city: '' };
+    
+    // Parse if string
+    const data = typeof ytjData === 'string' ? JSON.parse(ytjData) : ytjData;
+    
+    // Find street address (postiosoite)
+    const addresses = data.addresses || [];
+    const streetAddr = addresses.find((a: any) => a.type?.toString().toLowerCase().includes('posti') || a.type === 2) || addresses[0];
+    
+    if (streetAddr) {
+      return {
+        street: streetAddr.street || streetAddr.streetAddress || '',
+        postalCode: streetAddr.postCode || streetAddr.postalCode || '',
+        city: streetAddr.city || streetAddr.postOffice || '',
+      };
+    }
+    
+    return { street: '', postalCode: '', city: '' };
+  } catch (e) {
+    console.warn('Failed to parse YTJ address:', e);
+    return { street: '', postalCode: '', city: '' };
+  }
+}
+
 export default function ContractForm({
   application,
   acceptedOffer,
@@ -40,17 +67,21 @@ export default function ContractForm({
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   
+  // Parse YTJ data for address
+  const ytjData = application.extra_data?.ytj_data || (application as any).ytj_data;
+  const ytjAddress = getYtjAddress(ytjData);
+  
   // Form data
   const [formData, setFormData] = useState<ContractCreateData>({
     application_id: application.id,
     offer_id: acceptedOffer?.id,
     
-    // Pre-fill from application
+    // Pre-fill from application and YTJ data
     lessee_company_name: application.company_name,
     lessee_business_id: application.business_id,
-    lessee_street_address: application.street_address || '',
-    lessee_postal_code: application.postal_code || '',
-    lessee_city: application.city || '',
+    lessee_street_address: ytjAddress.street || application.street_address || '',
+    lessee_postal_code: ytjAddress.postalCode || application.postal_code || '',
+    lessee_city: ytjAddress.city || application.city || '',
     lessee_country: 'Finland',
     lessee_contact_person: application.contact_person || '',
     lessee_phone: application.contact_phone || '',
@@ -929,4 +960,5 @@ export default function ContractForm({
     </motion.div>
   );
 }
+
 

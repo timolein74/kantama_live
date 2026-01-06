@@ -1,4 +1,4 @@
-import { Navigate, Outlet } from 'react-router-dom';
+﻿import { Navigate, Outlet } from 'react-router-dom';
 import type { UserRole } from '../types';
 
 interface ProtectedRouteProps {
@@ -82,4 +82,5 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   // Fallback: token exists but we can't determine role - go to login
   return <Navigate to="/login" replace />;
 }
+
 

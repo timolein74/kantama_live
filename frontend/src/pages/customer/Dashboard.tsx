@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import {
   FileText,
   Clock,
@@ -15,80 +16,102 @@ import {
   Upload,
   MessageSquare
 } from 'lucide-react';
-import { applications, notifications as notificationsApi } from '../../lib/api';
+import { applications, messages, notifications as notificationsApi } from '../../lib/api';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../../lib/utils';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import type { Application, Notification } from '../../types';
 
-// DEMO DATA for customer - Empty for fresh testing
-const demoCustomerApplications: Application[] = [];
-
 export default function CustomerDashboard() {
   const { user } = useAuthStore();
-  // DEMO MODE: Combine static + localStorage data filtered by user email
   const [appList, setAppList] = useState<Application[]>([]);
-  const [notificationList] = useState<Notification[]>([]);
+  const [notificationList, setNotificationList] = useState<Notification[]>([]);
   const [pendingInfoRequests, setPendingInfoRequests] = useState<any[]>([]);
-  const [isLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
-    const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
-    
-    // Filter by user email if available
-    const userEmail = user?.email?.toLowerCase();
-    const userApps = storedApps.filter((app: any) => 
-      app.contact_email?.toLowerCase() === userEmail
-    );
-    
-    // For t.leinonen show demo apps + their own
-    let allApps: Application[];
-    if (userEmail === 't.leinonen@yahoo.com') {
-      allApps = [...demoCustomerApplications, ...userApps];
-    } else {
-      allApps = [...demoCustomerApplications, ...userApps];
-    }
-    
-    // Update application statuses based on offers
-    allApps = allApps.map(app => {
-      const appOffers = storedOffers.filter((o: any) => 
-        String(o.application_id) === String(app.id) ||
-        o.application?.id === app.id
-      );
-      if (appOffers.length > 0) {
-        const latestOffer = appOffers[appOffers.length - 1];
-        // Customer only sees offer after admin has approved (status APPROVED or SENT)
-        if (latestOffer.status === 'APPROVED' || latestOffer.status === 'SENT') {
-          return { ...app, status: 'OFFER_SENT' };
-        } else if (latestOffer.status === 'ACCEPTED') {
-          return { ...app, status: 'OFFER_ACCEPTED' };
-        }
-        // PENDING_ADMIN status means admin hasn't approved yet - customer doesn't see it
+    const fetchData = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
       }
-      return app;
-    });
+      
+      if (!isSupabaseConfigured()) {
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
+        // Fetch user's applications from Supabase (by user_id OR email)
+        const { data: userApps, error } = await applications.list(user.id, user.role, user.email);
+        
+        if (error) {
+          console.error('Error fetching applications:', error);
+          toast.error('Virhe hakemusten latauksessa');
+        } else {
+          setAppList((userApps || []) as Application[]);
+          
+          // Check for applications with INFO_REQUESTED status (excluding rejected ones) and fetch their messages
+          const infoRequestedApps = (userApps || []).filter((a: Application) => 
+            a.status === 'INFO_REQUESTED' && !['REJECTED', 'OFFER_REJECTED'].includes(a.status)
+          );
+          
+          if (infoRequestedApps.length > 0) {
+            // Fetch pending info requests for each application
+            const pendingReqs: any[] = [];
+            for (const app of infoRequestedApps) {
+              const { data: msgs } = await messages.listByApplication(String(app.id));
+              const infoReqs = (msgs || []).filter((m: any) => m.is_info_request && !m.is_read);
+              if (infoReqs.length > 0) {
+                pendingReqs.push({
+                  application_id: app.id,
+                  application: app,
+                  messages: infoReqs
+                });
+              }
+            }
+            setPendingInfoRequests(pendingReqs);
+          } else {
+            setPendingInfoRequests([]);
+          }
+          
+          // Fetch unread notifications for customer
+          const { data: notifs } = await notificationsApi.list(user.id);
+          console.log('Customer Dashboard: Notifications loaded:', notifs?.length, 'unread:', notifs?.filter((n: any) => !n.is_read)?.length);
+          if (notifs) {
+            // Filter for unread message notifications
+            const unreadMsgs = notifs.filter((n: any) => !n.is_read);
+            setNotificationList(unreadMsgs);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch applications:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     
-    setAppList(allApps);
-    
-    // Filter info requests for user's applications
-    const userAppIds = allApps.map(a => String(a.id));
-    const userInfoRequests = storedInfoRequests.filter((ir: any) => 
-      userAppIds.includes(String(ir.application_id)) && 
-      ir.status === 'PENDING' &&
-      ir.sender === 'financier' // Only show requests from financier
-    );
-    setPendingInfoRequests(userInfoRequests);
+    fetchData();
+    // Refresh notifications every 15 seconds
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
   }, [user]);
 
-  // Calculate stats
+  // Calculate stats - exclude rejected applications from active counts
+  const rejectedStatuses = ['REJECTED', 'OFFER_REJECTED'];
+  const activeApps = appList.filter(a => !rejectedStatuses.includes(a.status));
   const totalApplications = appList.length;
-  const pendingApplications = appList.filter(a => 
-    ['SUBMITTED', 'SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED'].includes(a.status)
+  // "Käsittelyssä" = only after admin has accepted and sent to financier
+  const pendingApplications = activeApps.filter(a => 
+    ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED'].includes(a.status)
   ).length;
-  const offersAvailable = appList.filter(a => a.status === 'OFFER_SENT').length;
+  // "Hakemuksia" = just submitted, waiting for admin to accept
+  const newApplications = activeApps.filter(a => a.status === 'SUBMITTED').length;
+  const offersAvailable = activeApps.filter(a => a.status === 'OFFER_SENT').length;
+  const contractsReady = activeApps.filter(a => a.status === 'CONTRACT_SENT').length;
   const completed = appList.filter(a => ['SIGNED', 'CLOSED'].includes(a.status)).length;
+  const rejectedCount = appList.filter(a => rejectedStatuses.includes(a.status)).length;
 
   const recentApplications = appList.slice(0, 3);
 
@@ -105,7 +128,7 @@ export default function CustomerDashboard() {
       {/* Welcome header */}
       <div>
         <h1 className="text-2xl font-display font-bold text-midnight-900">
-          Tervetuloa, {user?.first_name || 'Asiakas'}!
+          Tervetuloa, {user?.company_name || user?.first_name || 'Asiakas'}!
         </h1>
         <p className="text-slate-600 mt-1">
           Seuraa rahoitushakemuksiasi ja hallitse tarjouksia.
@@ -145,6 +168,87 @@ export default function CustomerDashboard() {
         </motion.div>
       )}
 
+      {/* CONTRACT READY - Most important after offer */}
+      {contractsReady > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-purple-500 to-violet-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                <FileText className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Sopimus valmiina allekirjoitettavaksi!
+                </h2>
+                <p className="text-purple-100 mt-1">
+                  Rahoitussopimuksesi on valmis. Tarkista ja allekirjoita sopimus.
+                </p>
+              </div>
+            </div>
+            <Link
+              to={`/dashboard/applications/${appList.find(a => a.status === 'CONTRACT_SENT')?.id}?tab=contract`}
+              className="bg-white text-purple-700 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-colors flex items-center"
+            >
+              Avaa sopimus
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* NEW MESSAGES - Colorful banner for ALL unread notifications */}
+      {notificationList.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-6 text-white shadow-lg"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center animate-pulse">
+                <MessageSquare className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Bell className="w-5 h-5 mr-2 animate-bounce" />
+                  {notificationList.length === 1 ? 'Uusi viesti saapunut!' : `${notificationList.length} uutta viestiä!`}
+                </h2>
+                <p className="text-blue-100 mt-1">
+                  {notificationList[0]?.message || 'Olet saanut uuden viestin hakemukseesi liittyen.'}
+                </p>
+              </div>
+            </div>
+            <Link
+              to={notificationList[0]?.action_url || '/dashboard/applications'}
+              className="bg-white text-blue-700 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center"
+            >
+              Lue viesti
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </Link>
+          </div>
+          {/* Show all unread notifications */}
+          {notificationList.length > 1 && (
+            <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
+              {notificationList.slice(0, 5).map((notif) => (
+                <Link
+                  key={notif.id}
+                  to={notif.action_url || '/dashboard/applications'}
+                  className="block bg-white/10 rounded-lg p-3 hover:bg-white/20 transition-colors"
+                >
+                  <p className="font-medium">{notif.title}</p>
+                  <p className="text-sm text-blue-200">{notif.message}</p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
+
       {/* PENDING INFO REQUEST - Financier needs documents */}
       {pendingInfoRequests.length > 0 && (
         <motion.div
@@ -178,20 +282,47 @@ export default function CustomerDashboard() {
         </motion.div>
       )}
 
-      {/* NEW APPLICATIONS - Green highlight for recently submitted */}
-      {appList.filter(a => a.status === 'SUBMITTED' || a.status === 'SUBMITTED_TO_FINANCIER').length > 0 && (
+      {/* SUBMITTED - Blue: waiting for admin approval */}
+      {appList.filter(a => a.status === 'SUBMITTED').length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-50 border-2 border-blue-300 rounded-xl p-4 flex items-start space-x-3"
+        >
+          <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Clock className="w-5 h-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-blue-800 font-bold">Hakemuksesi on vastaanotettu!</p>
+            <p className="text-blue-700 text-sm mt-1">
+              {appList.filter(a => a.status === 'SUBMITTED').length} hakemusta odottaa hyväksyntää. 
+              Saat ilmoituksen kun hakemus siirtyy käsittelyyn.
+            </p>
+          </div>
+          <Link
+            to="/dashboard/applications"
+            className="text-blue-700 hover:text-blue-800 font-medium text-sm flex items-center"
+          >
+            Näytä
+            <ArrowRight className="w-4 h-4 ml-1" />
+          </Link>
+        </motion.div>
+      )}
+
+      {/* IN PROCESSING - Green: admin approved, with financier */}
+      {appList.filter(a => a.status === 'SUBMITTED_TO_FINANCIER').length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="bg-green-50 border-2 border-green-300 rounded-xl p-4 flex items-start space-x-3"
         >
           <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-            <FileText className="w-5 h-5 text-white" />
+            <RefreshCw className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1">
             <p className="text-green-800 font-bold">Hakemuksesi on käsittelyssä!</p>
             <p className="text-green-700 text-sm mt-1">
-              {appList.filter(a => a.status === 'SUBMITTED' || a.status === 'SUBMITTED_TO_FINANCIER').length} hakemusta odottaa rahoittajan käsittelyä. 
+              {appList.filter(a => a.status === 'SUBMITTED_TO_FINANCIER').length} hakemusta on rahoittajan käsittelyssä. 
               Saat ilmoituksen kun tarjous on valmis.
             </p>
           </div>
@@ -223,10 +354,11 @@ export default function CustomerDashboard() {
       )}
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Hakemuksia', value: totalApplications, icon: FileText, color: 'bg-blue-500' },
-          { label: 'Käsittelyssä', value: pendingApplications, icon: Clock, color: 'bg-yellow-500' },
+          { label: 'Yhteensä', value: totalApplications, icon: FileText, color: 'bg-slate-500' },
+          { label: 'Lähetetty', value: newApplications, icon: Clock, color: 'bg-blue-500' },
+          { label: 'Käsittelyssä', value: pendingApplications, icon: RefreshCw, color: 'bg-yellow-500' },
           { label: 'Tarjouksia', value: offersAvailable, icon: TrendingUp, color: 'bg-green-500' },
           { label: 'Valmis', value: completed, icon: CheckCircle, color: 'bg-purple-500' },
         ].map((stat, index) => (
@@ -282,7 +414,8 @@ export default function CustomerDashboard() {
           ) : (
             <div className="space-y-4">
               {recentApplications.map((app) => {
-                const isNew = app.status === 'SUBMITTED' || app.status === 'SUBMITTED_TO_FINANCIER';
+                const isSubmitted = app.status === 'SUBMITTED';
+                const isProcessing = app.status === 'SUBMITTED_TO_FINANCIER';
                 const hasOffer = app.status === 'OFFER_SENT';
                 return (
                   <Link
@@ -291,9 +424,11 @@ export default function CustomerDashboard() {
                     className={`block p-4 rounded-xl transition-colors ${
                       hasOffer 
                         ? 'bg-green-50 border-2 border-green-300 hover:bg-green-100' 
-                        : isNew 
+                        : isProcessing 
                           ? 'bg-green-50 border border-green-200 hover:bg-green-100'
-                          : 'bg-slate-50 hover:bg-slate-100'
+                          : isSubmitted
+                            ? 'bg-blue-50 border border-blue-200 hover:bg-blue-100'
+                            : 'bg-slate-50 hover:bg-slate-100'
                     }`}
                   >
                     <div className="flex items-center justify-between">

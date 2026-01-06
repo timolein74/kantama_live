@@ -12,8 +12,7 @@ import {
   Building2,
   FileText
 } from 'lucide-react';
-import api from '../../lib/api';
-import { offers } from '../../lib/api';
+import { offers, applications, notifications } from '../../lib/api';
 import {
   formatCurrency,
   formatDate,
@@ -25,11 +24,9 @@ import type { Offer, Application } from '../../types';
 
 interface OfferWithApplication extends Offer {
   application?: Application;
+  applications?: Application; // Supabase join uses this name
   financier_name?: string;
 }
-
-// DEMO DATA - Empty for fresh testing
-const demoOffers: OfferWithApplication[] = [];
 
 export default function AdminOffers() {
   const [offerList, setOfferList] = useState<OfferWithApplication[]>([]);
@@ -38,20 +35,24 @@ export default function AdminOffers() {
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    // DEMO MODE: Use demo data + localStorage
-    const token = localStorage.getItem('token');
-    if (token?.startsWith('demo-token-')) {
-      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
-      setOfferList([...demoOffers, ...storedOffers]);
-      setIsLoading(false);
-      return;
-    }
-    
     const fetchOffers = async () => {
       try {
-        const response = await api.get<OfferWithApplication[]>('/offers/admin/all');
-        setOfferList(response.data);
+        const { data, error } = await offers.listAll();
+        if (error) {
+          console.error('Error fetching offers:', error);
+          toast.error('Virhe tarjousten latauksessa');
+          return;
+        }
+        
+        // Transform data to include application in expected format
+        const transformedOffers = (data || []).map((offer: any) => ({
+          ...offer,
+          application: offer.applications, // Supabase join
+        }));
+        
+        setOfferList(transformedOffers);
       } catch (error) {
+        console.error('Failed to fetch offers:', error);
         toast.error('Virhe tarjousten latauksessa');
       } finally {
         setIsLoading(false);
@@ -60,48 +61,48 @@ export default function AdminOffers() {
     fetchOffers();
   }, []);
 
-  const handleApprove = async (offerId: number) => {
-    // DEMO MODE
-    const token = localStorage.getItem('token');
-    if (token?.startsWith('demo-token-')) {
-      // Update offer status in localStorage
-      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
-      const offerIndex = storedOffers.findIndex((o: any) => o.id === offerId);
-      let applicationId: number | null = null;
+  const handleApprove = async (offerId: number | string) => {
+    try {
+      // Update offer status to SENT
+      const { error: offerError } = await offers.update(String(offerId), { status: 'SENT' });
       
-      if (offerIndex >= 0) {
-        storedOffers[offerIndex].status = 'SENT';
-        applicationId = storedOffers[offerIndex].application_id;
-        localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      if (offerError) {
+        throw offerError;
       }
       
-      // Also update application status to OFFER_SENT
-      if (applicationId) {
-        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
-        const appIndex = storedApps.findIndex((a: any) => a.id === applicationId || String(a.id) === String(applicationId));
-        if (appIndex >= 0) {
-          storedApps[appIndex].status = 'OFFER_SENT';
-          localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+      // Find application_id from the offer
+      const offer = offerList.find(o => String(o.id) === String(offerId));
+      if (offer?.application_id) {
+        // Update application status to OFFER_SENT
+        await applications.update(String(offer.application_id), { status: 'OFFER_SENT' } as any);
+        
+        // Get application to find customer user_id
+        const { data: appData } = await applications.get(String(offer.application_id));
+        if (appData?.user_id) {
+          // Create notification for customer
+          try {
+            await notifications.create({
+              user_id: appData.user_id,
+              title: 'Uusi tarjous saatavilla!',
+              message: `Olet saanut rahoitustarjouksen hakemukseesi. Tarkista ja hyväksy tarjous.`,
+              type: 'SUCCESS',
+              action_url: `/dashboard/applications/${offer.application_id}?tab=offers`,
+            });
+          } catch (notifErr) {
+            console.warn('Failed to create notification:', notifErr);
+          }
         }
       }
       
       // Update local state
       setOfferList(prev => prev.map(o => 
-        o.id === offerId ? { ...o, status: 'SENT' } : o
+        String(o.id) === String(offerId) ? { ...o, status: 'SENT' } : o
       ));
       
       toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
-      return;
-    }
-    
-    try {
-      await offers.approve(offerId);
-      toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
-      // Refresh list
-      const response = await api.get<OfferWithApplication[]>('/offers/admin/all');
-      setOfferList(response.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe tarjouksen hyväksymisessä');
+      console.error('Approve offer error:', error);
+      toast.error(error.message || 'Virhe tarjouksen hyväksymisessä');
     }
   };
 
