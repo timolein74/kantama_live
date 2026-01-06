@@ -141,9 +141,9 @@ export default function CustomerApplicationDetail() {
 
         setContractList((contractsData || []) as Contract[]);
 
-        // Fetch messages/info requests
+        // Fetch messages/info requests from app_messages table
         const { data: messagesData } = await supabase
-          .from('messages')
+          .from('app_messages')
           .select('*')
           .eq('application_id', id)
           .order('created_at', { ascending: true });
