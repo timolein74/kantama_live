@@ -42,7 +42,7 @@ export default function AdminFinancierDetail() {
       if (!id) return;
       
       try {
-        const response = await financiers.get(parseInt(id));
+        const response = await financiers.get(id);
         setFinancier(response.data);
       } catch (error) {
         toast.error('Virhe rahoittajan latauksessa');

@@ -154,10 +154,10 @@ export default function FinancierApplicationDetail() {
       
       try {
         const [appRes, offersRes, contractsRes, infoRes] = await Promise.all([
-          applications.get(parseInt(id)),
-          offers.getForApplication(parseInt(id)),
-          contracts.getForApplication(parseInt(id)),
-          infoRequests.getForApplication(parseInt(id))
+          applications.get(id),
+          offers.getForApplication(id),
+          contracts.getForApplication(id),
+          infoRequests.getForApplication(id)
         ]);
         
         setApplication(appRes.data);
@@ -202,7 +202,7 @@ export default function FinancierApplicationDetail() {
       
       const newRequest = {
         id: Date.now(),
-        application_id: parseInt(id),
+        application_id: id,
         financier_id: 1,
         message: infoRequestMessage,
         requested_items: requestedItems,
@@ -246,7 +246,7 @@ export default function FinancierApplicationDetail() {
         : undefined;
       
       await infoRequests.create({
-        application_id: parseInt(id),
+        application_id: id,
         message: infoRequestMessage,
         requested_items: requestedItems
       });
@@ -258,8 +258,8 @@ export default function FinancierApplicationDetail() {
       
       // Refresh data
       const [appRes, infoRes] = await Promise.all([
-        applications.get(parseInt(id)),
-        infoRequests.getForApplication(parseInt(id))
+        applications.get(id),
+        infoRequests.getForApplication(id)
       ]);
       setApplication(appRes.data);
       setInfoRequestList(infoRes.data);
@@ -285,7 +285,7 @@ export default function FinancierApplicationDetail() {
       
       const newOffer = {
         id: Date.now(),
-        application_id: parseInt(id),
+        application_id: id,
         financier_id: 1,
         financier_name: 'Rahoittaja Oy',
         monthly_payment: parseFloat(offerData.monthly_payment),
@@ -332,7 +332,7 @@ export default function FinancierApplicationDetail() {
     
     try {
       await offers.create({
-        application_id: parseInt(id),
+        application_id: id,
         monthly_payment: parseFloat(offerData.monthly_payment),
         term_months: parseInt(offerData.term_months),
         upfront_payment: offerData.upfront_payment ? parseFloat(offerData.upfront_payment) : undefined,
@@ -346,7 +346,7 @@ export default function FinancierApplicationDetail() {
       setShowOfferForm(false);
       
       // Refresh
-      const offersRes = await offers.getForApplication(parseInt(id));
+      const offersRes = await offers.getForApplication(id);
       setOfferList(offersRes.data);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Virhe tarjouksen luomisessa');
@@ -388,7 +388,7 @@ export default function FinancierApplicationDetail() {
       
       const newInfoRequest = {
         id: Date.now(),
-        application_id: parseInt(id),
+        application_id: id,
         type: 'DOCUMENT_REQUEST',
         message: documentRequestMessage || 'Pyydämme seuraavia liitteitä luottopäätöstä varten:',
         documents: requestedDocs,
@@ -430,7 +430,7 @@ export default function FinancierApplicationDetail() {
     
     // API call for production
     try {
-      await infoRequests.create(parseInt(id), {
+      await infoRequests.create(id, {
         message: documentRequestMessage,
         items: Object.entries(documentTypes)
           .filter(([_, v]) => v.selected)
@@ -453,8 +453,8 @@ export default function FinancierApplicationDetail() {
       
       // Refresh
       const [appRes, offersRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        offers.getForApplication(parseInt(id!))
+        applications.get(id!),
+        offers.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setOfferList(offersRes.data);
@@ -477,7 +477,7 @@ export default function FinancierApplicationDetail() {
       
       const newContract: Contract = {
         id: Date.now(),
-        application_id: parseInt(id),
+        application_id: id,
         contract_number: `KNT-SOP-${Date.now().toString().slice(-6)}`,
         status: 'DRAFT',
         lessor_company_name: 'Rahoittaja Oy',
@@ -526,7 +526,7 @@ export default function FinancierApplicationDetail() {
       setShowContractForm(false);
       
       // Refresh
-      const contractsRes = await contracts.getForApplication(parseInt(id));
+      const contractsRes = await contracts.getForApplication(id);
       setContractList(contractsRes.data);
     } catch (error: any) {
       toast.error(error.response?.data?.detail || 'Virhe sopimuksen luomisessa');
@@ -609,8 +609,8 @@ export default function FinancierApplicationDetail() {
       
       // Refresh
       const [appRes, contractsRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        contracts.getForApplication(parseInt(id!))
+        applications.get(id!),
+        contracts.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setContractList(contractsRes.data);

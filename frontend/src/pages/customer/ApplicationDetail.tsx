@@ -219,8 +219,8 @@ export default function CustomerApplicationDetail() {
       toast.success('Luottopäätös on haettu!');
       // Refresh data
       const [appRes, offersRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        offers.getForApplication(parseInt(id!))
+        applications.get(id!),
+        offers.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setOfferList(offersRes.data);
@@ -292,8 +292,8 @@ export default function CustomerApplicationDetail() {
       toast.success('Tarjous hylätty');
       // Refresh data
       const [appRes, offersRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        offers.getForApplication(parseInt(id!))
+        applications.get(id!),
+        offers.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setOfferList(offersRes.data);
@@ -367,8 +367,8 @@ export default function CustomerApplicationDetail() {
       setResponseMessage('');
       // Refresh
       const [appRes, infoRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        infoRequests.getForApplication(parseInt(id!))
+        applications.get(id!),
+        infoRequests.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setInfoRequestList(infoRes.data);
@@ -392,8 +392,8 @@ export default function CustomerApplicationDetail() {
       setSignedFile(null);
       // Refresh
       const [appRes, contractsRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        contracts.getForApplication(parseInt(id!))
+        applications.get(id!),
+        contracts.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setContractList(contractsRes.data);
@@ -463,8 +463,8 @@ export default function CustomerApplicationDetail() {
       toast.success('Sopimus allekirjoitettu!');
       // Refresh
       const [appRes, contractsRes] = await Promise.all([
-        applications.get(parseInt(id!)),
-        contracts.getForApplication(parseInt(id!))
+        applications.get(id!),
+        contracts.getForApplication(id!)
       ]);
       setApplication(appRes.data);
       setContractList(contractsRes.data);

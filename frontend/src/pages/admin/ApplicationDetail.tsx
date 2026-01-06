@@ -1192,8 +1192,8 @@ export default function AdminApplicationDetail() {
                               await offers.approve(offer.id);
                               toast.success('Tarjous hyväksytty ja lähetetty asiakkaalle!');
                               const [offersRes, appRes] = await Promise.all([
-                                offers.getForApplication(parseInt(id!)),
-                                applications.get(parseInt(id!))
+                                offers.getForApplication(id!),
+                                applications.get(id!)
                               ]);
                               setOfferList(offersRes.data);
                               setApplication(appRes.data);
