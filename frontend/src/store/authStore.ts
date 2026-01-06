@@ -114,13 +114,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           isLoading: false 
         });
       } else {
-        // Profiilia ei löydy - uusi käyttäjä, älä poista sessiota
-        // Ohjataan set-password sivulle jos ei ole jo siellä
-        if (!window.location.pathname.includes('/set-password')) {
-          // Uusi käyttäjä tarvitsee profiilin luomisen - ohjaa salasanan asettamiseen
-          window.location.href = '/set-password';
-        }
+        // Profiilia ei löydy - kirjaudu ulos ja ohjaa login-sivulle
+        console.warn('Profile not found for user, logging out');
+        localStorage.removeItem('token');
+        localStorage.removeItem('auth-storage');
+        // Tyhjennä Supabase session
+        await supabase.auth.signOut();
         set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        // Ohjaa login-sivulle jos ei ole jo siellä
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
