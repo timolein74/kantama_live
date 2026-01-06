@@ -257,20 +257,21 @@ export const assignments = {
   },
 };
 
-// Info Requests - Supabase-based
+// Info Requests - Supabase-based (using app_messages table)
 export const infoRequests = {
   create: async (data: { application_id: string; message: string; requested_items?: string[] }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
-    // Create a message with type 'INFO_REQUEST'
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { data: result, error } = await supabase
-      .from('messages')
+      .from('app_messages')
       .insert([{
         application_id: data.application_id,
-        content: data.message,
-        sender_type: 'FINANCIER',
-        message_type: 'INFO_REQUEST',
-        metadata: { requested_items: data.requested_items || [] }
+        message: data.message,
+        sender_id: user?.id,
+        sender_role: 'FINANCIER',
+        is_info_request: true
       }])
       .select()
       .single();
@@ -281,10 +282,10 @@ export const infoRequests = {
     if (!isSupabaseConfigured()) return { data: [], error: null };
     
     const { data, error } = await supabase
-      .from('messages')
+      .from('app_messages')
       .select('*')
       .eq('application_id', String(applicationId))
-      .eq('message_type', 'INFO_REQUEST')
+      .eq('is_info_request', true)
       .order('created_at', { ascending: false });
     return { data: data || [], error };
   },
@@ -292,9 +293,11 @@ export const infoRequests = {
   respond: async (data: { info_request_id: string; message: string; attachment_ids?: string[] }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
+    const { data: { user } } = await supabase.auth.getUser();
+    
     // Get the original info request to get application_id
     const { data: originalRequest } = await supabase
-      .from('messages')
+      .from('app_messages')
       .select('application_id')
       .eq('id', data.info_request_id)
       .single();
@@ -303,22 +306,23 @@ export const infoRequests = {
     
     // Create a response message
     const { data: result, error } = await supabase
-      .from('messages')
+      .from('app_messages')
       .insert([{
         application_id: originalRequest.application_id,
-        content: data.message,
-        sender_type: 'CUSTOMER',
-        message_type: 'INFO_RESPONSE',
+        message: data.message,
+        sender_id: user?.id,
+        sender_role: 'CUSTOMER',
+        is_info_request: false,
         parent_message_id: data.info_request_id
       }])
       .select()
       .single();
     
-    // Mark the original request as responded
+    // Mark the original request as read
     if (result && !error) {
       await supabase
-        .from('messages')
-        .update({ metadata: { responded: true } })
+        .from('app_messages')
+        .update({ is_read: true })
         .eq('id', data.info_request_id);
     }
     
@@ -673,12 +677,12 @@ export const ytj = {
 // These work directly with Supabase, not through axios backend
 import { supabase, isSupabaseConfigured } from './supabase';
 
-// Messages (Supabase-based)
+// Messages (Supabase-based - using app_messages table)
 export const messages = {
   listByApplication: async (applicationId: string) => {
     if (!isSupabaseConfigured()) return { data: [], error: null };
     const { data, error } = await supabase
-      .from('messages')
+      .from('app_messages')
       .select('*')
       .eq('application_id', applicationId)
       .order('created_at', { ascending: true });
@@ -697,7 +701,7 @@ export const messages = {
   }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     const { data, error } = await supabase
-      .from('messages')
+      .from('app_messages')
       .insert(messageData)
       .select()
       .single();
@@ -707,7 +711,7 @@ export const messages = {
   markAsRead: async (id: string) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     const { data, error } = await supabase
-      .from('messages')
+      .from('app_messages')
       .update({ is_read: true })
       .eq('id', id);
     return { data, error };
