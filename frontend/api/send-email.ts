@@ -1,4 +1,9 @@
-const RESEND_API_KEY = process.env.RESEND_API_KEY || 're_EkiyeJhb_AuQ4HwhGAcKPDGqZFuCdk29C';
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+// Check if API key is configured
+if (!RESEND_API_KEY) {
+  console.warn('RESEND_API_KEY not configured - email sending disabled');
+}
 
 export const config = {
   runtime: 'edge',
