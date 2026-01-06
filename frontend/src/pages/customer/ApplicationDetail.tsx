@@ -302,7 +302,7 @@ export default function CustomerApplicationDetail() {
     }
   };
 
-  const handleRespondToInfoRequest = async (infoRequestId: number) => {
+  const handleRespondToInfoRequest = async (infoRequestId: string) => {
     if (!responseMessage.trim()) {
       toast.error('Kirjoita viesti');
       return;
@@ -524,7 +524,7 @@ export default function CustomerApplicationDetail() {
     );
   }
 
-  const pendingInfoRequest = infoRequestList.find(ir => ir.status === 'PENDING');
+  const pendingInfoRequest = infoRequestList.find(ir => !(ir as any).is_read);
   const activeOffer = offerList.find(o => o.status === 'SENT');
   const pendingContract = contractList.find(c => c.status === 'SENT');
 
@@ -1406,11 +1406,9 @@ export default function CustomerApplicationDetail() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-midnight-900">Lisätietopyyntö</h3>
                     <span className={`badge ${
-                      ir.status === 'PENDING' ? 'badge-yellow' :
-                      ir.status === 'RESPONDED' ? 'badge-green' : 'badge-gray'
+                      !(ir as any).is_read ? 'badge-yellow' : 'badge-green'
                     }`}>
-                      {ir.status === 'PENDING' ? 'Odottaa vastausta' :
-                       ir.status === 'RESPONDED' ? 'Vastattu' : 'Suljettu'}
+                      {!(ir as any).is_read ? 'Odottaa vastausta' : 'Vastattu'}
                     </span>
                   </div>
 
@@ -1418,7 +1416,7 @@ export default function CustomerApplicationDetail() {
                     <p className="text-sm text-amber-600 mb-1 font-medium">Rahoittajan pyyntö:</p>
                     <p className="text-amber-800 mb-3">{ir.message}</p>
                     {/* Show document list with interactive checkboxes */}
-                    {(ir as any).documents && (ir as any).documents.length > 0 && ir.status === 'PENDING' && (
+                    {(ir as any).documents && (ir as any).documents.length > 0 && !(ir as any).is_read && (
                       <div className="mt-3 space-y-3">
                         <p className="text-sm font-medium text-amber-700 mb-2">Liitä pyydetyt dokumentit:</p>
                         {(ir as any).documents.map((doc: any, i: number) => (
@@ -1476,7 +1474,7 @@ export default function CustomerApplicationDetail() {
                       </div>
                     )}
                     {/* Show static document list for already responded requests */}
-                    {(ir as any).documents && (ir as any).documents.length > 0 && ir.status !== 'PENDING' && (
+                    {(ir as any).documents && (ir as any).documents.length > 0 && (ir as any).is_read && (
                       <div className="mt-3">
                         <p className="text-sm font-medium text-amber-700 mb-2">Pyydetyt liitteet:</p>
                         <ul className="space-y-2">
@@ -1517,7 +1515,7 @@ export default function CustomerApplicationDetail() {
                   )}
 
                   {/* Response form */}
-                  {ir.status === 'PENDING' && (
+                  {!(ir as any).is_read && (
                     <div className="border-t pt-4">
                       <textarea
                         value={responseMessage}
