@@ -436,26 +436,40 @@ export const applications = {
     
     return { data, error };
   },
-  get: async (id: string) => {
+  get: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const idStr = String(id);
+    console.log('Fetching application with id:', idStr);
     
     const { data, error } = await supabase
       .from('applications')
       .select('*')
-      .eq('id', id)
+      .eq('id', idStr)
       .single();
+    
+    if (error) {
+      console.error('Error fetching application:', error);
+    }
     
     return { data, error };
   },
-  update: async (id: string, updateData: any) => {
+  update: async (id: string | number, updateData: any) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const idStr = String(id);
+    console.log('Updating application with id:', idStr, updateData);
     
     const { data, error } = await supabase
       .from('applications')
       .update(updateData)
-      .eq('id', id)
+      .eq('id', idStr)
       .select()
       .single();
+    
+    if (error) {
+      console.error('Error updating application:', error);
+    }
     
     return { data, error };
   }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="shadow2" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="3" dy="3" stdDeviation="5" flood-color="#000000" flood-opacity="0.7"/>
+    </filter>
+    <linearGradient id="greenGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4ade80"/>
+      <stop offset="100%" style="stop-color:#22c55e"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Main brand text - centered -->
+  <text x="600" y="220" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="90" font-weight="800" filter="url(#shadow2)">
+    <tspan fill="url(#greenGrad2)">Juuri</tspan><tspan fill="#ffffff">Rahoitus</tspan>
+  </text>
+  
+  <!-- Tagline -->
+  <text x="600" y="270" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="600" fill="#ffffff" filter="url(#shadow2)" letter-spacing="4">
+    YRITYSRAHOITUSTA HELPOSTI
+  </text>
+</svg>
+
+

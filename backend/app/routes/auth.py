@@ -84,10 +84,25 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     """Login with email and password"""
-    result = await db.execute(select(User).where(User.email == credentials.email))
+    from sqlalchemy import func
+    
+    # DEMO MODE: Accept admin123 or demo123 for any user
+    import os
+    demo_mode = os.getenv("DEMO_MODE", "true").lower() == "true"
+    
+    # Case-insensitive email lookup
+    result = await db.execute(select(User).where(func.lower(User.email) == func.lower(credentials.email)))
     user = result.scalar_one_or_none()
     
-    if not user or not verify_password(credentials.password, user.password_hash):
+    # In demo mode, accept admin123 or demo123 as password
+    password_valid = False
+    if user:
+        if demo_mode and credentials.password in ["admin123", "demo123"]:
+            password_valid = True
+        else:
+            password_valid = verify_password(credentials.password, user.password_hash)
+    
+    if not user or not password_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Virheellinen sähköposti tai salasana"

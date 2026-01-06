@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Juuri Rahoitus - Newsletter Header</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    .newsletter-header {
+      position: relative;
+      width: 1200px;
+      height: 400px;
+      overflow: hidden;
+    }
+    
+    .newsletter-header img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 30%;
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.4) 100%);
+    }
+    
+    .text-container {
+      position: absolute;
+      bottom: 40px;
+      right: 50px;
+      text-align: right;
+    }
+    
+    .brand-text {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 72px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      text-shadow: 3px 3px 6px rgba(0,0,0,0.5), 0 0 30px rgba(0,0,0,0.3);
+    }
+    
+    .juuri {
+      color: #34d399;
+    }
+    
+    .rahoitus {
+      color: #ffffff;
+    }
+    
+    .tagline {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-top: 8px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body style="background: #1a1a1a; display: flex; justify-content: center; align-items: center; min-height: 100vh;">
+  
+  <div class="newsletter-header">
+    <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCASwBLADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD" alt="Tree with roots">
+    <div class="overlay"></div>
+    <div class="text-container">
+      <div class="brand-text">
+        <span class="juuri">Juuri</span><span class="rahoitus">Rahoitus</span>
+      </div>
+      <div class="tagline">YRITYSRAHOITUSTA HELPOSTI</div>
+    </div>
+  </div>
+
+</body>
+</html>
+
+

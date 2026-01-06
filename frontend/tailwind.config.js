@@ -11,19 +11,6 @@ export default {
         display: ['Clash Display', 'system-ui', 'sans-serif'],
       },
       colors: {
-        efund: {
-          50: '#eef5ff',
-          100: '#d9e8ff',
-          200: '#bbd8ff',
-          300: '#8cc0ff',
-          400: '#559dff',
-          500: '#2d75ff',
-          600: '#1651f5',
-          700: '#0f3de1',
-          800: '#1333b6',
-          900: '#16308f',
-          950: '#111d57',
-        },
         midnight: {
           50: '#f0f4ff',
           100: '#e0e8ff',
@@ -40,7 +27,7 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'hero-pattern': 'linear-gradient(135deg, #0f0d2e 0%, #1e1b4b 50%, #111d57 100%)',
+        'hero-pattern': 'linear-gradient(135deg, #052e16 0%, #14532d 50%, #166534 100%)',
       },
       animation: {
         'float': 'float 6s ease-in-out infinite',
@@ -60,4 +47,3 @@ export default {
   },
   plugins: [],
 }
-

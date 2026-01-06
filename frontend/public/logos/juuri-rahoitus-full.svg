@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="350" height="70" viewBox="0 0 350 70" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399"/>
+      <stop offset="50%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Icon circle -->
+  <circle cx="35" cy="35" r="32" fill="url(#brandGrad)"/>
+  
+  <!-- Tree/Root symbol -->
+  <g transform="translate(35, 35)">
+    <path d="M0 -18 L0 18" stroke="white" stroke-width="4" stroke-linecap="round"/>
+    <path d="M0 -10 L-9 -20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    <path d="M0 -10 L9 -20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    <path d="M0 -3 L-6 -10" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M0 -3 L6 -10" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M0 10 L-10 20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    <path d="M0 10 L10 20" stroke="white" stroke-width="3" stroke-linecap="round"/>
+    <path d="M0 14 L-6 22" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M0 14 L6 22" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Juuri text -->
+  <text x="80" y="47" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="700" fill="#10b981">
+    Juuri
+  </text>
+  
+  <!-- Rahoitus text -->
+  <text x="162" y="47" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="36" font-weight="700" fill="#1e293b">
+    Rahoitus
+  </text>
+</svg>
+
+

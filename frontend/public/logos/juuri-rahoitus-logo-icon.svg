@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="80" viewBox="0 0 400 80" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399"/>
+      <stop offset="100%" style="stop-color:#10b981"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Tree/Root icon -->
+  <g transform="translate(10, 10)">
+    <!-- Stylized tree with roots -->
+    <path d="M30 5 L30 25 M30 15 L20 8 M30 15 L40 8 M30 25 L30 55 M30 45 L20 55 M30 45 L40 55" 
+          stroke="url(#emeraldGrad)" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <!-- Circle around -->
+    <circle cx="30" cy="30" r="28" stroke="url(#emeraldGrad)" stroke-width="2" fill="none"/>
+  </g>
+  
+  <!-- Juuri text -->
+  <text x="80" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="40" font-weight="700" fill="url(#emeraldGrad)">
+    Juuri
+  </text>
+  
+  <!-- Rahoitus text -->
+  <text x="175" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="40" font-weight="700" fill="#1e293b">
+    Rahoitus
+  </text>
+</svg>
+
+

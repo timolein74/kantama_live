@@ -1,0 +1,1643 @@
+import { useEffect, useState, useRef } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import {
+  ArrowLeft,
+  FileText,
+  Building2,
+  User,
+  Calendar,
+  Euro,
+  Clock,
+  MessageSquare,
+  CheckCircle,
+  XCircle,
+  Upload,
+  Download,
+  Send,
+  TrendingUp,
+  RefreshCw,
+  AlertCircle,
+  FileCheck,
+  Printer,
+  Edit,
+  Eye,
+  X,
+  Rocket,
+  Search,
+  FileEdit,
+  Gift,
+  PenTool,
+  PartyPopper,
+  Shield,
+  Smartphone,
+  CreditCard
+} from 'lucide-react';
+import { applications, offers, contracts, infoRequests, files } from '../../lib/api';
+import {
+  formatCurrency,
+  formatDate,
+  formatDateTime,
+  getStatusLabel,
+  getStatusColor,
+  getApplicationTypeLabel,
+  getOfferStatusLabel,
+  formatFileSize
+} from '../../lib/utils';
+import LoadingSpinner from '../../components/LoadingSpinner';
+import { ContractDocument } from '../../components/contract';
+import type { Application, Offer, InfoRequest } from '../../types';
+import type { Contract } from '../../types/contract';
+
+// DEMO DATA - Start empty, all data created via forms
+const demoApplications: Record<string, Application> = {};
+
+// Demo offers - empty, created by financier
+const demoOffers: Offer[] = [];
+
+// Demo contracts - empty, created from offers
+const demoContracts: Contract[] = [];
+
+export default function CustomerApplicationDetail() {
+  const { id } = useParams<{ id: string }>();
+  
+  // DEMO MODE: Combine static + localStorage data
+  const [application, setApplication] = useState<Application | null>(null);
+  const [offerList, setOfferList] = useState<Offer[]>([]);
+  const [contractList, setContractList] = useState<Contract[]>([]);
+  const [infoRequestList, setInfoRequestList] = useState<InfoRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'details' | 'offers' | 'contracts' | 'messages'>('details');
+  
+  // Info request response
+  const [responseMessage, setResponseMessage] = useState('');
+  const [isResponding, setIsResponding] = useState(false);
+  const [selectedDocs, setSelectedDocs] = useState<Record<string, { checked: boolean; file: File | null }>>({});
+  
+  // Initialize document checkboxes when info request changes
+  const initDocumentSelection = (docs: any[]) => {
+    const initial: Record<string, { checked: boolean; file: File | null }> = {};
+    docs.forEach(doc => {
+      initial[doc.type] = { checked: false, file: null };
+    });
+    setSelectedDocs(initial);
+  };
+  
+  // Offer question
+  const [showOfferQuestionForm, setShowOfferQuestionForm] = useState<number | null>(null);
+  const [offerQuestion, setOfferQuestion] = useState('');
+  const [isSendingQuestion, setIsSendingQuestion] = useState(false);
+  
+  // Contract upload
+  const [signedFile, setSignedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSigning, setIsSigning] = useState(false);
+  const [showContractPreview, setShowContractPreview] = useState<Contract | null>(null);
+  const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState<number | null>(null); // Contract ID for auth modal
+  const contractDocRef = useRef<HTMLDivElement>(null);
+
+  // Load application from demo data or localStorage
+  useEffect(() => {
+    if (!id) return;
+    
+    // Check localStorage first (may have updated status), then static demo data
+    const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+    const storedApp = storedApps.find((a: any) => String(a.id) === id);
+    const demoApp = demoApplications[id];
+    
+    // Prefer localStorage version (more recent)
+    setApplication(storedApp || demoApp || null);
+    
+    // Load offers for this application from localStorage + demo
+    // Customer only sees offers that have been APPROVED by admin or SENT/ACCEPTED
+    const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+    const appOffers = storedOffers.filter((o: any) => 
+      (String(o.application_id) === id || 
+       o.application?.id === id ||
+       String(o.application?.id) === id) &&
+      // Only show offers that admin has approved
+      ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'].includes(o.status)
+    );
+    
+    // Add demo offers for this application (filter to approved ones only)
+    const approvedDemoOffers = demoOffers.filter(o => 
+      String(o.application_id) === id &&
+      ['APPROVED', 'SENT', 'ACCEPTED', 'REJECTED'].includes(o.status)
+    );
+    
+    // Merge - prefer localStorage version
+    const mergedOffers = [...approvedDemoOffers];
+    appOffers.forEach((ao: any) => {
+      const idx = mergedOffers.findIndex(m => m.id === ao.id);
+      if (idx >= 0) {
+        mergedOffers[idx] = ao;
+      } else {
+        mergedOffers.push(ao);
+      }
+    });
+    setOfferList(mergedOffers);
+    
+    // Load contracts from localStorage + demo contracts
+    const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+    const storedAppContracts = storedContracts.filter((c: any) => String(c.application_id) === id);
+    
+    // Include demo contracts for this application
+    const demoAppContracts = demoContracts.filter(c => String(c.application_id) === id);
+    
+    // Merge - prefer localStorage version
+    const mergedContracts = [...demoAppContracts];
+    storedAppContracts.forEach((sc: any) => {
+      const idx = mergedContracts.findIndex(m => m.id === sc.id);
+      if (idx >= 0) {
+        mergedContracts[idx] = sc;
+      } else {
+        mergedContracts.push(sc);
+      }
+    });
+    setContractList(mergedContracts);
+    
+    // Load info requests from localStorage
+    const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+    const appInfoRequests = storedInfoRequests.filter((ir: any) => String(ir.application_id) === id);
+    setInfoRequestList(appInfoRequests);
+    
+    // Auto-select contracts tab if contract is sent
+    const currentApp = storedApp || demoApp;
+    if (currentApp?.status === 'CONTRACT_SENT' && mergedContracts.length > 0) {
+      setActiveTab('contracts');
+    }
+    
+    // Auto-select messages tab if there's a pending info request
+    if (appInfoRequests.some((ir: any) => ir.status === 'PENDING' && ir.sender === 'financier')) {
+      setActiveTab('messages');
+    }
+    
+    setIsLoading(false);
+  }, [id]);
+
+  const handleAcceptOffer = async (offerId: number) => {
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Update offer in localStorage - find in existing or add new entry
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      const offerIndex = storedOffers.findIndex((o: any) => o.id === offerId);
+      
+      // Find the offer from current state
+      const currentOffer = offerList.find(o => o.id === offerId);
+      
+      if (offerIndex >= 0) {
+        storedOffers[offerIndex].status = 'ACCEPTED';
+      } else if (currentOffer) {
+        // If offer was from demoOffers (not in localStorage), add it with ACCEPTED status
+        storedOffers.push({ ...currentOffer, status: 'ACCEPTED' });
+      }
+      localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      
+      // Update local state
+      setOfferList(prev => prev.map(o => 
+        o.id === offerId ? { ...o, status: 'ACCEPTED' } : o
+      ));
+      
+      // Update application status
+      if (application) {
+        const updatedApp = { ...application, status: 'OFFER_ACCEPTED' };
+        setApplication(updatedApp);
+        
+        // Update in localStorage - add or update
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex] = updatedApp;
+        } else {
+          // If from demo data, add it to localStorage
+          storedApps.push(updatedApp);
+        }
+        localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+      }
+      
+      toast.success('Luottopäätös on haettu! Rahoittaja ottaa sinuun yhteyttä.');
+      return;
+    }
+    
+    try {
+      await offers.accept(offerId);
+      toast.success('Luottopäätös on haettu!');
+      // Refresh data
+      const [appRes, offersRes] = await Promise.all([
+        applications.get(parseInt(id!)),
+        offers.getForApplication(parseInt(id!))
+      ]);
+      setApplication(appRes.data);
+      setOfferList(offersRes.data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Virhe tarjouksen hyväksymisessä');
+    }
+  };
+
+  const handleSendOfferQuestion = async (offerId: number) => {
+    if (!offerQuestion.trim()) {
+      toast.error('Kirjoita kysymyksesi');
+      return;
+    }
+    
+    setIsSendingQuestion(true);
+    
+    // DEMO MODE: Simulate question sending
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Store question in localStorage
+      const questions = JSON.parse(localStorage.getItem('demo-offer-questions') || '[]');
+      questions.push({
+        id: Date.now(),
+        offer_id: offerId,
+        application_id: id,
+        message: offerQuestion,
+        created_at: new Date().toISOString(),
+        status: 'PENDING',
+      });
+      localStorage.setItem('demo-offer-questions', JSON.stringify(questions));
+      
+      toast.success('Kysymys lähetetty rahoittajalle!');
+      setOfferQuestion('');
+      setShowOfferQuestionForm(null);
+      setIsSendingQuestion(false);
+      return;
+    }
+    
+    // API call would go here
+    toast.success('Kysymys lähetetty');
+    setIsSendingQuestion(false);
+  };
+
+  const handleRejectOffer = async (offerId: number) => {
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      // Update offer in localStorage
+      const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
+      const offerIndex = storedOffers.findIndex((o: any) => o.id === offerId);
+      if (offerIndex >= 0) {
+        storedOffers[offerIndex].status = 'REJECTED';
+        localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
+      }
+      
+      // Update local state
+      setOfferList(prev => prev.map(o => 
+        o.id === offerId ? { ...o, status: 'REJECTED' } : o
+      ));
+      
+      toast.success('Tarjous hylätty');
+      return;
+    }
+    
+    try {
+      await offers.reject(offerId);
+      toast.success('Tarjous hylätty');
+      // Refresh data
+      const [appRes, offersRes] = await Promise.all([
+        applications.get(parseInt(id!)),
+        offers.getForApplication(parseInt(id!))
+      ]);
+      setApplication(appRes.data);
+      setOfferList(offersRes.data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Virhe tarjouksen hylkäämisessä');
+    }
+  };
+
+  const handleRespondToInfoRequest = async (infoRequestId: number) => {
+    if (!responseMessage.trim()) {
+      toast.error('Kirjoita viesti');
+      return;
+    }
+    
+    setIsResponding(true);
+    
+    // DEMO MODE
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Get the info request
+      const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
+      const irIndex = storedInfoRequests.findIndex((ir: any) => ir.id === infoRequestId);
+      
+      if (irIndex >= 0) {
+        // Add response to info request
+        const newResponse = {
+          id: Date.now(),
+          message: responseMessage,
+          created_at: new Date().toISOString(),
+          user: { email: 'customer@example.com', first_name: 'Asiakas' },
+          // Include attached files info
+          attachments: Object.entries(selectedDocs)
+            .filter(([_, v]) => v.checked && v.file)
+            .map(([key, v]) => ({
+              type: key,
+              filename: v.file?.name
+            }))
+        };
+        
+        if (!storedInfoRequests[irIndex].responses) {
+          storedInfoRequests[irIndex].responses = [];
+        }
+        storedInfoRequests[irIndex].responses.push(newResponse);
+        storedInfoRequests[irIndex].status = 'RESPONDED';
+        storedInfoRequests[irIndex].sender = 'customer'; // Mark as customer response
+        storedInfoRequests[irIndex].responded_at = new Date().toISOString();
+        
+        localStorage.setItem('demo-info-requests', JSON.stringify(storedInfoRequests));
+        
+        // Update local state
+        setInfoRequestList(prev => prev.map(ir => 
+          ir.id === infoRequestId 
+            ? { ...ir, status: 'RESPONDED', responses: [...(ir.responses || []), newResponse as any] }
+            : ir
+        ));
+      }
+      
+      toast.success('Vastaus ja liitteet lähetetty!');
+      setResponseMessage('');
+      setSelectedDocs({});
+      setIsResponding(false);
+      return;
+    }
+    
+    try {
+      await infoRequests.respond({
+        info_request_id: infoRequestId,
+        message: responseMessage
+      });
+      toast.success('Vastaus lähetetty');
+      setResponseMessage('');
+      // Refresh
+      const [appRes, infoRes] = await Promise.all([
+        applications.get(parseInt(id!)),
+        infoRequests.getForApplication(parseInt(id!))
+      ]);
+      setApplication(appRes.data);
+      setInfoRequestList(infoRes.data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Virhe vastauksen lähettämisessä');
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
+  const handleUploadSignedContract = async (contractId: number) => {
+    if (!signedFile) {
+      toast.error('Valitse tiedosto');
+      return;
+    }
+    
+    setIsUploading(true);
+    try {
+      await contracts.uploadSigned(contractId, signedFile);
+      toast.success('Allekirjoitettu sopimus lähetetty!');
+      setSignedFile(null);
+      // Refresh
+      const [appRes, contractsRes] = await Promise.all([
+        applications.get(parseInt(id!)),
+        contracts.getForApplication(parseInt(id!))
+      ]);
+      setApplication(appRes.data);
+      setContractList(contractsRes.data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Virhe sopimuksen lataamisessa');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Show bank authentication modal before signing
+  const handleInitiateSign = (contractId: number) => {
+    setShowAuthModal(contractId);
+  };
+
+  // Actually sign after confirmation
+  const handleSignContract = async (contractId: number) => {
+    setShowAuthModal(null); // Close modal
+    setIsSigning(true);
+    
+    // DEMO MODE: Simulate contract signing
+    const token = localStorage.getItem('token');
+    if (token?.startsWith('demo-token-')) {
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Get user info from localStorage
+      const authData = JSON.parse(localStorage.getItem('auth-storage') || '{}');
+      const user = authData.state?.user;
+      const signerName = user ? `${user.first_name} ${user.last_name}` : 'Asiakas';
+      
+      // Update contract in localStorage
+      const storedContracts = JSON.parse(localStorage.getItem('demo-contracts') || '[]');
+      const contractIndex = storedContracts.findIndex((c: any) => c.id === contractId);
+      if (contractIndex >= 0) {
+        storedContracts[contractIndex].status = 'SIGNED';
+        storedContracts[contractIndex].signed_at = new Date().toISOString();
+        storedContracts[contractIndex].lessee_signer_name = signerName;
+        localStorage.setItem('demo-contracts', JSON.stringify(storedContracts));
+        
+        // Update local state
+        setContractList(prev => prev.map(c => 
+          c.id === contractId ? { 
+            ...c, 
+            status: 'SIGNED', 
+            signed_at: new Date().toISOString(),
+            lessee_signer_name: signerName 
+          } : c
+        ));
+      }
+      
+      // Update application status to SIGNED
+      if (application) {
+        const updatedApp = { ...application, status: 'SIGNED' };
+        setApplication(updatedApp);
+        
+        // Update in localStorage
+        const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
+        const appIndex = storedApps.findIndex((a: any) => String(a.id) === id);
+        if (appIndex >= 0) {
+          storedApps[appIndex] = updatedApp;
+        } else {
+          storedApps.push(updatedApp);
+        }
+        localStorage.setItem('demo-applications', JSON.stringify(storedApps));
+      }
+      
+      toast.success('Sopimus allekirjoitettu onnistuneesti!');
+      setIsSigning(false);
+      return;
+    }
+    
+    try {
+      await contracts.sign(contractId, 'Finland');
+      toast.success('Sopimus allekirjoitettu!');
+      // Refresh
+      const [appRes, contractsRes] = await Promise.all([
+        applications.get(parseInt(id!)),
+        contracts.getForApplication(parseInt(id!))
+      ]);
+      setApplication(appRes.data);
+      setContractList(contractsRes.data);
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || 'Virhe sopimuksen allekirjoittamisessa');
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  const handlePrintContract = (contract: Contract) => {
+    setShowContractPreview(contract);
+    setTimeout(() => {
+      const printWindow = window.open('', '_blank');
+      if (printWindow && contractDocRef.current) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>Rahoitusleasingsopimus - ${contract.contract_number}</title>
+            <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+            <style>
+              @media print {
+                body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+              }
+            </style>
+          </head>
+          <body>
+            ${contractDocRef.current.innerHTML}
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        setTimeout(() => printWindow.print(), 500);
+      }
+      setShowContractPreview(null);
+    }, 100);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!application) {
+    return (
+      <div className="text-center py-12">
+        <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+        <h2 className="text-xl font-medium text-midnight-900 mb-2">Hakemusta ei löytynyt</h2>
+        <Link to="/dashboard/applications" className="btn-primary mt-4">
+          Takaisin hakemuksiin
+        </Link>
+      </div>
+    );
+  }
+
+  const pendingInfoRequest = infoRequestList.find(ir => ir.status === 'PENDING');
+  const activeOffer = offerList.find(o => o.status === 'SENT');
+  const pendingContract = contractList.find(c => c.status === 'SENT');
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <Link
+            to="/dashboard/applications"
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </Link>
+          <div>
+            <div className="flex items-center space-x-3">
+              <h1 className="text-2xl font-display font-bold text-midnight-900">
+                {application.reference_number}
+              </h1>
+              <span className={getStatusColor(application.status)}>
+                {getStatusLabel(application.status)}
+              </span>
+            </div>
+            <p className="text-slate-600 mt-1">{getApplicationTypeLabel(application.application_type)}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Action alerts */}
+      {application.status === 'INFO_REQUESTED' && pendingInfoRequest && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start space-x-3"
+        >
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-yellow-800 font-medium">Lisätietopyyntö</p>
+            <p className="text-yellow-700 text-sm mt-1">
+              Rahoittaja pyytää lisätietoja hakemukseesi. Vastaa alla.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {application.status === 'OFFER_SENT' && activeOffer && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start space-x-3"
+        >
+          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-green-800 font-medium">Tarjous saatavilla!</p>
+            <p className="text-green-700 text-sm mt-1">
+              Olet saanut rahoitustarjouksen. Tarkista tarjous ja hyväksy tai hylkää se.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {application.status === 'CONTRACT_SENT' && pendingContract && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start space-x-3"
+        >
+          <FileCheck className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-purple-800 font-medium">Sopimus odottaa allekirjoitusta</p>
+            <p className="text-purple-700 text-sm mt-1">
+              Lataa sopimus, allekirjoita se ja palauta allekirjoitettu versio.
+            </p>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Tabs */}
+      <div className="border-b border-slate-200">
+        <nav className="flex space-x-8">
+          {[
+            { id: 'details', label: 'Tiedot', icon: FileText },
+            { id: 'offers', label: 'Tarjoukset', icon: Euro, count: offerList.length },
+            { id: 'contracts', label: 'Sopimukset', icon: FileCheck, count: contractList.length },
+            { id: 'messages', label: 'Viestit', icon: MessageSquare, count: infoRequestList.length },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center space-x-2 py-4 border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'border-Kantama-600 text-Kantama-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <tab.icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className="bg-slate-100 text-slate-600 text-xs px-2 py-0.5 rounded-full">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {/* Tab content */}
+      <div>
+        {activeTab === 'details' && (
+          <div className="space-y-6">
+            {/* Application Timeline */}
+            <div className="card">
+              <h3 className="font-semibold text-midnight-900 mb-6 flex items-center">
+                <Clock className="w-5 h-5 mr-2 text-efund-600" />
+                Hakemuksen eteneminen
+              </h3>
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-slate-200" />
+                
+                {/* Timeline steps */}
+                <div className="space-y-6">
+                  {(() => {
+                    // Map application status to timeline step index (0-4)
+                    // 0=Hakemus lähetetty, 1=Käsittelyssä, 2=Tarjous saatavilla, 3=Sopimus, 4=Valmis
+                    const getStepForStatus = (status: string): number => {
+                      switch(status) {
+                        case 'SUBMITTED': return 0;
+                        case 'SUBMITTED_TO_FINANCIER': return 1;
+                        case 'INFO_REQUESTED': return 1;
+                        case 'OFFER_RECEIVED': return 2;
+                        case 'OFFER_SENT': return 2;
+                        case 'OFFER_ACCEPTED': return 2; // Still at "Tarjous" step - waiting for contract
+                        case 'CONTRACT_SENT': return 3;  // Now at "Sopimus" step
+                        case 'SIGNED': return 4;
+                        case 'CLOSED': return 4;
+                        default: return 0;
+                      }
+                    };
+                    
+                    const currentStepIndex = getStepForStatus(application.status);
+                    
+                    return [
+                      { 
+                        id: 'submitted', 
+                        label: 'Hakemus lähetetty', 
+                        description: 'Hakemuksesi on vastaanotettu',
+                        icon: Rocket,
+                      },
+                      { 
+                        id: 'processing', 
+                        label: 'Käsittelyssä', 
+                        description: 'Rahoittaja käsittelee hakemustasi',
+                        icon: Search,
+                      },
+                      { 
+                        id: 'offer_ready', 
+                        label: application.status === 'OFFER_ACCEPTED' ? 'Tarjous hyväksytty' : 'Tarjous saatavilla', 
+                        description: application.status === 'OFFER_ACCEPTED' ? 'Odotetaan sopimusta rahoittajalta' : 'Tarkista ja hyväksy tarjous',
+                        icon: Gift,
+                      },
+                      { 
+                        id: 'contract', 
+                        label: 'Sopimus', 
+                        description: 'Allekirjoita sopimus',
+                        icon: PenTool,
+                      },
+                      { 
+                        id: 'complete', 
+                        label: 'Valmis', 
+                        description: 'Rahoitus on valmis!',
+                        icon: PartyPopper,
+                      },
+                    ].map((step, index) => {
+                      const isCompleted = index < currentStepIndex;
+                      const isCurrentStep = index === currentStepIndex;
+                      const isActive = index <= currentStepIndex;
+                    
+                    return (
+                      <div key={step.id} className="relative flex items-start pl-14">
+                        {/* Step icon */}
+                        <div className={`absolute left-0 w-12 h-12 rounded-full flex items-center justify-center border-4 ${
+                          isCurrentStep 
+                            ? 'bg-efund-600 border-efund-200 text-white animate-pulse'
+                            : isCompleted
+                              ? 'bg-green-500 border-green-200 text-white'
+                              : 'bg-slate-100 border-slate-200 text-slate-400'
+                        }`}>
+                          {isCompleted ? (
+                            <CheckCircle className="w-6 h-6" />
+                          ) : (
+                            <step.icon className="w-5 h-5" />
+                          )}
+                        </div>
+                        
+                        {/* Step content */}
+                        <div className={`pb-6 ${isActive ? '' : 'opacity-50'}`}>
+                          <h4 className={`font-semibold ${isActive ? 'text-midnight-900' : 'text-slate-500'}`}>
+                            {step.label}
+                            {isCurrentStep && (
+                              <span className="ml-2 text-xs bg-efund-100 text-efund-700 px-2 py-0.5 rounded-full">
+                                Nyt
+                              </span>
+                            )}
+                          </h4>
+                          <p className={`text-sm ${isActive ? 'text-slate-600' : 'text-slate-400'}`}>
+                            {step.description}
+                          </p>
+                          {isCurrentStep && application.updated_at && (
+                            <p className="text-xs text-slate-400 mt-1">
+                              Päivitetty: {formatDateTime(application.updated_at)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  });
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+            {/* Application info */}
+            <div className="card">
+              <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-efund-600" />
+                Hakemuksen tiedot
+              </h3>
+              <dl className="space-y-3">
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Tyyppi</dt>
+                  <dd className="font-medium text-midnight-900">
+                    <span className={`inline-flex items-center ${
+                      application.application_type === 'LEASING' ? 'text-blue-600' : 'text-emerald-600'
+                    }`}>
+                      {application.application_type === 'LEASING' ? (
+                        <TrendingUp className="w-4 h-4 mr-1" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-1" />
+                      )}
+                      {getApplicationTypeLabel(application.application_type)}
+                    </span>
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Kohde</dt>
+                  <dd className="font-medium text-midnight-900">{application.equipment_description}</dd>
+                </div>
+                {application.equipment_supplier && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Toimittaja</dt>
+                    <dd className="font-medium text-midnight-900">{application.equipment_supplier}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Summa</dt>
+                  <dd className="font-medium text-midnight-900">{formatCurrency(application.equipment_price)}</dd>
+                </div>
+                {application.requested_term_months && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Toivottu sopimuskausi</dt>
+                    <dd className="font-medium text-midnight-900">{application.requested_term_months} kk</dd>
+                  </div>
+                )}
+                {(application as any).link_to_item && (
+                  <div className="flex justify-between">
+                    <dt className="text-slate-500">Linkki kohteeseen</dt>
+                    <dd className="font-medium">
+                      <a href={(application as any).link_to_item} target="_blank" rel="noopener noreferrer" className="text-Kantama-600 hover:text-Kantama-700 underline">
+                        Avaa linkki →
+                      </a>
+                    </dd>
+                  </div>
+                )}
+                {(application as any).additional_info && (
+                  <div className="pt-3 border-t">
+                    <dt className="text-slate-500 mb-1">Lisätiedot kohteesta</dt>
+                    <dd className="text-midnight-900">{(application as any).additional_info}</dd>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Luotu</dt>
+                  <dd className="font-medium text-midnight-900">{formatDateTime(application.created_at)}</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Company info */}
+            <div className="card">
+              <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
+                <Building2 className="w-5 h-5 mr-2 text-Kantama-600" />
+                Yrityksen tiedot
+              </h3>
+              <dl className="space-y-3">
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Yritys</dt>
+                  <dd className="font-medium text-midnight-900">{application.company_name}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Y-tunnus</dt>
+                  <dd className="font-medium text-midnight-900">{application.business_id}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Yhteyshenkilö</dt>
+                  <dd className="font-medium text-midnight-900">{application.contact_person || '-'}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Sähköposti</dt>
+                  <dd className="font-medium text-midnight-900">{application.contact_email}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-slate-500">Puhelin</dt>
+                  <dd className="font-medium text-midnight-900">{application.contact_phone || '-'}</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Pending offer section on details tab */}
+            {offerList.filter(o => o.status === 'SENT').length > 0 && (
+              <div className="lg:col-span-2">
+                <div className="card border border-slate-200 bg-slate-50">
+                  <h3 className="font-medium text-midnight-900 mb-4 flex items-center">
+                    <Euro className="w-5 h-5 mr-2 text-slate-600" />
+                    Tarjous odottaa hyväksyntääsi
+                  </h3>
+                  {offerList.filter(o => o.status === 'SENT').map((offer) => (
+                    <div key={offer.id} className="bg-white rounded-xl p-5 mb-4 border border-slate-200">
+                      <div className="grid md:grid-cols-3 gap-6 mb-5">
+                        <div>
+                          <span className="text-slate-500 text-sm">Kuukausimaksu</span>
+                          <p className="text-xl text-slate-800 mt-1">{formatCurrency(offer.monthly_payment)}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Sopimuskausi</span>
+                          <p className="text-midnight-900 mt-1">{offer.term_months} kk</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-sm">Rahoitettava summa</span>
+                          <p className="text-midnight-900 mt-1">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setActiveTab('offers')}
+                          className="btn-secondary flex-1"
+                        >
+                          Katso tarjouksen tiedot
+                        </button>
+                        <button
+                          onClick={() => handleAcceptOffer(offer.id)}
+                          className="btn-primary bg-green-600 hover:bg-green-700 flex-1"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Hae Luottopäätös
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'offers' && (
+          <div className="space-y-4">
+            {offerList.length === 0 ? (
+              <div className="card text-center py-12">
+                <Euro className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-midnight-900 mb-2">Ei tarjouksia vielä</h3>
+                <p className="text-slate-500">Rahoittaja valmistelee tarjousta hakemukseesi.</p>
+              </div>
+            ) : (
+              offerList.map((offer) => (
+                <motion.div
+                  key={offer.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+                >
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-slate-700 to-slate-800 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-medium text-white text-lg flex items-center">
+                        <Euro className="w-5 h-5 mr-2 text-slate-300" />
+                        Rahoitustarjous
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        offer.status === 'SENT' ? 'bg-amber-500/20 text-amber-200' :
+                        offer.status === 'ACCEPTED' ? 'bg-emerald-500/20 text-emerald-200' :
+                        offer.status === 'REJECTED' ? 'bg-red-500/20 text-red-200' : 'bg-slate-600 text-slate-300'
+                      }`}>
+                        {getOfferStatusLabel(offer.status)}
+                      </span>
+                    </div>
+                    {/* Equipment name */}
+                    <p className="text-slate-300 mt-2 flex items-center text-sm">
+                      <FileText className="w-4 h-4 mr-2" />
+                      {application.equipment_description}
+                    </p>
+                  </div>
+                  
+                  {/* Preliminary offer notice */}
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
+                    <p className="text-amber-800 text-sm">
+                      <strong>Huom!</strong> Tämä on alustava tarjous. Hyväksymällä tarjouksen haet virallisen luottopäätöksen, 
+                      jonka jälkeen saat sopimuksen luettavaksi ja allekirjoitettavaksi.
+                    </p>
+                  </div>
+
+                  {/* Clean Grid */}
+                  <div className="p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                      <div>
+                        <span className="text-slate-500 text-sm">Kauppasumma</span>
+                        <p className="text-midnight-900 mt-1">{formatCurrency(application.equipment_price)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-sm">Sopimusaika</span>
+                        <p className="text-midnight-900 mt-1">{offer.term_months} kk</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-sm">Käsiraha</span>
+                        <p className="text-midnight-900 mt-1">{formatCurrency(offer.upfront_payment || 0)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-sm">Rahoitettava osuus</span>
+                        <p className="text-midnight-900 mt-1">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Monthly payment highlight */}
+                    <div className="mt-6 pt-6 border-t border-slate-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-600">Kuukausierä</span>
+                        <span className="text-2xl font-semibold text-slate-800">{formatCurrency(offer.monthly_payment)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-6 pt-6 border-t border-slate-200">
+                      <div>
+                        <span className="text-slate-500 text-sm">Avausmaksu</span>
+                        <p className="text-midnight-900 mt-1">{formatCurrency(offer.opening_fee || 300)}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 text-sm">Laskutuslisä</span>
+                        <p className="text-midnight-900 mt-1">{offer.invoice_fee || 9} €/kk</p>
+                      </div>
+                      {offer.residual_value && application.equipment_price && (
+                        <div>
+                          <span className="text-slate-500 text-sm">Jäännösarvo</span>
+                          <p className="text-midnight-900 mt-1">{((offer.residual_value / application.equipment_price) * 100).toFixed(1)}%</p>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <p className="text-xs text-slate-400 mt-4">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+                  </div>
+
+                  {offer.notes_to_customer && (
+                    <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                      <p className="text-sm font-medium text-slate-600 mb-1">Rahoittajan viesti:</p>
+                      <p className="text-slate-700">{offer.notes_to_customer}</p>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center">
+                    <button
+                      onClick={() => {
+                        const printWindow = window.open('', '_blank');
+                        if (printWindow) {
+                          const residualPercent = offer.residual_value && application.equipment_price
+                            ? ((offer.residual_value / application.equipment_price) * 100).toFixed(1)
+                            : null;
+                          printWindow.document.write(`
+                            <!DOCTYPE html>
+                            <html>
+                            <head>
+                              <title>Rahoitustarjous - ${application.reference_number}</title>
+                              <style>
+                                body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
+                                .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
+                                .logo { display: flex; align-items: center; gap: 12px; }
+                                .logo-icon { width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px; }
+                                .section { margin-bottom: 30px; }
+                                .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #1e293b; }
+                                .info-box { background: #f8fafc; padding: 16px; border-radius: 8px; }
+                                table { width: 100%; border-collapse: collapse; }
+                                td { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
+                                .label { color: #64748b; }
+                                .value { text-align: right; font-weight: 600; color: #1e293b; }
+                                .highlight { background: #ecfdf5; }
+                                .highlight .label { color: #059669; font-weight: 500; }
+                                .highlight .value { color: #059669; font-size: 20px; font-weight: 700; }
+                                .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #64748b; font-size: 14px; }
+                                .note { font-size: 14px; color: #64748b; font-style: italic; margin-top: 12px; }
+                                @media print { body { padding: 20px; } }
+                              </style>
+                            </head>
+                            <body>
+                              <div class="header">
+                                <div class="logo">
+                                  <div class="logo-icon">e</div>
+                                  <div>
+                                    <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Kantama</div>
+                                    <div style="font-size: 14px; color: #64748b;">Rahoitustarjous</div>
+                                  </div>
+                                </div>
+                                <div style="text-align: right; font-size: 14px; color: #64748b;">
+                                  <div><strong>Päivämäärä:</strong> ${new Date().toLocaleDateString('fi-FI')}</div>
+                                  <div><strong>Viite:</strong> ${application.reference_number}</div>
+                                </div>
+                              </div>
+                              
+                              <div class="section">
+                                <div class="section-title">Asiakas</div>
+                                <div class="info-box">
+                                  <div style="font-weight: 600; color: #1e293b;">${application.company_name}</div>
+                                  <div style="color: #64748b;">Y-tunnus: ${application.business_id}</div>
+                                </div>
+                              </div>
+                              
+                              <div class="section">
+                                <div class="section-title">Rahoitustarjous</div>
+                                <table>
+                                  <tr><td class="label">Kauppasumma:</td><td class="value">${formatCurrency(application.equipment_price)} alv 0 %</td></tr>
+                                  <tr><td class="label">Käsiraha:</td><td class="value">${formatCurrency(offer.upfront_payment || 0)} alv 0 %</td></tr>
+                                  <tr style="background: #f8fafc;"><td class="label">Rahoitettava osuus:</td><td class="value">${formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} alv 0 %</td></tr>
+                                  <tr class="highlight"><td class="label">Kuukausierä:</td><td class="value">${formatCurrency(offer.monthly_payment)} alv 0 %</td></tr>
+                                  <tr><td class="label">Sopimusaika:</td><td class="value">${offer.term_months} kk</td></tr>
+                                  <tr><td class="label">Avausmaksu:</td><td class="value">300 € alv 0 %</td></tr>
+                                  <tr><td class="label">Laskutuslisä:</td><td class="value">9 €/kk</td></tr>
+                                  ${residualPercent ? `<tr><td class="label">Jäännösarvo:</td><td class="value">${residualPercent} %</td></tr>` : ''}
+                                </table>
+                                <p class="note">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+                              </div>
+                              
+                              ${offer.notes_to_customer ? `
+                              <div class="section">
+                                <div class="section-title">Lisätiedot</div>
+                                <div class="info-box">${offer.notes_to_customer}</div>
+                              </div>
+                              ` : ''}
+                              
+                              <div class="footer">
+                                <p>Tämä on alustava rahoitustarjous. Lopullinen sopimus syntyy vasta erillisellä allekirjoituksella.</p>
+                                <p style="margin-top: 8px;">Kantama • myynti@Kantama.fi</p>
+                              </div>
+                            </body>
+                            </html>
+                          `);
+                          printWindow.document.close();
+                          printWindow.print();
+                        }
+                      }}
+                      className="btn-secondary"
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Tulosta tarjous
+                    </button>
+
+                    {offer.status === 'SENT' && (
+                      <div className="flex space-x-3">
+                        <button
+                          onClick={() => setShowOfferQuestionForm(showOfferQuestionForm === offer.id ? null : offer.id)}
+                          className="btn-ghost text-blue-600"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          Kysy lisätietoja
+                        </button>
+                        <button
+                          onClick={() => handleRejectOffer(offer.id)}
+                          className="btn-ghost text-red-600"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Hylkää
+                        </button>
+                        <button
+                          onClick={() => handleAcceptOffer(offer.id)}
+                          className="btn-primary bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Hae Luottopäätös
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Question form */}
+                  {showOfferQuestionForm === offer.id && (
+                    <div className="mt-4 pt-4 border-t border-slate-200">
+                      <h4 className="font-medium text-midnight-900 mb-2">Kysy lisätietoja tarjouksesta</h4>
+                      <textarea
+                        value={offerQuestion}
+                        onChange={(e) => setOfferQuestion(e.target.value)}
+                        placeholder="Kirjoita kysymyksesi rahoittajalle..."
+                        className="input min-h-[100px] mb-3"
+                      />
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => {
+                            setShowOfferQuestionForm(null);
+                            setOfferQuestion('');
+                          }}
+                          className="btn-ghost"
+                        >
+                          Peruuta
+                        </button>
+                        <button
+                          onClick={() => handleSendOfferQuestion(offer.id)}
+                          disabled={isSendingQuestion}
+                          className="btn-primary"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          {isSendingQuestion ? 'Lähetetään...' : 'Lähetä kysymys'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'contracts' && (
+          <div className="space-y-4">
+            {contractList.length === 0 ? (
+              <div className="card text-center py-12">
+                <FileCheck className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-midnight-900 mb-2">Ei sopimuksia vielä</h3>
+                <p className="text-slate-500">
+                  Sopimus lähetetään tarjouksen hyväksymisen jälkeen.
+                </p>
+              </div>
+            ) : (
+              contractList.map((contract) => (
+                <motion.div
+                  key={contract.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-semibold text-midnight-900">
+                        Rahoitusleasingsopimus {contract.contract_number}
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        {contract.lessor_company_name} • {contract.lease_period_months} kk
+                      </p>
+                    </div>
+                    <span className={`badge ${
+                      contract.status === 'SENT' ? 'badge-purple' :
+                      contract.status === 'SIGNED' ? 'badge-green' : 'badge-gray'
+                    }`}>
+                      {contract.status === 'SENT' ? 'Odottaa allekirjoitusta' :
+                       contract.status === 'SIGNED' ? 'Allekirjoitettu' : contract.status}
+                    </span>
+                  </div>
+
+                  {/* Contract summary */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-4">
+                    <h4 className="font-medium text-slate-700 mb-4">Sopimuksen yhteenveto</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-sm">
+                      <div>
+                        <span className="text-slate-500 block">Vuokraerä</span>
+                        <span className="text-xl text-slate-800 mt-1 block">
+                          {formatCurrency(contract.monthly_rent || 0)}
+                        </span>
+                        <span className="text-xs text-slate-400 block">alv 0 %</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Sopimuskausi</span>
+                        <span className="text-midnight-900 mt-1 block">
+                          {contract.lease_period_months} kk
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Jäännösarvo</span>
+                        <span className="text-midnight-900 mt-1 block">
+                          {formatCurrency(contract.residual_value || 0)}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Ennakkovuokra</span>
+                        <span className="text-midnight-900 mt-1 block">
+                          {formatCurrency(contract.advance_payment || 0)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-slate-200 grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-500">Käsittelymaksu/erä: </span>
+                        <span className="text-slate-700">{formatCurrency(contract.processing_fee || 500)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Järjestelypalkkio: </span>
+                        <span className="font-medium">{formatCurrency(contract.arrangement_fee || 10)}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-3 italic">
+                      Hintoihin lisätään voimassa oleva arvonlisävero
+                    </p>
+                  </div>
+
+                  {contract.message_to_customer && (
+                    <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                      <p className="text-sm font-medium text-slate-600 mb-1">Rahoittajan viesti:</p>
+                      <p className="text-slate-700">{contract.message_to_customer}</p>
+                    </div>
+                  )}
+
+                  <div className="text-sm text-slate-500 mb-4">
+                    {contract.sent_at && <span>Lähetetty: {formatDateTime(contract.sent_at)}</span>}
+                    {contract.signed_at && <span> • Allekirjoitettu: {formatDateTime(contract.signed_at)}</span>}
+                  </div>
+
+                  <div className="flex flex-col md:flex-row justify-between gap-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowContractModal(contract)}
+                        className="btn-secondary"
+                      >
+                        <Eye className="w-4 h-4 mr-2" />
+                        Näytä sopimus
+                      </button>
+                      <button
+                        onClick={() => handlePrintContract(contract)}
+                        className="btn-ghost"
+                      >
+                        <Printer className="w-4 h-4 mr-2" />
+                        Tulosta
+                      </button>
+                    </div>
+                    
+                    {contract.status === 'SENT' && (
+                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                        {/* E-signature button */}
+                        <button
+                          onClick={() => handleInitiateSign(contract.id)}
+                          disabled={isSigning}
+                          className="btn-primary"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          {isSigning ? 'Allekirjoitetaan...' : 'Allekirjoita sähköisesti'}
+                        </button>
+                        
+                        {/* OR upload signed PDF */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400 text-sm">tai</span>
+                          <input
+                            type="file"
+                            accept=".pdf"
+                            onChange={(e) => setSignedFile(e.target.files?.[0] || null)}
+                            className="hidden"
+                            id={`signed-${contract.id}`}
+                          />
+                          <label
+                            htmlFor={`signed-${contract.id}`}
+                            className="btn-secondary cursor-pointer"
+                          >
+                            <Upload className="w-4 h-4 mr-2" />
+                            {signedFile ? signedFile.name : 'Lataa allekirj. PDF'}
+                          </label>
+                          {signedFile && (
+                            <button
+                              onClick={() => handleUploadSignedContract(contract.id)}
+                              disabled={isUploading}
+                              className="btn-ghost text-emerald-600"
+                            >
+                              {isUploading ? 'Lähetetään...' : 'Lähetä'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {contract.status === 'SIGNED' && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
+                      <div className="flex items-center text-green-700">
+                        <CheckCircle className="w-5 h-5 mr-2" />
+                        <div>
+                          <span className="font-medium">Sopimus allekirjoitettu</span>
+                          {contract.lessee_signer_name && (
+                            <span className="text-sm ml-2">({contract.lessee_signer_name})</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))
+            )}
+
+            {/* Hidden contract document for printing */}
+            {showContractPreview && application && (
+              <div className="hidden">
+                <ContractDocument
+                  ref={contractDocRef}
+                  contract={showContractPreview}
+                  application={application}
+                />
+              </div>
+            )}
+
+            {/* Contract Modal - Full screen preview */}
+            {showContractModal && application && (
+              <div className="fixed inset-0 bg-black/70 z-50 overflow-auto p-4 flex items-start justify-center">
+                <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full my-8 relative">
+                  <div className="sticky top-0 bg-white border-b border-slate-200 p-4 flex items-center justify-between rounded-t-xl z-10">
+                    <h3 className="font-bold text-lg text-midnight-900">
+                      Rahoitusleasingsopimus {showContractModal.contract_number}
+                    </h3>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => handlePrintContract(showContractModal)}
+                        className="btn-secondary text-sm"
+                      >
+                        <Printer className="w-4 h-4 mr-2" />
+                        Tulosta PDF
+                      </button>
+                      <button
+                        onClick={() => setShowContractModal(null)}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <X className="w-6 h-6 text-slate-500" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="p-4 overflow-auto max-h-[80vh]">
+                    <ContractDocument
+                      contract={showContractModal}
+                      application={application}
+                    />
+                  </div>
+                  {showContractModal.status === 'SENT' && (
+                    <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4 rounded-b-xl">
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => {
+                            handleInitiateSign(showContractModal.id);
+                            setShowContractModal(null);
+                          }}
+                          disabled={isSigning}
+                          className="btn-primary"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          {isSigning ? 'Allekirjoitetaan...' : 'Allekirjoita sähköisesti'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'messages' && (
+          <div className="space-y-4">
+            {infoRequestList.length === 0 ? (
+              <div className="card text-center py-12">
+                <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-midnight-900 mb-2">Ei viestejä</h3>
+                <p className="text-slate-500">Lisätietopyynnöt näkyvät tässä.</p>
+              </div>
+            ) : (
+              infoRequestList.map((ir) => (
+                <motion.div
+                  key={ir.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-midnight-900">Lisätietopyyntö</h3>
+                    <span className={`badge ${
+                      ir.status === 'PENDING' ? 'badge-yellow' :
+                      ir.status === 'RESPONDED' ? 'badge-green' : 'badge-gray'
+                    }`}>
+                      {ir.status === 'PENDING' ? 'Odottaa vastausta' :
+                       ir.status === 'RESPONDED' ? 'Vastattu' : 'Suljettu'}
+                    </span>
+                  </div>
+
+                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-4">
+                    <p className="text-sm text-amber-600 mb-1 font-medium">Rahoittajan pyyntö:</p>
+                    <p className="text-amber-800 mb-3">{ir.message}</p>
+                    {/* Show document list with interactive checkboxes */}
+                    {(ir as any).documents && (ir as any).documents.length > 0 && ir.status === 'PENDING' && (
+                      <div className="mt-3 space-y-3">
+                        <p className="text-sm font-medium text-amber-700 mb-2">Liitä pyydetyt dokumentit:</p>
+                        {(ir as any).documents.map((doc: any, i: number) => (
+                          <div key={i} className="bg-white rounded-lg p-3 border border-amber-200">
+                            <label className="flex items-center cursor-pointer">
+                              <input 
+                                type="checkbox" 
+                                className="mr-3 h-5 w-5 text-amber-600 rounded"
+                                checked={selectedDocs[doc.type]?.checked || false}
+                                onChange={(e) => {
+                                  setSelectedDocs(prev => ({
+                                    ...prev,
+                                    [doc.type]: { ...prev[doc.type], checked: e.target.checked, file: e.target.checked ? prev[doc.type]?.file : null }
+                                  }));
+                                }}
+                              />
+                              <span className="font-medium text-amber-900">{doc.label}</span>
+                              {doc.required && (
+                                <span className="ml-2 text-xs text-red-600 font-medium">(pakollinen)</span>
+                              )}
+                            </label>
+                            {/* Show file input when checked */}
+                            {selectedDocs[doc.type]?.checked && (
+                              <div className="mt-3 ml-8">
+                                <label className="block">
+                                  <span className="text-sm text-amber-700 mb-1 block">Liitä {doc.label.toLowerCase()}:</span>
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0] || null;
+                                      setSelectedDocs(prev => ({
+                                        ...prev,
+                                        [doc.type]: { ...prev[doc.type], file }
+                                      }));
+                                    }}
+                                    className="block w-full text-sm text-slate-500
+                                      file:mr-4 file:py-2 file:px-4
+                                      file:rounded-lg file:border-0
+                                      file:text-sm file:font-semibold
+                                      file:bg-amber-100 file:text-amber-700
+                                      hover:file:bg-amber-200 cursor-pointer"
+                                  />
+                                </label>
+                                {selectedDocs[doc.type]?.file && (
+                                  <p className="text-xs text-green-600 mt-1 flex items-center">
+                                    <CheckCircle className="w-3 h-3 mr-1" />
+                                    {selectedDocs[doc.type]?.file?.name}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Show static document list for already responded requests */}
+                    {(ir as any).documents && (ir as any).documents.length > 0 && ir.status !== 'PENDING' && (
+                      <div className="mt-3">
+                        <p className="text-sm font-medium text-amber-700 mb-2">Pyydetyt liitteet:</p>
+                        <ul className="space-y-2">
+                          {(ir as any).documents.map((doc: any, i: number) => (
+                            <li key={i} className="flex items-center text-amber-800">
+                              <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+                              <span>{doc.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {/* Fallback for old format */}
+                    {ir.requested_items && ir.requested_items.length > 0 && (
+                      <ul className="mt-2 list-disc list-inside text-amber-700">
+                        {ir.requested_items.map((item, i) => (
+                          <li key={i}>{item}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+
+                  {/* Responses */}
+                  {ir.responses && ir.responses.length > 0 && (
+                    <div className="space-y-3 mb-4">
+                      {ir.responses.map((resp) => (
+                        <div key={resp.id} className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-blue-600">
+                              {resp.user.first_name || resp.user.email}
+                            </span>
+                            <span className="text-xs text-blue-500">{formatDateTime(resp.created_at)}</span>
+                          </div>
+                          <p className="text-blue-800">{resp.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Response form */}
+                  {ir.status === 'PENDING' && (
+                    <div className="border-t pt-4">
+                      <textarea
+                        value={responseMessage}
+                        onChange={(e) => setResponseMessage(e.target.value)}
+                        placeholder="Kirjoita vastauksesi..."
+                        className="input min-h-[100px] mb-3"
+                      />
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleRespondToInfoRequest(ir.id)}
+                          disabled={isResponding}
+                          className="btn-primary"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          {isResponding ? 'Lähetetään...' : 'Lähetä vastaus'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Bank Authentication Modal */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden"
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white">
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">Vahva tunnistautuminen</h3>
+                  <p className="text-blue-100 text-sm">Sopimuksen allekirjoitus</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                <p className="text-blue-900 text-sm">
+                  Sopimuksen allekirjoittaminen vaatii vahvan tunnistautumisen pankkitunnuksilla tai mobiilivarmenteella.
+                </p>
+              </div>
+
+              <p className="text-slate-600 text-sm mb-4">
+                Sinut ohjataan tunnistautumispalveluun, jossa voit valita käytettävän tunnistautumistavan:
+              </p>
+
+              <div className="grid grid-cols-3 gap-3 mb-6">
+                <div className="flex flex-col items-center p-3 bg-slate-50 rounded-lg">
+                  <Building2 className="w-8 h-8 text-slate-600 mb-1" />
+                  <span className="text-xs text-slate-600">Pankkitunnukset</span>
+                </div>
+                <div className="flex flex-col items-center p-3 bg-slate-50 rounded-lg">
+                  <Smartphone className="w-8 h-8 text-slate-600 mb-1" />
+                  <span className="text-xs text-slate-600">Mobiilivarmenne</span>
+                </div>
+                <div className="flex flex-col items-center p-3 bg-slate-50 rounded-lg">
+                  <CreditCard className="w-8 h-8 text-slate-600 mb-1" />
+                  <span className="text-xs text-slate-600">Henkilökortti</span>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                <p className="text-amber-800 text-sm flex items-start">
+                  <AlertCircle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+                  <span><strong>Demo-tila:</strong> Oikeassa järjestelmässä sinut ohjattaisiin nyt pankin tunnistautumissivulle. Tässä demossa allekirjoitus simuloidaan.</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-slate-50 border-t p-4 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAuthModal(null)}
+                className="btn-ghost"
+              >
+                Peruuta
+              </button>
+              <button
+                onClick={() => handleSignContract(showAuthModal)}
+                className="btn-primary"
+              >
+                Jatka tunnistautumiseen
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
