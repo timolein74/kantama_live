@@ -403,7 +403,7 @@ export const messages = {
   }
 };
 
-// Applications export with Supabase-based list function
+// Applications export with Supabase-based functions
 export const applications = {
   ...applicationsAxios,
   list: async (userId?: string, role?: string, email?: string) => {
@@ -423,6 +423,40 @@ export const applications = {
     }
     
     const { data, error } = await query.order('created_at', { ascending: false });
+    return { data, error };
+  },
+  create: async (applicationData: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
+    
+    const { data, error } = await supabase
+      .from('applications')
+      .insert([applicationData])
+      .select()
+      .single();
+    
+    return { data, error };
+  },
+  get: async (id: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('applications')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    return { data, error };
+  },
+  update: async (id: string, updateData: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('applications')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+    
     return { data, error };
   }
 };
