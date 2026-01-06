@@ -549,24 +549,28 @@ const notificationsAxios = {
 
 // Files
 export const files = {
-  upload: (applicationId: number, file: File, description?: string) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (description) {
-      formData.append('description', description);
-    }
-    return api.post(`/files/upload?application_id=${applicationId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  upload: async (applicationId: string | number, file: File, description?: string) => {
+    // File upload to Supabase Storage - return empty for now
+    console.log('File upload not implemented yet:', applicationId, file.name);
+    return { data: null, error: null };
   },
   
-  getForApplication: (applicationId: number) =>
-    api.get(`/files/application/${applicationId}`),
+  list: async (applicationId: string | number) => {
+    // Return empty array - file storage not implemented yet
+    return { data: [], error: null };
+  },
   
-  download: (id: number) =>
-    api.get(`/files/${id}/download`, { responseType: 'blob' }),
+  getForApplication: async (applicationId: string | number) => {
+    return { data: [], error: null };
+  },
   
-  delete: (id: number) => api.delete(`/files/${id}`),
+  download: async (id: string | number) => {
+    return { data: null, error: null };
+  },
+  
+  delete: async (id: string | number) => {
+    return { data: null, error: null };
+  },
 };
 
 // YTJ - Company Info (PRH Avoindata API) - Full data
