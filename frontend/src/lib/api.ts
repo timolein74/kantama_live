@@ -63,45 +63,131 @@ export const auth = {
   resendVerification: () => api.post('/auth/resend-verification'),
 };
 
-// Users - root "/" needs trailing slash, sub-paths don't
+// Users - Supabase-based
 export const users = {
-  list: (role?: string) =>
-    api.get<User[]>('/users/', { params: { role } }),
+  list: async (role?: string) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    let query = supabase.from('profiles').select('*');
+    if (role) {
+      query = query.eq('role', role);
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
   
-  get: (id: number) => api.get<User>(`/users/${id}`),
+  get: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', String(id))
+      .single();
+    return { data, error };
+  },
   
-  updateMe: (data: Partial<User>) =>
-    api.put<User>('/users/me', data),
+  updateMe: async (data: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: null, error: new Error('Not authenticated') };
+    
+    const { data: result, error } = await supabase
+      .from('profiles')
+      .update(data)
+      .eq('id', user.id)
+      .select()
+      .single();
+    return { data: result, error };
+  },
   
-  createFinancierUser: (data: {
-    email: string;
-    password: string;
-    first_name: string;
-    last_name: string;
-    financier_id: number;
-  }) => api.post<User>('/users/financier-user', data),
+  createFinancierUser: async (data: any) => {
+    // Financiers are created through Supabase Auth
+    return { data: null, error: new Error('Use Supabase Auth to create users') };
+  },
   
-  activate: (id: number) => api.put(`/users/${id}/activate`),
+  activate: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_active: true })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
   
-  deactivate: (id: number) => api.put(`/users/${id}/deactivate`),
+  deactivate: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ is_active: false })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
 };
 
-// Financiers
+// Financiers - Supabase-based
 export const financiers = {
-  list: (activeOnly = false) =>
-    api.get<Financier[]>('/financiers/', { params: { active_only: activeOnly } }),
+  list: async (activeOnly = false) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    let query = supabase.from('profiles').select('*').eq('role', 'FINANCIER');
+    if (activeOnly) {
+      query = query.eq('is_active', true);
+    }
+    const { data, error } = await query;
+    return { data, error };
+  },
   
-  listActive: () => api.get<Financier[]>('/financiers/active'),
+  listActive: async () => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'FINANCIER')
+      .eq('is_active', true);
+    return { data, error };
+  },
   
-  get: (id: number) => api.get<Financier>(`/financiers/${id}`),
+  get: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', String(id))
+      .single();
+    return { data, error };
+  },
   
-  create: (data: Partial<Financier>) =>
-    api.post<Financier>('/financiers/', data),
+  create: async (data: Partial<Financier>) => {
+    // Financiers are created through auth.users, not directly
+    return { data: null, error: new Error('Use Supabase Auth to create users') };
+  },
   
-  update: (id: number, data: Partial<Financier>) =>
-    api.put<Financier>(`/financiers/${id}`, data),
+  update: async (id: string | number, data: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data: result, error } = await supabase
+      .from('profiles')
+      .update(data)
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data: result, error };
+  },
   
-  delete: (id: number) => api.delete(`/financiers/${id}`),
+  delete: async (id: string | number) => {
+    // Users are deleted through Supabase Auth, not directly
+    return { data: null, error: new Error('Use Supabase Auth to delete users') };
+  },
 };
 
 // Applications - axios-based functions (kept for compatibility)
@@ -152,71 +238,206 @@ export const infoRequests = {
 
 // Offers
 export const offers = {
-  create: (data: Partial<Offer> & { application_id: number }) =>
-    api.post<Offer>('/offers/', data),
+  create: async (data: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data: result, error } = await supabase
+      .from('offers')
+      .insert([data])
+      .select()
+      .single();
+    return { data: result, error };
+  },
   
-  update: (id: number, data: Partial<Offer>) =>
-    api.put<Offer>(`/offers/${id}`, data),
+  update: async (id: string | number, data: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data: result, error } = await supabase
+      .from('offers')
+      .update(data)
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data: result, error };
+  },
   
-  send: (id: number) => api.post<Offer>(`/offers/${id}/send`),
+  send: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .update({ status: 'SENT' })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
   
-  approve: (id: number) => api.post<Offer>(`/offers/${id}/approve`),
+  approve: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .update({ status: 'SENT' })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
   
-  accept: (id: number) => api.post(`/offers/${id}/accept`),
+  accept: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .update({ status: 'ACCEPTED' })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
   
-  reject: (id: number) => api.post(`/offers/${id}/reject`),
+  reject: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .update({ status: 'REJECTED' })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
   
-  getForApplication: (applicationId: number) =>
-    api.get<Offer[]>(`/offers/application/${applicationId}`),
+  getForApplication: async (applicationId: string | number) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .select('*')
+      .eq('application_id', String(applicationId))
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
   
-  get: (id: number) => api.get<Offer>(`/offers/${id}`),
+  get: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .select('*')
+      .eq('id', String(id))
+      .single();
+    return { data, error };
+  },
+  
+  listAll: async () => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data, error } = await supabase
+      .from('offers')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
 };
 
-// Contracts
+// Contracts - Supabase-based
 export const contracts = {
-  create: (data: ContractCreateData) =>
-    api.post<Contract>('/contracts/', data),
-  
-  update: (id: number, data: Partial<ContractCreateData>) =>
-    api.put<Contract>(`/contracts/${id}`, data),
-  
-  upload: (id: number, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post(`/contracts/${id}/upload`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  create: async (data: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data: result, error } = await supabase
+      .from('contracts')
+      .insert([data])
+      .select()
+      .single();
+    return { data: result, error };
   },
   
-  uploadLogo: (id: number, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post(`/contracts/${id}/upload-logo`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  update: async (id: string | number, data: any) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data: result, error } = await supabase
+      .from('contracts')
+      .update(data)
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data: result, error };
   },
   
-  send: (id: number) => api.post<Contract>(`/contracts/${id}/send`),
-  
-  sign: (id: number, signaturePlace?: string, signerName?: string) => 
-    api.post<Contract>(`/contracts/${id}/sign`, null, { 
-      params: { signature_place: signaturePlace, signer_name: signerName } 
-    }),
-  
-  uploadSigned: (id: number, file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return api.post(`/contracts/${id}/upload-signed`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+  upload: async (id: string | number, file: File) => {
+    // File upload to Supabase Storage
+    return { data: null, error: new Error('File upload not implemented') };
   },
   
-  getForApplication: (applicationId: number) =>
-    api.get<Contract[]>(`/contracts/application/${applicationId}`),
+  uploadLogo: async (id: string | number, file: File) => {
+    return { data: null, error: new Error('Logo upload not implemented') };
+  },
   
-  get: (id: number) => api.get<Contract>(`/contracts/${id}`),
+  send: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('contracts')
+      .update({ status: 'SENT' })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
   
-  getAllAdmin: () => api.get('/contracts/admin/all'),
+  sign: async (id: string | number, signaturePlace?: string, signerName?: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('contracts')
+      .update({ 
+        status: 'SIGNED',
+        signed_at: new Date().toISOString()
+      })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
+  
+  uploadSigned: async (id: string | number, file: File) => {
+    return { data: null, error: new Error('Signed upload not implemented') };
+  },
+  
+  getForApplication: async (applicationId: string | number) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('*')
+      .eq('application_id', String(applicationId))
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
+  
+  get: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('*')
+      .eq('id', String(id))
+      .single();
+    return { data, error };
+  },
+  
+  getAllAdmin: async () => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('*')
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
 };
 
 // Notifications - axios-based (kept for compatibility)
