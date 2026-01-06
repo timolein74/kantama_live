@@ -214,26 +214,116 @@ const applicationsAxios = {
 };
 
 // Assignments
+// Assignments - Supabase-based (assignments stored as application metadata or separate table)
 export const assignments = {
-  create: (data: { application_id: number; financier_id: number; notes?: string }) =>
-    api.post('/assignments/', data),
+  create: async (data: { application_id: string; financier_id: string; notes?: string }) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Update application with assigned financier
+    const { data: result, error } = await supabase
+      .from('applications')
+      .update({ 
+        assigned_financier_id: data.financier_id,
+        assignment_notes: data.notes 
+      })
+      .eq('id', data.application_id)
+      .select()
+      .single();
+    return { data: result, error };
+  },
   
-  getForApplication: (applicationId: number) =>
-    api.get(`/assignments/application/${applicationId}`),
+  getForApplication: async (applicationId: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const { data, error } = await supabase
+      .from('applications')
+      .select('assigned_financier_id, assignment_notes')
+      .eq('id', String(applicationId))
+      .single();
+    return { data, error };
+  },
   
-  delete: (id: number) => api.delete(`/assignments/${id}`),
+  delete: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Remove assignment by clearing the financier
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ assigned_financier_id: null, assignment_notes: null })
+      .eq('id', String(id))
+      .select()
+      .single();
+    return { data, error };
+  },
 };
 
-// Info Requests
+// Info Requests - Supabase-based
 export const infoRequests = {
-  create: (data: { application_id: number; message: string; requested_items?: string[] }) =>
-    api.post<InfoRequest>('/info-requests/', data),
+  create: async (data: { application_id: string; message: string; requested_items?: string[] }) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Create a message with type 'INFO_REQUEST'
+    const { data: result, error } = await supabase
+      .from('messages')
+      .insert([{
+        application_id: data.application_id,
+        content: data.message,
+        sender_type: 'FINANCIER',
+        message_type: 'INFO_REQUEST',
+        metadata: { requested_items: data.requested_items || [] }
+      }])
+      .select()
+      .single();
+    return { data: result, error };
+  },
   
-  getForApplication: (applicationId: number) =>
-    api.get<InfoRequest[]>(`/info-requests/application/${applicationId}`),
+  getForApplication: async (applicationId: string | number) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('application_id', String(applicationId))
+      .eq('message_type', 'INFO_REQUEST')
+      .order('created_at', { ascending: false });
+    return { data: data || [], error };
+  },
   
-  respond: (data: { info_request_id: number; message: string; attachment_ids?: number[] }) =>
-    api.post<InfoRequest>('/info-requests/respond', data),
+  respond: async (data: { info_request_id: string; message: string; attachment_ids?: string[] }) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Get the original info request to get application_id
+    const { data: originalRequest } = await supabase
+      .from('messages')
+      .select('application_id')
+      .eq('id', data.info_request_id)
+      .single();
+    
+    if (!originalRequest) return { data: null, error: new Error('Info request not found') };
+    
+    // Create a response message
+    const { data: result, error } = await supabase
+      .from('messages')
+      .insert([{
+        application_id: originalRequest.application_id,
+        content: data.message,
+        sender_type: 'CUSTOMER',
+        message_type: 'INFO_RESPONSE',
+        parent_message_id: data.info_request_id
+      }])
+      .select()
+      .single();
+    
+    // Mark the original request as responded
+    if (result && !error) {
+      await supabase
+        .from('messages')
+        .update({ metadata: { responded: true } })
+        .eq('id', data.info_request_id);
+    }
+    
+    return { data: result, error };
+  },
 };
 
 // Offers
