@@ -335,11 +335,23 @@ export const offers = {
   create: async (data: any) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
+    // Get current user to set financier_id
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { data: result, error } = await supabase
       .from('offers')
-      .insert([data])
+      .insert([{
+        ...data,
+        financier_id: user?.id,
+        status: data.status || 'DRAFT'
+      }])
       .select()
       .single();
+    
+    if (error) {
+      console.error('Error creating offer:', error);
+    }
+    
     return { data: result, error };
   },
   

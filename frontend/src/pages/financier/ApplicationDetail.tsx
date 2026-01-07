@@ -331,7 +331,7 @@ export default function FinancierApplicationDetail() {
     }
     
     try {
-      await offers.create({
+      const { data: result, error } = await offers.create({
         application_id: id,
         monthly_payment: parseFloat(offerData.monthly_payment),
         term_months: parseInt(offerData.term_months),
@@ -342,6 +342,12 @@ export default function FinancierApplicationDetail() {
         internal_notes: offerData.internal_notes || undefined
       });
       
+      if (error) {
+        console.error('Error creating offer:', error);
+        toast.error('Virhe tarjouksen luomisessa');
+        return;
+      }
+      
       toast.success('Tarjous luotu');
       setShowOfferForm(false);
       
@@ -349,7 +355,8 @@ export default function FinancierApplicationDetail() {
       const offersRes = await offers.getForApplication(id);
       setOfferList(offersRes.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe tarjouksen luomisessa');
+      console.error('Unexpected error:', error);
+      toast.error('Virhe tarjouksen luomisessa');
     } finally {
       setIsSavingOffer(false);
     }
