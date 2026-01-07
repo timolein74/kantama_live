@@ -341,12 +341,37 @@ export default function CustomerApplicationDetail() {
   };
 
   const handleRespondToInfoRequest = async (infoRequestId: string) => {
-    if (!responseMessage.trim()) {
-      toast.error('Kirjoita viesti');
+    // Check if message or files are provided
+    const hasFiles = Object.values(selectedDocs).some(v => v.file);
+    if (!responseMessage.trim() && !hasFiles) {
+      toast.error('Kirjoita viesti tai liitä tiedostoja');
       return;
     }
     
     setIsResponding(true);
+    
+    // Build message with file info
+    let fullMessage = responseMessage.trim();
+    const attachedFiles = Object.entries(selectedDocs)
+      .filter(([_, v]) => v.file)
+      .map(([key, v]) => {
+        const docLabels: Record<string, string> = {
+          tilinpaatos: 'Tilinpäätös',
+          tulosTase: 'Tulos ja tase ajot',
+          henkilokortti: 'Kuvallinen henkilökortti',
+          kuvaKohteesta: 'Kuva kohteesta',
+          urakkasopimus: 'Urakkasopimus',
+          liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
+        };
+        return { type: key, label: docLabels[key] || key, filename: v.file?.name };
+      });
+    
+    if (attachedFiles.length > 0) {
+      const fileList = attachedFiles.map(f => `• ${f.label}: ${f.filename}`).join('\n');
+      fullMessage = fullMessage 
+        ? `${fullMessage}\n\nLiitetyt dokumentit:\n${fileList}`
+        : `Liitetyt dokumentit:\n${fileList}`;
+    }
     
     // DEMO MODE
     const token = localStorage.getItem('token');
@@ -355,22 +380,16 @@ export default function CustomerApplicationDetail() {
       
       // Get the info request
       const storedInfoRequests = JSON.parse(localStorage.getItem('demo-info-requests') || '[]');
-      const irIndex = storedInfoRequests.findIndex((ir: any) => ir.id === infoRequestId);
+      const irIndex = storedInfoRequests.findIndex((ir: any) => String(ir.id) === String(infoRequestId));
       
       if (irIndex >= 0) {
         // Add response to info request
         const newResponse = {
           id: Date.now(),
-          message: responseMessage,
+          message: fullMessage,
           created_at: new Date().toISOString(),
           user: { email: 'customer@example.com', first_name: 'Asiakas' },
-          // Include attached files info
-          attachments: Object.entries(selectedDocs)
-            .filter(([_, v]) => v.checked && v.file)
-            .map(([key, v]) => ({
-              type: key,
-              filename: v.file?.name
-            }))
+          attachments: attachedFiles
         };
         
         if (!storedInfoRequests[irIndex].responses) {
@@ -378,13 +397,14 @@ export default function CustomerApplicationDetail() {
         }
         storedInfoRequests[irIndex].responses.push(newResponse);
         storedInfoRequests[irIndex].status = 'RESPONDED';
+        storedInfoRequests[irIndex].is_read = true;
         
         localStorage.setItem('demo-info-requests', JSON.stringify(storedInfoRequests));
         
         // Update local state
         setInfoRequestList(prev => prev.map(ir => 
-          ir.id === infoRequestId 
-            ? { ...ir, status: 'RESPONDED', responses: [...(ir.responses || []), newResponse as any] }
+          String(ir.id) === String(infoRequestId) 
+            ? { ...ir, status: 'RESPONDED', is_read: true, responses: [...(ir.responses || []), newResponse as any] }
             : ir
         ));
       }
@@ -400,7 +420,7 @@ export default function CustomerApplicationDetail() {
       // Use messages.send for consistent behavior with admin messages
       const { data: result, error } = await messages.send({
         application_id: id!,
-        message: responseMessage,
+        message: fullMessage,
         sender_role: 'CUSTOMER',
         is_info_request: false,
         reply_to_id: infoRequestId
@@ -415,8 +435,9 @@ export default function CustomerApplicationDetail() {
       // Mark the original message as read
       await messages.markAsRead(infoRequestId);
       
-      toast.success('Vastaus lähetetty');
+      toast.success('Vastaus lähetetty!');
       setResponseMessage('');
+      setSelectedDocs({});
       
       // Refresh messages
       const { data: messagesData } = await supabase
@@ -1578,34 +1599,53 @@ export default function CustomerApplicationDetail() {
                     <div className="border-t pt-4">
                       {/* Show requested documents with upload buttons */}
                       {(ir as any).requested_documents && (ir as any).requested_documents.length > 0 && (
-                        <div className="mb-4">
-                          <p className="text-sm font-medium text-slate-700 mb-3">📎 Lataa pyydetyt dokumentit:</p>
+                        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                          <p className="text-sm font-bold text-amber-800 mb-3">📎 Pyydetyt liitteet - lataa ja lähetä:</p>
                           <div className="space-y-3">
                             {(ir as any).requested_documents.map((docType: string) => {
                               const docLabels: Record<string, string> = {
                                 tilinpaatos: 'Tilinpäätös',
                                 tulosTase: 'Tulos ja tase ajot',
                                 henkilokortti: 'Kuvallinen henkilökortti',
+                                kuvaKohteesta: 'Kuva kohteesta',
+                                urakkasopimus: 'Urakkasopimus',
+                                liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
                               };
+                              const uploadedFile = selectedDocs[docType]?.file;
                               return (
-                                <div key={docType} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
-                                  <span className="font-medium text-slate-800">{docLabels[docType] || docType}</span>
-                                  <label className="btn-ghost text-sm cursor-pointer flex items-center">
-                                    <Upload className="w-4 h-4 mr-2" />
-                                    Valitse tiedosto
-                                    <input
-                                      type="file"
-                                      className="hidden"
-                                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          toast.success(`${file.name} valittu`);
-                                          // TODO: Implement actual file upload
-                                        }
-                                      }}
-                                    />
-                                  </label>
+                                <div key={docType} className="flex items-center justify-between bg-white rounded-lg p-3 border border-amber-100">
+                                  <div className="flex items-center">
+                                    {uploadedFile ? (
+                                      <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                                    ) : (
+                                      <AlertCircle className="w-5 h-5 text-amber-500 mr-2" />
+                                    )}
+                                    <span className="font-medium text-slate-800">{docLabels[docType] || docType}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {uploadedFile && (
+                                      <span className="text-xs text-green-600 max-w-32 truncate">{uploadedFile.name}</span>
+                                    )}
+                                    <label className={`btn text-sm cursor-pointer flex items-center ${uploadedFile ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                      <Upload className="w-4 h-4 mr-1" />
+                                      {uploadedFile ? 'Vaihda' : 'Valitse'}
+                                      <input
+                                        type="file"
+                                        className="hidden"
+                                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            setSelectedDocs(prev => ({
+                                              ...prev,
+                                              [docType]: { checked: true, file }
+                                            }));
+                                            toast.success(`${file.name} valittu`);
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                  </div>
                                 </div>
                               );
                             })}

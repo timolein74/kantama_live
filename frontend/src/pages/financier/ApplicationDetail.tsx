@@ -58,6 +58,9 @@ export default function FinancierApplicationDetail() {
     tilinpaatos: false,
     tulosTase: false,
     henkilokortti: false,
+    kuvaKohteesta: false,
+    urakkasopimus: false,
+    liiketoimintasuunnitelma: false,
   });
   
   // Offer form
@@ -193,6 +196,9 @@ export default function FinancierApplicationDetail() {
     tilinpaatos: 'Tilinpäätös',
     tulosTase: 'Tulos ja tase ajot',
     henkilokortti: 'Kuvallinen henkilökortti',
+    kuvaKohteesta: 'Kuva kohteesta',
+    urakkasopimus: 'Urakkasopimus',
+    liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
   };
 
   const handleSendInfoRequest = async () => {
@@ -258,7 +264,7 @@ export default function FinancierApplicationDetail() {
       toast.success('Lisätietopyyntö lähetetty asiakkaalle!');
       setShowInfoRequestForm(false);
       setInfoRequestMessage('');
-      setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false });
+      setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false, kuvaKohteesta: false, urakkasopimus: false, liiketoimintasuunnitelma: false });
       setIsSendingInfoRequest(false);
       return;
     }
@@ -276,7 +282,7 @@ export default function FinancierApplicationDetail() {
       toast.success('Lisätietopyyntö lähetetty');
       setShowInfoRequestForm(false);
       setInfoRequestMessage('');
-      setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false });
+      setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false, kuvaKohteesta: false, urakkasopimus: false, liiketoimintasuunnitelma: false });
       
       // Refresh data - use getForFinancier to only get financier's own messages
       const [appRes, infoRes] = await Promise.all([
@@ -300,7 +306,7 @@ export default function FinancierApplicationDetail() {
     
     setIsSavingOffer(true);
     
-    // DEMO MODE: Simulate offer creation
+    // DEMO MODE: Simulate offer creation and send directly to customer
     const token = localStorage.getItem('token');
     if (token?.startsWith('demo-token-')) {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -314,26 +320,25 @@ export default function FinancierApplicationDetail() {
         term_months: parseInt(offerData.term_months),
         upfront_payment: offerData.upfront_payment ? parseFloat(offerData.upfront_payment) : 0,
         residual_value: offerData.residual_value ? parseFloat(offerData.residual_value) : 0,
-        opening_fee: offerData.opening_fee ? parseFloat(offerData.opening_fee) : 0,
-        invoice_fee: offerData.invoice_fee ? parseFloat(offerData.invoice_fee) : 0,
-        status: 'PENDING_ADMIN',
+        opening_fee: offerData.opening_fee ? parseFloat(offerData.opening_fee) : 300,
+        invoice_fee: offerData.invoice_fee ? parseFloat(offerData.invoice_fee) : 9,
+        status: 'SENT',  // Send directly to customer
         notes_to_customer: offerData.notes_to_customer || '',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        // Include application info for admin display
         application: application,
       };
       
-      // Save to localStorage so admin can see it
+      // Save to localStorage so customer can see it
       const storedOffers = JSON.parse(localStorage.getItem('demo-offers') || '[]');
       storedOffers.push(newOffer);
       localStorage.setItem('demo-offers', JSON.stringify(storedOffers));
       
       setOfferList([...offerList, newOffer as any]);
       
-      // Update application status
+      // Update application status to OFFER_SENT
       if (application) {
-        const updatedApp = { ...application, status: 'OFFER_RECEIVED' };
+        const updatedApp = { ...application, status: 'OFFER_SENT' };
         setApplication(updatedApp);
         
         // Update in localStorage
@@ -345,7 +350,7 @@ export default function FinancierApplicationDetail() {
         }
       }
       
-      toast.success('Tarjous luotu ja lähetetty adminille hyväksyttäväksi');
+      toast.success('Tarjous lähetetty asiakkaalle!');
       setShowOfferForm(false);
       setActiveTab('offer');
       setIsSavingOffer(false);
@@ -353,6 +358,7 @@ export default function FinancierApplicationDetail() {
     }
     
     try {
+      // Create offer with SENT status (send directly to customer)
       const { data: result, error } = await offers.create({
         application_id: id,
         monthly_payment: parseFloat(offerData.monthly_payment),
@@ -361,7 +367,8 @@ export default function FinancierApplicationDetail() {
         residual_value: offerData.residual_value ? parseFloat(offerData.residual_value) : undefined,
         included_services: offerData.included_services || undefined,
         notes_to_customer: offerData.notes_to_customer || undefined,
-        internal_notes: offerData.internal_notes || undefined
+        internal_notes: offerData.internal_notes || undefined,
+        status: 'SENT'  // Send directly to customer
       });
       
       if (error) {
@@ -370,11 +377,23 @@ export default function FinancierApplicationDetail() {
         return;
       }
       
-      toast.success('Tarjous luotu');
+      // Update application status to OFFER_SENT
+      await applications.update(id, { status: 'OFFER_SENT' });
+      
+      // Create notification for customer
+      if (result?.id) {
+        await offers.send(result.id);  // This creates notification and sends email
+      }
+      
+      toast.success('Tarjous lähetetty asiakkaalle!');
       setShowOfferForm(false);
       
       // Refresh
-      const offersRes = await offers.getForApplication(id);
+      const [appRes, offersRes] = await Promise.all([
+        applications.get(id),
+        offers.getForApplication(id)
+      ]);
+      setApplication(appRes.data);
       setOfferList(offersRes.data);
     } catch (error: any) {
       console.error('Unexpected error:', error);
@@ -1686,6 +1705,9 @@ export default function FinancierApplicationDetail() {
                       { key: 'tilinpaatos', label: 'Tilinpäätös' },
                       { key: 'tulosTase', label: 'Tulos ja tase ajot' },
                       { key: 'henkilokortti', label: 'Kuvallinen henkilökortti' },
+                      { key: 'kuvaKohteesta', label: 'Kuva kohteesta' },
+                      { key: 'urakkasopimus', label: 'Urakkasopimus' },
+                      { key: 'liiketoimintasuunnitelma', label: 'Liiketoimintasuunnitelma' },
                     ].map(({ key, label }) => (
                       <label key={key} className="flex items-center space-x-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
                         <input
