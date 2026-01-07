@@ -31,7 +31,7 @@ import {
   PenTool,
   PartyPopper
 } from 'lucide-react';
-import { contracts, infoRequests, files } from '../../lib/api';
+import { contracts, infoRequests, files, messages } from '../../lib/api';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   formatCurrency,
@@ -397,26 +397,39 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
-      const { data: result, error } = await infoRequests.respond({
-        info_request_id: infoRequestId,
-        message: responseMessage
+      // Use messages.send for consistent behavior with admin messages
+      const { data: result, error } = await messages.send({
+        application_id: id!,
+        message: responseMessage,
+        sender_role: 'CUSTOMER',
+        is_info_request: false,
+        reply_to_id: infoRequestId
       });
       
       if (error) {
-        console.error('Error responding to info request:', error);
+        console.error('Error sending response:', error);
         toast.error('Virhe vastauksen lähettämisessä');
         return;
       }
       
+      // Mark the original message as read
+      await messages.markAsRead(infoRequestId);
+      
       toast.success('Vastaus lähetetty');
       setResponseMessage('');
-      // Refresh
-      const [appRes, infoRes] = await Promise.all([
-        applications.get(id!),
-        infoRequests.getForApplication(id!)
-      ]);
+      
+      // Refresh messages
+      const { data: messagesData } = await supabase
+        .from('app_messages')
+        .select('*')
+        .eq('application_id', id)
+        .order('created_at', { ascending: true });
+      
+      setInfoRequestList((messagesData || []) as InfoRequest[]);
+      
+      // Refresh application
+      const appRes = await applications.get(id!);
       setApplication(appRes.data);
-      setInfoRequestList(infoRes.data);
     } catch (error: any) {
       console.error('Unexpected error:', error);
       toast.error('Virhe vastauksen lähettämisessä');
