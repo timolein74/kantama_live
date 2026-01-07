@@ -12,9 +12,9 @@ export default function Logo({
   variant = 'light',
 }: LogoProps) {
   const sizes = {
-    sm: { text: 'text-lg' },
-    md: { text: 'text-xl' },
-    lg: { text: 'text-2xl' },
+    sm: { icon: 'h-7 w-7', text: 'text-lg' },
+    md: { icon: 'h-9 w-9', text: 'text-xl' },
+    lg: { icon: 'h-12 w-12', text: 'text-2xl' },
   };
 
   const colors = {
@@ -23,9 +23,16 @@ export default function Logo({
   };
 
   const content = (
-    <span className={`${colors[variant]} font-display font-bold ${sizes[size].text} tracking-tight`}>
-      <span className="text-emerald-400">Juuri</span> Rahoitus
-    </span>
+    <div className="flex items-center gap-2">
+      <img 
+        src="/juuri-logo.png" 
+        alt="Juuri" 
+        className={`${sizes[size].icon} rounded-lg`}
+      />
+      <span className={`${colors[variant]} font-display font-bold ${sizes[size].text} tracking-tight`}>
+        <span className="text-emerald-400">Juuri</span> Rahoitus
+      </span>
+    </div>
   );
 
   if (to) {
