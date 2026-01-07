@@ -24,7 +24,7 @@ import {
   Eye,
   ExternalLink
 } from 'lucide-react';
-import { applications, offers, contracts, infoRequests, files } from '../../lib/api';
+import { applications, offers, contracts, infoRequests, files, sendNotificationEmail } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import {
   formatCurrency,
@@ -1617,7 +1617,7 @@ export default function FinancierApplicationDetail() {
                                 .insert({
                                   application_id: id,
                                   offer_id: acceptedOffer?.id || null,
-                                  status: 'DRAFT',
+                                  status: 'SENT',
                                   contract_pdf_url: urlData.publicUrl,
                                   lessor_company_name: 'Rahoittaja',
                                   lessee_company_name: application.company_name,
@@ -1628,8 +1628,35 @@ export default function FinancierApplicationDetail() {
                               
                               if (contractError) throw contractError;
                               
+                              // Create notification for customer
+                              if (application.user_id) {
+                                await supabase.from('notifications').insert({
+                                  user_id: application.user_id,
+                                  title: 'Sopimus allekirjoitettavaksi',
+                                  message: 'Rahoitussopimus odottaa allekirjoitustasi'
+                                });
+                              }
+                              
+                              // Send email notification
+                              if (application.contact_email) {
+                                sendNotificationEmail({
+                                  to: application.contact_email,
+                                  subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
+                                  type: 'contract',
+                                  customer_name: application.contact_person || undefined,
+                                  company_name: application.company_name || undefined,
+                                });
+                              }
+                              
+                              // Update application status
+                              await supabase
+                                .from('applications')
+                                .update({ status: 'CONTRACT_SENT' })
+                                .eq('id', id);
+                              
+                              setApplication(prev => prev ? { ...prev, status: 'CONTRACT_SENT' } : null);
                               setContractList([...contractList, newContract]);
-                              toast.success('Sopimus-PDF ladattu! Voit nyt lähettää sen asiakkaalle.');
+                              toast.success('Sopimus lähetetty asiakkaalle!');
                             } catch (error: any) {
                               console.error('PDF upload error:', error);
                               toast.error('Virhe PDF:n latauksessa: ' + (error.message || 'Tuntematon virhe'));
@@ -1699,13 +1726,13 @@ export default function FinancierApplicationDetail() {
                           // Find the accepted offer
                           const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED');
                           
-                          // Create a simple contract record with the PDF
+                          // Create contract and send directly to customer
                           const { data: newContract, error: contractError } = await supabase
                             .from('contracts')
                             .insert({
                               application_id: id,
                               offer_id: acceptedOffer?.id || null,
-                              status: 'DRAFT',
+                              status: 'SENT',
                               contract_pdf_url: urlData.publicUrl,
                               lessor_company_name: 'Rahoittaja',
                               lessee_company_name: application.company_name,
@@ -1716,8 +1743,35 @@ export default function FinancierApplicationDetail() {
                           
                           if (contractError) throw contractError;
                           
+                          // Create notification for customer
+                          if (application.user_id) {
+                            await supabase.from('notifications').insert({
+                              user_id: application.user_id,
+                              title: 'Sopimus allekirjoitettavaksi',
+                              message: 'Rahoitussopimus odottaa allekirjoitustasi'
+                            });
+                          }
+                          
+                          // Send email notification
+                          if (application.contact_email) {
+                            sendNotificationEmail({
+                              to: application.contact_email,
+                              subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
+                              type: 'contract',
+                              customer_name: application.contact_person || undefined,
+                              company_name: application.company_name || undefined,
+                            });
+                          }
+                          
+                          // Update application status
+                          await supabase
+                            .from('applications')
+                            .update({ status: 'CONTRACT_SENT' })
+                            .eq('id', id);
+                          
+                          setApplication(prev => prev ? { ...prev, status: 'CONTRACT_SENT' } : null);
                           setContractList([...contractList, newContract]);
-                          toast.success('Sopimus-PDF ladattu! Voit nyt lähettää sen asiakkaalle.');
+                          toast.success('Sopimus lähetetty asiakkaalle!');
                         } catch (error: any) {
                           console.error('PDF upload error:', error);
                           toast.error('Virhe PDF:n latauksessa: ' + (error.message || 'Tuntematon virhe'));
