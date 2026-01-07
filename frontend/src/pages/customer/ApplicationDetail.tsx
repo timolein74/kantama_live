@@ -1702,13 +1702,62 @@ export default function CustomerApplicationDetail() {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Always show general file upload */}
+                      <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                        <p className="text-sm font-bold text-slate-700 mb-3">📎 Liitä tiedostoja:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(selectedDocs).map(([key, doc]) => (
+                            doc.file && (
+                              <div key={key} className="flex items-center bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm">
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                {doc.file.name}
+                                <button 
+                                  onClick={() => setSelectedDocs(prev => {
+                                    const newDocs = {...prev};
+                                    delete newDocs[key];
+                                    return newDocs;
+                                  })}
+                                  className="ml-2 text-green-800 hover:text-red-600"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )
+                          ))}
+                        </div>
+                        <label className="mt-3 btn bg-emerald-100 text-emerald-700 hover:bg-emerald-200 cursor-pointer inline-flex items-center">
+                          <Upload className="w-4 h-4 mr-2" />
+                          Lisää liite
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const fileKey = `file_${Date.now()}`;
+                                setSelectedDocs(prev => ({
+                                  ...prev,
+                                  [fileKey]: { checked: true, file }
+                                }));
+                                toast.success(`${file.name} lisätty`);
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                      
                       <textarea
                         value={responseMessage}
                         onChange={(e) => setResponseMessage(e.target.value)}
                         placeholder="Kirjoita vastauksesi..."
                         className="input min-h-[100px] mb-3"
                       />
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
+                        <span className="text-sm text-slate-500 self-center">
+                          {Object.values(selectedDocs).filter(d => d.file).length} liitettä valittu
+                        </span>
                         <button
                           onClick={() => handleRespondToInfoRequest(ir.id)}
                           disabled={isResponding}
