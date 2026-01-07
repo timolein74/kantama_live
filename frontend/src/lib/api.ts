@@ -41,6 +41,34 @@ api.interceptors.response.use(
   }
 );
 
+// Email notification helper - calls Edge Function
+const EDGE_FUNCTION_URL = 'https://idmcvfyekoxzelddkymv.supabase.co/functions/v1/send-notification-email';
+
+export const sendNotificationEmail = async (params: {
+  to: string;
+  subject: string;
+  type: 'offer' | 'info_request' | 'message' | 'contract';
+  customer_name?: string;
+  company_name?: string;
+  html?: string;
+}) => {
+  try {
+    const response = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+    const data = await response.json();
+    console.log('Email notification sent:', data);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Failed to send email notification:', error);
+    return { success: false, error };
+  }
+};
+
 // Auth - routes defined as /login, /register, /me, etc. (no trailing slash)
 export const auth = {
   login: (email: string, password: string) =>
@@ -286,11 +314,11 @@ export const infoRequests = {
       .select()
       .single();
     
-    // Create notification for customer
+    // Create notification for customer and send email
     if (result && !error) {
       const { data: app } = await supabase
         .from('applications')
-        .select('user_id, company_name')
+        .select('user_id, company_name, contact_email, contact_person')
         .eq('id', data.application_id)
         .single();
       
@@ -301,6 +329,17 @@ export const infoRequests = {
           title: 'Lisätietopyyntö',
           message: `${senderName} pyytää lisätietoja hakemukseesi liittyen`
         });
+        
+        // Send email notification
+        if (app.contact_email) {
+          sendNotificationEmail({
+            to: app.contact_email,
+            subject: 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus',
+            type: 'info_request',
+            customer_name: app.contact_person || undefined,
+            company_name: app.company_name || undefined,
+          });
+        }
       }
       
       // Update application status to INFO_REQUESTED
@@ -548,11 +587,11 @@ export const offers = {
       .select()
       .single();
     
-    // Create notification for customer
+    // Create notification for customer and send email
     if (data && !error && offer?.application_id) {
       const { data: app } = await supabase
         .from('applications')
-        .select('user_id, company_name')
+        .select('user_id, company_name, contact_email, contact_person')
         .eq('id', offer.application_id)
         .single();
       
@@ -562,6 +601,17 @@ export const offers = {
           title: 'Uusi tarjous!',
           message: 'Sait rahoitustarjouksen hakemukseesi'
         });
+        
+        // Send email notification
+        if (app.contact_email) {
+          sendNotificationEmail({
+            to: app.contact_email,
+            subject: 'Uusi rahoitustarjous - Juuri Rahoitus',
+            type: 'offer',
+            customer_name: app.contact_person || undefined,
+            company_name: app.company_name || undefined,
+          });
+        }
       }
       
       // Update application status
@@ -796,11 +846,11 @@ export const contracts = {
       .select()
       .single();
     
-    // Create notification for customer
+    // Create notification for customer and send email
     if (data && !error && contract?.application_id) {
       const { data: app } = await supabase
         .from('applications')
-        .select('user_id, company_name')
+        .select('user_id, company_name, contact_email, contact_person')
         .eq('id', contract.application_id)
         .single();
       
@@ -810,6 +860,17 @@ export const contracts = {
           title: 'Sopimus allekirjoitettavaksi',
           message: 'Rahoitussopimus odottaa allekirjoitustasi'
         });
+        
+        // Send email notification
+        if (app.contact_email) {
+          sendNotificationEmail({
+            to: app.contact_email,
+            subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
+            type: 'contract',
+            customer_name: app.contact_person || undefined,
+            company_name: app.company_name || undefined,
+          });
+        }
       }
       
       // Update application status
@@ -1141,6 +1202,23 @@ export const messages = {
             title: messageData.is_info_request ? 'Lisätietopyyntö' : 'Uusi viesti',
             message: messageData.is_info_request ? 'Sinulle on lisätietopyyntö hakemukseesi' : 'Sait uuden viestin hakemukseesi'
           });
+          
+          // Get customer email for notification
+          const { data: appWithEmail } = await supabase
+            .from('applications')
+            .select('contact_email, contact_person, company_name')
+            .eq('id', messageData.application_id)
+            .single();
+          
+          if (appWithEmail?.contact_email) {
+            sendNotificationEmail({
+              to: appWithEmail.contact_email,
+              subject: messageData.is_info_request ? 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus' : 'Uusi viesti - Juuri Rahoitus',
+              type: messageData.is_info_request ? 'info_request' : 'message',
+              customer_name: appWithEmail.contact_person || undefined,
+              company_name: appWithEmail.company_name || undefined,
+            });
+          }
         }
       }
       
