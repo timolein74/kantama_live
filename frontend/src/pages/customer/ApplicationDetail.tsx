@@ -397,9 +397,12 @@ export default function CustomerApplicationDetail() {
         : `Liitetyt dokumentit:\n${fileList}`;
     }
     
-    // DEMO MODE
+    // DEMO MODE CHECK
     const token = localStorage.getItem('token');
+    console.log('🔍 handleRespondToInfoRequest - Token:', token ? `${token.substring(0, 30)}...` : 'null');
+    
     if (token?.startsWith('demo-token-')) {
+      console.log('⚠️ Demo mode - using localStorage');
       await new Promise(resolve => setTimeout(resolve, 500));
       
       // Get the info request
@@ -439,6 +442,8 @@ export default function CustomerApplicationDetail() {
       setIsResponding(false);
       return;
     }
+    
+    console.log('✅ Proceeding with Supabase mode');
     
     try {
       // Check authentication first
