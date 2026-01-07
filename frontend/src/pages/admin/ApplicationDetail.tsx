@@ -515,7 +515,7 @@ export default function AdminApplicationDetail() {
       </div>
 
       {/* Action card - Assign to financier */}
-      {application.status === 'SUBMITTED' && (
+      {['SUBMITTED', 'INFO_REQUESTED', 'INFO_RECEIVED'].includes(application.status) && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
