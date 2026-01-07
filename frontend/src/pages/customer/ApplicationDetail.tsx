@@ -441,6 +441,16 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
+      // Check authentication first
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      console.log('🔐 Auth check:', authData?.user?.id, 'Error:', authError);
+      
+      if (authError || !authData?.user) {
+        toast.error('Kirjautuminen vanhentunut. Kirjaudu uudelleen.');
+        setIsResponding(false);
+        return;
+      }
+      
       // Upload files first (but don't fail if upload fails)
       const uploadedFiles: string[] = [];
       const failedFiles: string[] = [];
