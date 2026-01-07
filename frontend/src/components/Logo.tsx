@@ -30,7 +30,7 @@ export default function Logo({
         className={`${sizes[size].icon} rounded-lg`}
       />
       <span className={`${colors[variant]} font-display font-bold ${sizes[size].text} tracking-tight`}>
-        <span className="text-emerald-400">Juuri</span> Rahoitus
+        <span className="text-green-500">Juuri</span> Rahoitus
       </span>
     </div>
   );
