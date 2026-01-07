@@ -264,17 +264,51 @@ export const infoRequests = {
     
     const { data: { user } } = await supabase.auth.getUser();
     
+    // Get sender role from profile
+    const { data: senderProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user?.id)
+      .single();
+    
+    const senderRole = senderProfile?.role || 'FINANCIER';
+    
     const { data: result, error } = await supabase
       .from('app_messages')
       .insert([{
         application_id: data.application_id,
         message: data.message,
         sender_id: user?.id,
-        sender_role: 'FINANCIER',
+        sender_role: senderRole,
         is_info_request: true
       }])
       .select()
       .single();
+    
+    // Create notification for customer
+    if (result && !error) {
+      const { data: app } = await supabase
+        .from('applications')
+        .select('user_id, company_name')
+        .eq('id', data.application_id)
+        .single();
+      
+      if (app?.user_id) {
+        const senderName = senderRole === 'FINANCIER' ? 'Rahoittaja' : 'Juuri Rahoitus';
+        await supabase.from('notifications').insert({
+          user_id: app.user_id,
+          title: 'Lisätietopyyntö',
+          message: `${senderName} pyytää lisätietoja hakemukseesi liittyen`
+        });
+      }
+      
+      // Update application status to INFO_REQUESTED
+      await supabase
+        .from('applications')
+        .update({ status: 'INFO_REQUESTED' })
+        .eq('id', data.application_id);
+    }
+    
     return { data: result, error };
   },
   
@@ -391,12 +425,43 @@ export const offers = {
   send: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
+    // Get offer with application details first
+    const { data: offer } = await supabase
+      .from('offers')
+      .select('application_id')
+      .eq('id', String(id))
+      .single();
+    
     const { data, error } = await supabase
       .from('offers')
       .update({ status: 'SENT' })
       .eq('id', String(id))
       .select()
       .single();
+    
+    // Create notification for customer
+    if (data && !error && offer?.application_id) {
+      const { data: app } = await supabase
+        .from('applications')
+        .select('user_id, company_name')
+        .eq('id', offer.application_id)
+        .single();
+      
+      if (app?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: app.user_id,
+          title: 'Uusi tarjous!',
+          message: 'Sait rahoitustarjouksen hakemukseesi'
+        });
+      }
+      
+      // Update application status
+      await supabase
+        .from('applications')
+        .update({ status: 'OFFER_SENT' })
+        .eq('id', offer.application_id);
+    }
+    
     return { data, error };
   },
   
@@ -608,12 +673,43 @@ export const contracts = {
   send: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
+    // Get contract with application details first
+    const { data: contract } = await supabase
+      .from('contracts')
+      .select('application_id')
+      .eq('id', String(id))
+      .single();
+    
     const { data, error } = await supabase
       .from('contracts')
-      .update({ status: 'SENT' })
+      .update({ status: 'SENT', sent_at: new Date().toISOString() })
       .eq('id', String(id))
       .select()
       .single();
+    
+    // Create notification for customer
+    if (data && !error && contract?.application_id) {
+      const { data: app } = await supabase
+        .from('applications')
+        .select('user_id, company_name')
+        .eq('id', contract.application_id)
+        .single();
+      
+      if (app?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: app.user_id,
+          title: 'Sopimus allekirjoitettavaksi',
+          message: 'Rahoitussopimus odottaa allekirjoitustasi'
+        });
+      }
+      
+      // Update application status
+      await supabase
+        .from('applications')
+        .update({ status: 'CONTRACT_SENT' })
+        .eq('id', contract.application_id);
+    }
+    
     return { data, error };
   },
   

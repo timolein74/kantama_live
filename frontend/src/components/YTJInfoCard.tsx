@@ -69,7 +69,7 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
             <Building2 className="w-6 h-6 text-white" />
             <div>
               <h3 className="text-lg font-semibold text-white">PRH/YTJ-tiedot</h3>
-              <p className="text-blue-100 text-sm">Haettu automaattisesti rekisteristä</p>
+              <p className="text-blue-100 text-sm">Haettu automaattisesti rekisteristï¿½</p>
             </div>
           </div>
           {ytjData.is_active ? (
@@ -99,12 +99,12 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
                 <dd className="font-medium">{ytjData.company_form || '-'}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-slate-600">Rekisteröity:</dt>
+                <dt className="text-slate-600">Rekisterï¿½ity:</dt>
                 <dd className="font-medium">{formatDate(ytjData.registration_date)}</dd>
               </div>
               {ytjData.end_date && (
                 <div className="flex justify-between text-red-600">
-                  <dt>Päättynyt:</dt>
+                  <dt>Pï¿½ï¿½ttynyt:</dt>
                   <dd className="font-medium">{formatDate(ytjData.end_date)}</dd>
                 </div>
               )}
@@ -115,7 +115,7 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Toimiala</h4>
             <dl className="space-y-2">
               <div>
-                <dt className="text-slate-600 text-sm">Päätoimiala:</dt>
+                <dt className="text-slate-600 text-sm">Pï¿½ï¿½toimiala:</dt>
                 <dd className="font-medium">
                   {ytjData.main_business || '-'}
                   {ytjData.main_business_code && (
@@ -134,7 +134,7 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
           {ytjData.visiting_address && (
             <div>
               <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                <MapPin className="w-4 h-4" /> Käyntiosoite
+                <MapPin className="w-4 h-4" /> Kï¿½yntiosoite
               </h4>
               <address className="not-italic text-slate-700">
                 {ytjData.visiting_address.street && <div>{ytjData.visiting_address.street}</div>}
@@ -208,11 +208,11 @@ export default function YTJInfoCard({ ytjData, compact = false }: YTJInfoCardPro
           </div>
         )}
 
-        {/* Rekisterimerkinnät */}
+        {/* Rekisterimerkinnï¿½t */}
         {ytjData.registered_entries && ytjData.registered_entries.length > 0 && (
           <div className="mb-6">
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-              <Calendar className="w-4 h-4" /> Rekisterimerkinnät
+              <Calendar className="w-4 h-4" /> Rekisterimerkinnï¿½t
             </h4>
             <div className="space-y-1">
               {ytjData.registered_entries.map((entry, idx) => (

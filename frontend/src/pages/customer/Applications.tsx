@@ -131,12 +131,12 @@ export default function CustomerApplications() {
               className="input pl-10 min-w-[180px]"
             >
               <option value="">Kaikki tilat</option>
-              <option value="SUBMITTED">Lähetetty</option>
-              <option value="SUBMITTED_TO_FINANCIER">Käsittelyssä</option>
-              <option value="INFO_REQUESTED">Lisätietopyyntö</option>
+              <option value="SUBMITTED">Lï¿½hetetty</option>
+              <option value="SUBMITTED_TO_FINANCIER">Kï¿½sittelyssï¿½</option>
+              <option value="INFO_REQUESTED">Lisï¿½tietopyyntï¿½</option>
               <option value="OFFER_SENT">Tarjous saatavilla</option>
-              <option value="OFFER_ACCEPTED">Tarjous hyväksytty</option>
-              <option value="CONTRACT_SENT">Sopimus lähetetty</option>
+              <option value="OFFER_ACCEPTED">Tarjous hyvï¿½ksytty</option>
+              <option value="CONTRACT_SENT">Sopimus lï¿½hetetty</option>
               <option value="SIGNED">Allekirjoitettu</option>
             </select>
           </div>
@@ -204,7 +204,7 @@ export default function CustomerApplications() {
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 mt-1">
-                        {getApplicationTypeLabel(app.application_type)} • {app.equipment_description}
+                        {getApplicationTypeLabel(app.application_type)} â€¢ {app.equipment_description}
                       </p>
                     </div>
                   </div>
