@@ -441,23 +441,26 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
-      // Upload files first
+      // Upload files first (but don't fail if upload fails)
       const uploadedFiles: string[] = [];
+      const failedFiles: string[] = [];
+      
       for (const [docType, docData] of Object.entries(selectedDocs)) {
         if (docData.file) {
           console.log('📤 Uploading file:', docData.file.name);
-          const { data: uploadResult, error: uploadError } = await files.upload(id!, docData.file, docType);
-          
-          if (uploadError) {
-            console.error('File upload error:', uploadError);
-            toast.error(`Virhe tiedoston latauksessa: ${docData.file.name}`);
-            setIsResponding(false);
-            return;
-          }
-          
-          if (uploadResult?.path) {
-            uploadedFiles.push(uploadResult.path);
-            console.log('✅ File uploaded:', uploadResult.path);
+          try {
+            const { data: uploadResult, error: uploadError } = await files.upload(id!, docData.file, docType);
+            
+            if (uploadError) {
+              console.error('File upload error:', uploadError);
+              failedFiles.push(docData.file.name);
+            } else if (uploadResult?.path) {
+              uploadedFiles.push(uploadResult.path);
+              console.log('✅ File uploaded:', uploadResult.path);
+            }
+          } catch (uploadErr) {
+            console.error('File upload exception:', uploadErr);
+            failedFiles.push(docData.file.name);
           }
         }
       }
@@ -466,6 +469,12 @@ export default function CustomerApplicationDetail() {
       if (uploadedFiles.length > 0) {
         fullMessage += `\n\n[Ladatut tiedostot: ${uploadedFiles.length} kpl]`;
       }
+      if (failedFiles.length > 0) {
+        fullMessage += `\n\n[Tiedostoja ei voitu ladata: ${failedFiles.join(', ')}]`;
+        toast.error(`Joidenkin tiedostojen lataus epäonnistui: ${failedFiles.join(', ')}`);
+      }
+      
+      console.log('📨 Sending message with attachments:', uploadedFiles);
       
       // Use messages.send for consistent behavior with admin messages
       const { data: result, error } = await messages.send({
@@ -477,9 +486,11 @@ export default function CustomerApplicationDetail() {
         attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined
       });
       
+      console.log('📨 Message send result:', result, 'Error:', error);
+      
       if (error) {
         console.error('Error sending response:', error);
-        toast.error('Virhe vastauksen lähettämisessä');
+        toast.error('Virhe vastauksen lähettämisessä: ' + (error.message || JSON.stringify(error)));
         return;
       }
       
