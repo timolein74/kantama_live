@@ -1576,13 +1576,76 @@ export default function FinancierApplicationDetail() {
                     <p className="text-amber-700 text-sm mt-1">
                       Dokumenttipyyntö on lähetetty asiakkaalle. Kun liitteet on vastaanotettu ja tarkistettu, voit hyväksyä luottopäätöksen ja tehdä sopimuksen.
                     </p>
-                    <button
-                      onClick={() => setShowContractForm(true)}
-                      className="btn-primary bg-amber-600 hover:bg-amber-700 mt-3"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Hyväksy luottopäätös ja tee sopimus
-                    </button>
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      <button
+                        onClick={() => setShowContractForm(true)}
+                        className="btn-primary bg-amber-600 hover:bg-amber-700"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Hyväksy luottopäätös ja tee sopimus
+                      </button>
+                      
+                      {/* Upload existing PDF contract */}
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            setIsUploadingPdf(true);
+                            try {
+                              const fileName = `contract_${id}_${Date.now()}.pdf`;
+                              const filePath = `contracts/${fileName}`;
+                              
+                              const { error: uploadError } = await supabase.storage
+                                .from('uploads')
+                                .upload(filePath, file, { upsert: true });
+                              
+                              if (uploadError) throw uploadError;
+                              
+                              const { data: urlData } = supabase.storage
+                                .from('uploads')
+                                .getPublicUrl(filePath);
+                              
+                              const { data: newContract, error: contractError } = await supabase
+                                .from('contracts')
+                                .insert({
+                                  application_id: id,
+                                  status: 'DRAFT',
+                                  contract_pdf_url: urlData.publicUrl,
+                                  lessor_company_name: 'Rahoittaja',
+                                  lessee_company_name: application.company_name,
+                                  lessee_business_id: application.business_id,
+                                })
+                                .select()
+                                .single();
+                              
+                              if (contractError) throw contractError;
+                              
+                              setContractList([...contractList, newContract]);
+                              toast.success('Sopimus-PDF ladattu! Voit nyt lähettää sen asiakkaalle.');
+                            } catch (error: any) {
+                              console.error('PDF upload error:', error);
+                              toast.error('Virhe PDF:n latauksessa: ' + (error.message || 'Tuntematon virhe'));
+                            } finally {
+                              setIsUploadingPdf(false);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="hidden"
+                          id="upload-existing-contract-pending"
+                        />
+                        <label
+                          htmlFor="upload-existing-contract-pending"
+                          className={`btn-secondary cursor-pointer inline-flex items-center ${isUploadingPdf ? 'opacity-50 pointer-events-none' : ''}`}
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {isUploadingPdf ? 'Ladataan...' : 'Lataa valmis sopimus-PDF'}
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1594,13 +1657,79 @@ export default function FinancierApplicationDetail() {
                 <p className="text-purple-800 text-sm mb-2">
                   Voit pyytää liitteitä luottopäätöstä varten ylhäältä, tai ohittaa ja tehdä sopimuksen suoraan:
                 </p>
-                <button
-                  onClick={() => setShowContractForm(true)}
-                  className="btn-primary"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Tee sopimus suoraan
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => setShowContractForm(true)}
+                    className="btn-primary"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Tee sopimus suoraan
+                  </button>
+                  
+                  {/* Upload existing PDF contract */}
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        setIsUploadingPdf(true);
+                        try {
+                          // Upload to Supabase Storage
+                          const fileName = `contract_${id}_${Date.now()}.pdf`;
+                          const filePath = `contracts/${fileName}`;
+                          
+                          const { error: uploadError } = await supabase.storage
+                            .from('uploads')
+                            .upload(filePath, file, { upsert: true });
+                          
+                          if (uploadError) throw uploadError;
+                          
+                          // Get public URL
+                          const { data: urlData } = supabase.storage
+                            .from('uploads')
+                            .getPublicUrl(filePath);
+                          
+                          // Create a simple contract record with the PDF
+                          const { data: newContract, error: contractError } = await supabase
+                            .from('contracts')
+                            .insert({
+                              application_id: id,
+                              status: 'DRAFT',
+                              contract_pdf_url: urlData.publicUrl,
+                              lessor_company_name: 'Rahoittaja',
+                              lessee_company_name: application.company_name,
+                              lessee_business_id: application.business_id,
+                            })
+                            .select()
+                            .single();
+                          
+                          if (contractError) throw contractError;
+                          
+                          setContractList([...contractList, newContract]);
+                          toast.success('Sopimus-PDF ladattu! Voit nyt lähettää sen asiakkaalle.');
+                        } catch (error: any) {
+                          console.error('PDF upload error:', error);
+                          toast.error('Virhe PDF:n latauksessa: ' + (error.message || 'Tuntematon virhe'));
+                        } finally {
+                          setIsUploadingPdf(false);
+                          e.target.value = '';
+                        }
+                      }}
+                      className="hidden"
+                      id="upload-existing-contract"
+                    />
+                    <label
+                      htmlFor="upload-existing-contract"
+                      className={`btn-secondary cursor-pointer inline-flex items-center ${isUploadingPdf ? 'opacity-50 pointer-events-none' : ''}`}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {isUploadingPdf ? 'Ladataan...' : 'Lataa valmis sopimus-PDF'}
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 
