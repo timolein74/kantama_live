@@ -272,12 +272,18 @@ export default function FinancierApplicationDetail() {
     try {
       const requestedItems = selectedDocs.map(([key]) => documentLabels[key]);
       
+      console.log('🚀 Sending info request for application:', id);
+      console.log('📎 Selected docs:', selectedDocs.map(([key]) => key));
+      console.log('💬 Message:', fullMessage);
+      
       const { data, error } = await infoRequests.create({
         application_id: id!,
         message: fullMessage,
         requested_items: requestedItems.length > 0 ? requestedItems : undefined,
         requested_documents: selectedDocs.map(([key]) => key)
       });
+      
+      console.log('📨 infoRequests.create response:', { data, error });
       
       if (error) {
         console.error('Info request error:', error);

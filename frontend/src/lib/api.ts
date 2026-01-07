@@ -288,9 +288,15 @@ export const assignments = {
 // Info Requests - Supabase-based (using app_messages table)
 export const infoRequests = {
   create: async (data: { application_id: string; message: string; requested_items?: string[]; requested_documents?: string[] }) => {
-    if (!isSupabaseConfigured()) return { data: null, error: null };
+    console.log('📨 infoRequests.create called with:', data);
     
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!isSupabaseConfigured()) {
+      console.error('❌ Supabase not configured!');
+      return { data: null, error: new Error('Supabase not configured') };
+    }
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('👤 Current user:', user?.id, user?.email, 'Error:', userError);
     
     // Get sender role from profile
     const { data: senderProfile } = await supabase
@@ -300,19 +306,25 @@ export const infoRequests = {
       .single();
     
     const senderRole = senderProfile?.role || 'FINANCIER';
+    console.log('📝 Sender role:', senderRole);
+    
+    const insertData = {
+      application_id: data.application_id,
+      message: data.message,
+      sender_id: user?.id,
+      sender_role: senderRole,
+      is_info_request: true,
+      requested_documents: data.requested_documents || null
+    };
+    console.log('📝 Inserting message:', insertData);
     
     const { data: result, error } = await supabase
       .from('app_messages')
-      .insert([{
-        application_id: data.application_id,
-        message: data.message,
-        sender_id: user?.id,
-        sender_role: senderRole,
-        is_info_request: true,
-        requested_documents: data.requested_documents || null
-      }])
+      .insert([insertData])
       .select()
       .single();
+    
+    console.log('📝 Insert result:', result, 'Error:', error);
     
     // Create notification for customer and send email
     if (result && !error) {
