@@ -51,9 +51,8 @@ export default function AdminLayout() {
   const handleMarkAsRead = async (id: number) => {
     try {
       await notificationsApi.markAsRead(id);
-      setNotificationsList(prev => 
-        prev.map(n => n.id === id ? { ...n, is_read: true } : n)
-      );
+      // Remove notification from list when clicked
+      setNotificationsList(prev => prev.filter(n => n.id !== id));
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Failed to mark as read');
