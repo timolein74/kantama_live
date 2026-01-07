@@ -31,7 +31,7 @@ import {
   PenTool,
   PartyPopper
 } from 'lucide-react';
-import { contracts, infoRequests, files, messages } from '../../lib/api';
+import { contracts, infoRequests, files, messages, applications, offers } from '../../lib/api';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import {
   formatCurrency,
@@ -290,7 +290,7 @@ export default function CustomerApplicationDetail() {
       
       // Refresh messages
       const messagesRes = await messages.listByApplication(id!);
-      setMessageList(messagesRes.data || []);
+      setInfoRequestList((messagesRes.data || []) as InfoRequest[]);
     } catch (error: any) {
       console.error('Unexpected error:', error);
       toast.error('Virhe viestin lähettämisessä');

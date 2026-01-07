@@ -1007,12 +1007,22 @@ export const messages = {
     // Get current user
     const { data: { user } } = await supabase.auth.getUser();
     
+    // Map reply_to_id to parent_message_id for database
+    const { reply_to_id, documents, ...rest } = messageData;
+    
+    const insertData: any = {
+      ...rest,
+      sender_id: messageData.sender_id || user?.id
+    };
+    
+    // Add parent_message_id if reply_to_id is provided
+    if (reply_to_id) {
+      insertData.parent_message_id = reply_to_id;
+    }
+    
     const { data, error } = await supabase
       .from('app_messages')
-      .insert({
-        ...messageData,
-        sender_id: messageData.sender_id || user?.id
-      })
+      .insert(insertData)
       .select()
       .single();
     
@@ -1026,9 +1036,11 @@ export const messages = {
         .single();
       
       const notificationsToCreate = [];
+      const companyName = app?.company_name || 'Asiakas';
       
       if (messageData.sender_role === 'CUSTOMER') {
         // Customer sent message - notify admins and financiers
+        // Use "vastasi" in title so admin dashboard can detect it
         const { data: admins } = await supabase
           .from('profiles')
           .select('id')
@@ -1043,8 +1055,8 @@ export const messages = {
           for (const admin of admins) {
             notificationsToCreate.push({
               user_id: admin.id,
-              title: 'Uusi viesti',
-              message: `${app?.company_name || 'Asiakas'} lähetti viestin`
+              title: reply_to_id ? 'Asiakas vastasi viestiin' : 'Uusi viesti asiakkaalta',
+              message: `${companyName} ${reply_to_id ? 'vastasi viestiisi' : 'lähetti viestin'}`
             });
           }
         }
@@ -1053,8 +1065,8 @@ export const messages = {
           for (const financier of financiers) {
             notificationsToCreate.push({
               user_id: financier.id,
-              title: 'Uusi viesti',
-              message: `${app?.company_name || 'Asiakas'} lähetti viestin`
+              title: reply_to_id ? 'Asiakas vastasi viestiin' : 'Uusi viesti asiakkaalta',
+              message: `${companyName} ${reply_to_id ? 'vastasi viestiisi' : 'lähetti viestin'}`
             });
           }
         }
@@ -1063,8 +1075,8 @@ export const messages = {
         if (app?.user_id) {
           notificationsToCreate.push({
             user_id: app.user_id,
-            title: 'Uusi viesti',
-            message: messageData.is_info_request ? 'Sinulle on lisätietopyyntö' : 'Sait uuden viestin hakemukseesi'
+            title: messageData.is_info_request ? 'Lisätietopyyntö' : 'Uusi viesti',
+            message: messageData.is_info_request ? 'Sinulle on lisätietopyyntö hakemukseesi' : 'Sait uuden viestin hakemukseesi'
           });
         }
       }
