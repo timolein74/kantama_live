@@ -25,7 +25,7 @@ export default function Logo({
   const content = (
     <div className="flex items-center gap-2">
       <img 
-        src="/juuri-logo.png" 
+        src="/juuri-logo.svg" 
         alt="Juuri" 
         className={`${sizes[size].icon} rounded-lg`}
       />
