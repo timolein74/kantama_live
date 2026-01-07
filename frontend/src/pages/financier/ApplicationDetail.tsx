@@ -53,8 +53,12 @@ export default function FinancierApplicationDetail() {
   // Info request form
   const [showInfoRequestForm, setShowInfoRequestForm] = useState(false);
   const [infoRequestMessage, setInfoRequestMessage] = useState('');
-  const [infoRequestItems, setInfoRequestItems] = useState('');
   const [isSendingInfoRequest, setIsSendingInfoRequest] = useState(false);
+  const [requestedDocuments, setRequestedDocuments] = useState({
+    tilinpaatos: false,
+    tulosTase: false,
+    henkilokortti: false,
+  });
   
   // Offer form
   const [showOfferForm, setShowOfferForm] = useState(false);
@@ -184,29 +188,47 @@ export default function FinancierApplicationDetail() {
     fetchData();
   }, [id]);
 
+  // Document type labels for info request
+  const documentLabels: Record<string, string> = {
+    tilinpaatos: 'Tilinpäätös',
+    tulosTase: 'Tulos ja tase ajot',
+    henkilokortti: 'Kuvallinen henkilökortti',
+  };
+
   const handleSendInfoRequest = async () => {
-    if (!infoRequestMessage.trim() || !id) {
-      toast.error('Kirjoita viesti');
+    // Check that at least a message or document is selected
+    const selectedDocs = Object.entries(requestedDocuments).filter(([_, selected]) => selected);
+    if (!infoRequestMessage.trim() && selectedDocs.length === 0) {
+      toast.error('Kirjoita viesti tai valitse dokumentteja');
       return;
     }
+    if (!id) return;
     
     setIsSendingInfoRequest(true);
+    
+    // Build message with document requests
+    let fullMessage = infoRequestMessage.trim();
+    if (selectedDocs.length > 0) {
+      const docList = selectedDocs.map(([key]) => documentLabels[key]).join(', ');
+      fullMessage = fullMessage 
+        ? `${fullMessage}\n\nPyydetyt dokumentit: ${docList}`
+        : `Pyydetyt dokumentit: ${docList}`;
+    }
     
     // DEMO MODE: Simulate info request
     const token = localStorage.getItem('token');
     if (token?.startsWith('demo-token-')) {
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      const requestedItems = infoRequestItems.trim()
-        ? infoRequestItems.split('\n').filter(item => item.trim())
-        : [];
+      const requestedItems = selectedDocs.map(([key]) => documentLabels[key]);
       
       const newRequest = {
         id: Date.now(),
         application_id: id,
         financier_id: 1,
-        message: infoRequestMessage,
+        message: fullMessage,
         requested_items: requestedItems,
+        requested_documents: selectedDocs.map(([key]) => key),
         status: 'PENDING',
         created_at: new Date().toISOString(),
         sender: 'financier',
@@ -236,26 +258,25 @@ export default function FinancierApplicationDetail() {
       toast.success('Lisätietopyyntö lähetetty asiakkaalle!');
       setShowInfoRequestForm(false);
       setInfoRequestMessage('');
-      setInfoRequestItems('');
+      setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false });
       setIsSendingInfoRequest(false);
       return;
     }
     
     try {
-      const requestedItems = infoRequestItems.trim()
-        ? infoRequestItems.split('\n').filter(item => item.trim())
-        : undefined;
+      const requestedItems = selectedDocs.map(([key]) => documentLabels[key]);
       
       await infoRequests.create({
         application_id: id,
-        message: infoRequestMessage,
-        requested_items: requestedItems
+        message: fullMessage,
+        requested_items: requestedItems.length > 0 ? requestedItems : undefined,
+        requested_documents: selectedDocs.map(([key]) => key)
       });
       
       toast.success('Lisätietopyyntö lähetetty');
       setShowInfoRequestForm(false);
       setInfoRequestMessage('');
-      setInfoRequestItems('');
+      setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false });
       
       // Refresh data - use getForFinancier to only get financier's own messages
       const [appRes, infoRes] = await Promise.all([
@@ -1659,13 +1680,27 @@ export default function FinancierApplicationDetail() {
                 </div>
 
                 <div className="mb-4">
-                  <label className="label">Pyydetyt dokumentit (yksi per rivi)</label>
-                  <textarea
-                    value={infoRequestItems}
-                    onChange={(e) => setInfoRequestItems(e.target.value)}
-                    className="input min-h-[80px]"
-                    placeholder="Tilinpäätös 2024&#10;Tarjous toimittajalta&#10;..."
-                  />
+                  <label className="label">Pyydetyt dokumentit</label>
+                  <div className="space-y-2 bg-slate-50 rounded-lg p-4">
+                    {[
+                      { key: 'tilinpaatos', label: 'Tilinpäätös' },
+                      { key: 'tulosTase', label: 'Tulos ja tase ajot' },
+                      { key: 'henkilokortti', label: 'Kuvallinen henkilökortti' },
+                    ].map(({ key, label }) => (
+                      <label key={key} className="flex items-center space-x-3 cursor-pointer hover:bg-white p-2 rounded transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={requestedDocuments[key as keyof typeof requestedDocuments]}
+                          onChange={(e) => setRequestedDocuments(prev => ({
+                            ...prev,
+                            [key]: e.target.checked
+                          }))}
+                          className="w-5 h-5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-slate-800 font-medium">{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex justify-end space-x-3">

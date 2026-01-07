@@ -1576,6 +1576,42 @@ export default function CustomerApplicationDetail() {
                   {/* Response form */}
                   {!(ir as any).is_read && (
                     <div className="border-t pt-4">
+                      {/* Show requested documents with upload buttons */}
+                      {(ir as any).requested_documents && (ir as any).requested_documents.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-sm font-medium text-slate-700 mb-3">📎 Lataa pyydetyt dokumentit:</p>
+                          <div className="space-y-3">
+                            {(ir as any).requested_documents.map((docType: string) => {
+                              const docLabels: Record<string, string> = {
+                                tilinpaatos: 'Tilinpäätös',
+                                tulosTase: 'Tulos ja tase ajot',
+                                henkilokortti: 'Kuvallinen henkilökortti',
+                              };
+                              return (
+                                <div key={docType} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                                  <span className="font-medium text-slate-800">{docLabels[docType] || docType}</span>
+                                  <label className="btn-ghost text-sm cursor-pointer flex items-center">
+                                    <Upload className="w-4 h-4 mr-2" />
+                                    Valitse tiedosto
+                                    <input
+                                      type="file"
+                                      className="hidden"
+                                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          toast.success(`${file.name} valittu`);
+                                          // TODO: Implement actual file upload
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                       <textarea
                         value={responseMessage}
                         onChange={(e) => setResponseMessage(e.target.value)}

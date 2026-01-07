@@ -259,7 +259,7 @@ export const assignments = {
 
 // Info Requests - Supabase-based (using app_messages table)
 export const infoRequests = {
-  create: async (data: { application_id: string; message: string; requested_items?: string[] }) => {
+  create: async (data: { application_id: string; message: string; requested_items?: string[]; requested_documents?: string[] }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
     const { data: { user } } = await supabase.auth.getUser();
@@ -280,7 +280,8 @@ export const infoRequests = {
         message: data.message,
         sender_id: user?.id,
         sender_role: senderRole,
-        is_info_request: true
+        is_info_request: true,
+        requested_documents: data.requested_documents || null
       }])
       .select()
       .single();
