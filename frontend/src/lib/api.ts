@@ -308,21 +308,60 @@ export const infoRequests = {
     const senderRole = senderProfile?.role || 'FINANCIER';
     console.log('📝 Sender role:', senderRole);
     
-    const insertData = {
+    // Build insert data - try with requested_documents first, fallback without
+    const baseInsertData = {
       application_id: data.application_id,
       message: data.message,
       sender_id: user?.id,
       sender_role: senderRole,
-      is_info_request: true,
-      requested_documents: data.requested_documents || null
+      is_info_request: true
     };
-    console.log('📝 Inserting message:', insertData);
     
-    const { data: result, error } = await supabase
-      .from('app_messages')
-      .insert([insertData])
-      .select()
-      .single();
+    // Try with requested_documents if provided
+    let result = null;
+    let error = null;
+    
+    if (data.requested_documents && data.requested_documents.length > 0) {
+      console.log('📝 Trying insert with requested_documents:', data.requested_documents);
+      const insertWithDocs = {
+        ...baseInsertData,
+        requested_documents: data.requested_documents
+      };
+      
+      const response = await supabase
+        .from('app_messages')
+        .insert([insertWithDocs])
+        .select()
+        .single();
+      
+      result = response.data;
+      error = response.error;
+      
+      // If failed due to column issue, try without requested_documents
+      if (error && error.message?.includes('requested_documents')) {
+        console.log('⚠️ Retrying without requested_documents column');
+        const fallbackResponse = await supabase
+          .from('app_messages')
+          .insert([baseInsertData])
+          .select()
+          .single();
+        
+        result = fallbackResponse.data;
+        error = fallbackResponse.error;
+      }
+    } else {
+      console.log('📝 Inserting without requested_documents');
+      const response = await supabase
+        .from('app_messages')
+        .insert([baseInsertData])
+        .select()
+        .single();
+      
+      result = response.data;
+      error = response.error;
+    }
+    
+    console.log('📝 Insert result:', result, 'Error:', error);
     
     console.log('📝 Insert result:', result, 'Error:', error);
     
