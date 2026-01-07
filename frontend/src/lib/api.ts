@@ -42,7 +42,7 @@ api.interceptors.response.use(
 );
 
 // Email notification helper - calls Edge Function (deployed on idmcvfyekoxzelddkymv project)
-const EDGE_FUNCTION_URL = 'https://idmcvfyekoxzelddkymv.supabase.co/functions/v1/send-notification-email';
+const EDGE_FUNCTION_URL = 'https://iquhgqeicalsrsfzdopd.supabase.co/functions/v1/send-notification-email';
 
 export const sendNotificationEmail = async (params: {
   to: string;
