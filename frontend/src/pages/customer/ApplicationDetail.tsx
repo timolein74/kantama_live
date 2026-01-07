@@ -417,6 +417,32 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
+      // Upload files first
+      const uploadedFiles: string[] = [];
+      for (const [docType, docData] of Object.entries(selectedDocs)) {
+        if (docData.file) {
+          console.log('📤 Uploading file:', docData.file.name);
+          const { data: uploadResult, error: uploadError } = await files.upload(id!, docData.file, docType);
+          
+          if (uploadError) {
+            console.error('File upload error:', uploadError);
+            toast.error(`Virhe tiedoston latauksessa: ${docData.file.name}`);
+            setIsResponding(false);
+            return;
+          }
+          
+          if (uploadResult?.path) {
+            uploadedFiles.push(uploadResult.path);
+            console.log('✅ File uploaded:', uploadResult.path);
+          }
+        }
+      }
+      
+      // Add uploaded file info to message
+      if (uploadedFiles.length > 0) {
+        fullMessage += `\n\n[Ladatut tiedostot: ${uploadedFiles.length} kpl]`;
+      }
+      
       // Use messages.send for consistent behavior with admin messages
       const { data: result, error } = await messages.send({
         application_id: id!,

@@ -1002,26 +1002,113 @@ const notificationsAxios = {
 // Files
 export const files = {
   upload: async (applicationId: string | number, file: File, description?: string) => {
-    // File upload to Supabase Storage - return empty for now
-    console.log('File upload not implemented yet:', applicationId, file.name);
-    return { data: null, error: null };
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase not configured for file upload');
+      return { data: null, error: new Error('Storage not configured') };
+    }
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const userId = user?.id || 'anonymous';
+      
+      // Create unique file path
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `applications/${applicationId}/${timestamp}_${safeName}`;
+      
+      console.log('📤 Uploading file:', filePath);
+      
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+      
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return { data: null, error: uploadError };
+      }
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('documents')
+        .getPublicUrl(filePath);
+      
+      console.log('✅ File uploaded:', uploadData.path);
+      
+      return { 
+        data: { 
+          id: uploadData.path,
+          path: uploadData.path,
+          url: urlData.publicUrl,
+          name: file.name,
+          size: file.size,
+          type: file.type
+        }, 
+        error: null 
+      };
+    } catch (error) {
+      console.error('Unexpected upload error:', error);
+      return { data: null, error };
+    }
   },
   
   list: async (applicationId: string | number) => {
-    // Return empty array - file storage not implemented yet
-    return { data: [], error: null };
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .list(`applications/${applicationId}`);
+      
+      return { data: data || [], error };
+    } catch (error) {
+      return { data: [], error };
+    }
   },
   
   getForApplication: async (applicationId: string | number) => {
-    return { data: [], error: null };
+    return files.list(applicationId);
   },
   
-  download: async (id: string | number) => {
-    return { data: null, error: null };
+  download: async (path: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .download(path);
+      
+      return { data, error };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
   
-  delete: async (id: string | number) => {
-    return { data: null, error: null };
+  getUrl: (path: string) => {
+    if (!isSupabaseConfigured()) return null;
+    
+    const { data } = supabase.storage
+      .from('documents')
+      .getPublicUrl(path);
+    
+    return data.publicUrl;
+  },
+  
+  delete: async (path: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .remove([path]);
+      
+      return { data, error };
+    } catch (error) {
+      return { data: null, error };
+    }
   },
 };
 
