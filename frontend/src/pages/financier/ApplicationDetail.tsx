@@ -150,7 +150,7 @@ export default function FinancierApplicationDetail() {
         if (app) {
           if (['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'SUBMITTED'].includes(app.status)) {
             setActiveTab('details');
-          } else if (['OFFER_SENT', 'OFFER_ACCEPTED'].includes(app.status)) {
+          } else if (['OFFER_SENT', 'OFFER_ACCEPTED', 'CREDIT_DECISION_PENDING'].includes(app.status)) {
             setActiveTab('offer');
           } else if (app.status === 'CONTRACT_SENT') {
             setActiveTab('contract');
@@ -500,8 +500,26 @@ export default function FinancierApplicationDetail() {
         message: documentRequestMessage,
         requested_documents: selectedDocTypes
       });
+      
+      // Update application status to CREDIT_DECISION_PENDING so document request form hides
+      await applications.updateStatus(id!, 'CREDIT_DECISION_PENDING');
+      
       toast.success('Liitepyyntö lähetetty');
       setShowDocumentRequest(false);
+      
+      // Refresh application to get new status
+      const appRes = await applications.get(id!);
+      setApplication(appRes.data);
+      
+      // Reset form
+      setDocumentTypes({
+        tilinpaatos: { selected: false, required: false },
+        tulosTase: { selected: false, required: false },
+        kuvaKohteesta: { selected: false, required: false },
+        urakkasopimus: { selected: false, required: false },
+        liiketoimintasuunnitelma: { selected: false, required: false },
+      });
+      setDocumentRequestMessage('');
     } catch (error: any) {
       console.error('Document request error:', error);
       toast.error(error?.message || 'Virhe pyynnön lähetyksessä');
@@ -1489,15 +1507,42 @@ export default function FinancierApplicationDetail() {
 
         {activeTab === 'contract' && (
           <div className="space-y-4">
-            {/* Create contract button */}
+            {/* Info banner for CREDIT_DECISION_PENDING */}
+            {application.status === 'CREDIT_DECISION_PENDING' && !contractList.length && !showContractForm && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <div className="flex items-start space-x-3">
+                  <Clock className="w-5 h-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-amber-900">Luottopäätös käsittelyssä</p>
+                    <p className="text-amber-700 text-sm mt-1">
+                      Dokumenttipyyntö on lähetetty asiakkaalle. Kun liitteet on vastaanotettu ja tarkistettu, voit hyväksyä luottopäätöksen ja tehdä sopimuksen.
+                    </p>
+                    <button
+                      onClick={() => setShowContractForm(true)}
+                      className="btn-primary bg-amber-600 hover:bg-amber-700 mt-3"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Hyväksy luottopäätös ja tee sopimus
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Create contract button for OFFER_ACCEPTED (skip document request) */}
             {application.status === 'OFFER_ACCEPTED' && !contractList.length && !showContractForm && (
-              <button
-                onClick={() => setShowContractForm(true)}
-                className="btn-primary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Tee sopimus
-              </button>
+              <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
+                <p className="text-purple-800 text-sm mb-2">
+                  Voit pyytää liitteitä luottopäätöstä varten ylhäältä, tai ohittaa ja tehdä sopimuksen suoraan:
+                </p>
+                <button
+                  onClick={() => setShowContractForm(true)}
+                  className="btn-primary"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Tee sopimus suoraan
+                </button>
+              </div>
             )}
 
             {/* Contract form */}
@@ -1517,7 +1562,7 @@ export default function FinancierApplicationDetail() {
                 <FileCheck className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-midnight-900 mb-2">Ei sopimuksia</h3>
                 <p className="text-slate-500">
-                  {application.status === 'OFFER_ACCEPTED'
+                  {['OFFER_ACCEPTED', 'CREDIT_DECISION_PENDING'].includes(application.status)
                     ? 'Luo sopimus hyväksytylle tarjoukselle.'
                     : 'Sopimus voidaan luoda kun tarjous on hyväksytty.'}
                 </p>

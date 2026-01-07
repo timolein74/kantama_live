@@ -1509,6 +1509,26 @@ export const applications = {
     }
     
     return { data, error };
+  },
+  
+  updateStatus: async (id: string | number, status: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const idStr = String(id);
+    console.log('Updating application status:', idStr, status);
+    
+    const { data, error } = await supabase
+      .from('applications')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', idStr)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error updating application status:', error);
+    }
+    
+    return { data, error };
   }
 };
 
