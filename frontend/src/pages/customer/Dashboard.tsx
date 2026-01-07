@@ -249,38 +249,44 @@ export default function CustomerDashboard() {
         </motion.div>
       )}
 
-      {/* PENDING INFO REQUEST - Financier needs documents */}
-      {pendingInfoRequests.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                <Upload className="w-8 h-8 text-white" />
+      {/* PENDING INFO REQUEST - Admin or Financier needs info */}
+      {pendingInfoRequests.length > 0 && (() => {
+        const firstMsg = pendingInfoRequests[0]?.messages?.[0];
+        const isFromFinancier = firstMsg?.sender_role === 'FINANCIER';
+        return (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 text-white shadow-lg"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Upload className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold flex items-center">
+                    <MessageSquare className="w-5 h-5 mr-2" />
+                    {isFromFinancier ? 'Rahoittaja tarvitsee lisätietoja' : 'Juuri Rahoitus pyytää lisätietoja'}
+                  </h2>
+                  <p className="text-amber-100 mt-1">
+                    {isFromFinancier 
+                      ? 'Toimita pyydetyt liitteet luottopäätöstä varten.' 
+                      : 'Vastaa viestiin hakemuksesi käsittelyn jatkamiseksi.'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-xl font-bold flex items-center">
-                  <MessageSquare className="w-5 h-5 mr-2" />
-                  Rahoittaja tarvitsee lisätietoja
-                </h2>
-                <p className="text-amber-100 mt-1">
-                  Toimita pyydetyt liitteet luottopäätöstä varten.
-                </p>
-              </div>
+              <Link
+                to={`/dashboard/applications/${pendingInfoRequests[0]?.application_id}`}
+                className="bg-white text-amber-700 px-6 py-3 rounded-xl font-semibold hover:bg-amber-50 transition-colors flex items-center"
+              >
+                Vastaa pyyntöön
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Link>
             </div>
-            <Link
-              to={`/dashboard/applications/${pendingInfoRequests[0]?.application_id}`}
-              className="bg-white text-amber-700 px-6 py-3 rounded-xl font-semibold hover:bg-amber-50 transition-colors flex items-center"
-            >
-              Vastaa pyyntöön
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Link>
-          </div>
-        </motion.div>
-      )}
+          </motion.div>
+        );
+      })()}
 
       {/* SUBMITTED - Blue: waiting for admin approval */}
       {appList.filter(a => a.status === 'SUBMITTED').length > 0 && (
