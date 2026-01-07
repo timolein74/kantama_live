@@ -131,12 +131,12 @@ export default function CustomerApplications() {
               className="input pl-10 min-w-[180px]"
             >
               <option value="">Kaikki tilat</option>
-              <option value="SUBMITTED">L�hetetty</option>
-              <option value="SUBMITTED_TO_FINANCIER">K�sittelyss�</option>
-              <option value="INFO_REQUESTED">Lis�tietopyynt�</option>
+              <option value="SUBMITTED">Lähetetty</option>
+              <option value="SUBMITTED_TO_FINANCIER">Käsittelyssä</option>
+              <option value="INFO_REQUESTED">Lisätietopyyntö</option>
               <option value="OFFER_SENT">Tarjous saatavilla</option>
-              <option value="OFFER_ACCEPTED">Tarjous hyv�ksytty</option>
-              <option value="CONTRACT_SENT">Sopimus l�hetetty</option>
+              <option value="OFFER_ACCEPTED">Tarjous hyväksytty</option>
+              <option value="CONTRACT_SENT">Sopimus lähetetty</option>
               <option value="SIGNED">Allekirjoitettu</option>
             </select>
           </div>

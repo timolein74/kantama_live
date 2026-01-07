@@ -81,7 +81,7 @@ export default function AdminLayout() {
     { path: '/admin/offers', icon: Euro, label: 'Tarjoukset' },
     { path: '/admin/contracts', icon: FileCheck, label: 'Sopimukset' },
     { path: '/admin/financiers', icon: Building2, label: 'Rahoittajat' },
-    { path: '/admin/users', icon: Users, label: 'K‰ytt‰j‰t' },
+    { path: '/admin/users', icon: Users, label: 'K√§ytt√§j√§t' },
   ];
 
   return (
@@ -144,7 +144,7 @@ export default function AdminLayout() {
                 <p className="text-white font-medium truncate">
                   {user?.first_name || 'Admin'}
                 </p>
-                <p className="text-slate-400 text-sm truncate">Yll‰pit‰j‰</p>
+                <p className="text-slate-400 text-sm truncate">Yll√§pit√§j√§</p>
               </div>
             </div>
           </div>

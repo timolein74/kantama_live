@@ -329,10 +329,10 @@ export const infoRequests = {
     
     const { data: { user } } = await supabase.auth.getUser();
     
-    // Get the original info request to get application_id
+    // Get the original info request to get application_id and sender info
     const { data: originalRequest } = await supabase
       .from('app_messages')
-      .select('application_id')
+      .select('application_id, sender_id, sender_role')
       .eq('id', data.info_request_id)
       .single();
     
@@ -352,12 +352,80 @@ export const infoRequests = {
       .select()
       .single();
     
-    // Mark the original request as read
+    // Mark the original request as read and create notifications
     if (result && !error) {
       await supabase
         .from('app_messages')
         .update({ is_read: true })
         .eq('id', data.info_request_id);
+      
+      // Get application details for notification
+      const { data: app } = await supabase
+        .from('applications')
+        .select('company_name')
+        .eq('id', originalRequest.application_id)
+        .single();
+      
+      const notificationsToCreate = [];
+      
+      // Notify the original sender (admin or financier)
+      if (originalRequest.sender_id) {
+        notificationsToCreate.push({
+          user_id: originalRequest.sender_id,
+          title: 'Vastaus lisätietopyyntöön',
+          message: `${app?.company_name || 'Asiakas'} vastasi viestiisi`
+        });
+      }
+      
+      // Also notify all admins if the sender was a financier
+      if (originalRequest.sender_role === 'FINANCIER') {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN');
+        
+        if (admins) {
+          for (const admin of admins) {
+            if (admin.id !== originalRequest.sender_id) {
+              notificationsToCreate.push({
+                user_id: admin.id,
+                title: 'Asiakkaan vastaus',
+                message: `${app?.company_name || 'Asiakas'} vastasi lisätietopyyntöön`
+              });
+            }
+          }
+        }
+      }
+      
+      // Notify all admins if the sender was admin (to track activity)
+      if (originalRequest.sender_role === 'ADMIN') {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN');
+        
+        if (admins) {
+          for (const admin of admins) {
+            if (admin.id !== originalRequest.sender_id) {
+              notificationsToCreate.push({
+                user_id: admin.id,
+                title: 'Asiakkaan vastaus',
+                message: `${app?.company_name || 'Asiakas'} vastasi viestiin`
+              });
+            }
+          }
+        }
+      }
+      
+      if (notificationsToCreate.length > 0) {
+        await supabase.from('notifications').insert(notificationsToCreate);
+      }
+      
+      // Update application status to INFO_RECEIVED
+      await supabase
+        .from('applications')
+        .update({ status: 'INFO_RECEIVED' })
+        .eq('id', originalRequest.application_id);
     }
     
     return { data: result, error };
