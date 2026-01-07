@@ -992,7 +992,7 @@ const ContractDocument = forwardRef<HTMLDivElement, ContractDocumentProps>(
             </p>
           )}
           <p style={{ fontSize: '8pt', color: '#9ca3af', marginTop: '15px' }}>
-            Sopimus luotu Kantama-palvelussa • {formatDateFi(contract.created_at)}
+            Sopimus luotu green-palvelussa • {formatDateFi(contract.created_at)}
           </p>
           <p style={{ marginTop: '10px', textAlign: 'right', fontSize: '9pt', color: '#6b7280' }}>Sivu 3/3</p>
         </div>

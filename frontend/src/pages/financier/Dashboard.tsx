@@ -1,4 +1,4 @@
-Ôªøimport { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -115,7 +115,7 @@ export default function FinancierDashboard() {
   const pendingActions = [
     { count: newApplications, label: 'Uusi hakemus', status: 'SUBMITTED_TO_FINANCIER', color: 'bg-orange-500' },
     { count: infoRequested, label: 'Vastauksia odottaa', status: 'INFO_REQUESTED', color: 'bg-yellow-500' },
-    { count: offersAccepted, label: 'Luottop√§√§t√∂s teht√§v√§', status: 'OFFER_ACCEPTED', color: 'bg-purple-500' },
+    { count: offersAccepted, label: 'Luottop‰‰tˆs teht‰v‰', status: 'OFFER_ACCEPTED', color: 'bg-purple-500' },
   ].filter(a => a.count > 0);
 
   if (isLoading) {
@@ -134,7 +134,7 @@ export default function FinancierDashboard() {
           Tervetuloa, {user?.first_name || 'Rahoittaja'}!
         </h1>
         <p className="text-slate-600 mt-1">
-          K√§sittele hakemuksia ja hallitse tarjouksia.
+          K‰sittele hakemuksia ja hallitse tarjouksia.
         </p>
       </div>
 
@@ -153,12 +153,12 @@ export default function FinancierDashboard() {
               <div>
                 <h2 className="text-xl font-bold flex items-center">
                   <Bell className="w-5 h-5 mr-2 animate-bounce" />
-                  Lis√§tietoja saatavilla!
+                  Lis‰tietoja saatavilla!
                 </h2>
                 <p className="text-blue-100 mt-1">
                   {unreadNotifications === 1 
-                    ? 'Asiakas on toimittanut pyydetyt lis√§tiedot.'
-                    : `${unreadNotifications} asiakasta on toimittanut lis√§tietoja.`}
+                    ? 'Asiakas on toimittanut pyydetyt lis‰tiedot.'
+                    : `${unreadNotifications} asiakasta on toimittanut lis‰tietoja.`}
                 </p>
               </div>
             </div>
@@ -178,11 +178,11 @@ export default function FinancierDashboard() {
                     </div>
                     <div>
                       <span className="font-bold text-lg block">{notif.message?.split(' on ')[0] || 'Asiakas'}</span>
-                      <span className="text-sm text-blue-200">Lis√§tiedot toimitettu</span>
+                      <span className="text-sm text-blue-200">Lis‰tiedot toimitettu</span>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2 bg-white text-blue-700 px-4 py-2 rounded-lg font-semibold group-hover:bg-blue-50 transition-colors">
-                    <span>Avaa lis√§tiedot</span>
+                    <span>Avaa lis‰tiedot</span>
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -207,19 +207,19 @@ export default function FinancierDashboard() {
               <div>
                 <h2 className="text-xl font-bold flex items-center">
                   <Sparkles className="w-5 h-5 mr-2" />
-                  Tarjous hyv√§ksytty!
+                  Tarjous hyv‰ksytty!
                 </h2>
                 {acceptedOfferApps.length > 0 ? (
                   <div className="mt-2">
                     {acceptedOfferApps.map((offer, idx) => (
                       <p key={idx} className="text-green-100 font-medium">
-                        ‚Ä¢ <strong>{offer.customer_name}</strong> on hyv√§ksynyt tarjouksen
+                        ï <strong>{offer.customer_name}</strong> on hyv‰ksynyt tarjouksen
                       </p>
                     ))}
                   </div>
                 ) : (
                   <p className="text-green-100 mt-1">
-                    Asiakas on hyv√§ksynyt tarjouksen. Tee luottop√§√§t√∂s.
+                    Asiakas on hyv‰ksynyt tarjouksen. Tee luottop‰‰tˆs.
                   </p>
                 )}
               </div>
@@ -229,7 +229,7 @@ export default function FinancierDashboard() {
               className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors flex items-center"
             >
               <FileSignature className="w-5 h-5 mr-2" />
-              Tee luottop√§√§t√∂s
+              Tee luottop‰‰tˆs
             </Link>
           </div>
         </motion.div>
@@ -267,7 +267,7 @@ export default function FinancierDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Uudet hakemukset', value: newApplications, icon: FileText, color: 'bg-orange-500' },
-          { label: 'Tarjouksia l√§hetetty', value: offersSent, icon: Euro, color: 'bg-blue-500' },
+          { label: 'Tarjouksia l‰hetetty', value: offersSent, icon: Euro, color: 'bg-blue-500' },
           { label: 'Sopimukset', value: contractsSent + completed, icon: FileCheck, color: 'bg-purple-500' },
           { label: 'Kokonaisarvo', value: formatCurrency(totalValue), icon: TrendingUp, color: 'bg-green-500' },
         ].map((stat, index) => (
@@ -307,7 +307,7 @@ export default function FinancierDashboard() {
               to="/financier/applications"
               className="text-emerald-600 hover:text-emerald-700 text-sm font-medium flex items-center"
             >
-              N√§yt√§ kaikki
+              N‰yt‰ kaikki
               <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
           </div>
@@ -315,7 +315,7 @@ export default function FinancierDashboard() {
           {recentApplications.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">Ei hakemuksia k√§sitelt√§v√§n√§</p>
+              <p className="text-slate-500">Ei hakemuksia k‰sitelt‰v‰n‰</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -402,9 +402,9 @@ export default function FinancierDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
           {[
             { label: 'Uudet', value: newApplications, color: 'bg-orange-100 text-orange-700' },
-            { label: 'Lis√§tiedot', value: infoRequested, color: 'bg-yellow-100 text-yellow-700' },
+            { label: 'Lis‰tiedot', value: infoRequested, color: 'bg-yellow-100 text-yellow-700' },
             { label: 'Tarjottu', value: offersSent, color: 'bg-blue-100 text-blue-700' },
-            { label: 'Hyv√§ksytty', value: offersAccepted, color: 'bg-purple-100 text-purple-700' },
+            { label: 'Hyv‰ksytty', value: offersAccepted, color: 'bg-purple-100 text-purple-700' },
             { label: 'Sopimus', value: contractsSent, color: 'bg-indigo-100 text-indigo-700' },
             { label: 'Valmis', value: completed, color: 'bg-green-100 text-green-700' },
           ].map((status) => (

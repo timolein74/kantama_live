@@ -24,7 +24,7 @@ const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(
               <span className="text-white font-bold text-xl">e</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Kantama</h1>
+              <h1 className="text-2xl font-bold text-slate-900">Juuri Rahoitus</h1>
               <p className="text-sm text-slate-500">Rahoitustarjous</p>
             </div>
           </div>
@@ -144,7 +144,7 @@ const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(
         <div className="mt-12 pt-6 border-t border-slate-200 text-center text-sm text-slate-500">
           <p>Tämä on alustava rahoitustarjous. Lopullinen sopimus syntyy vasta erillisellä allekirjoituksella.</p>
           <p className="mt-2">
-            Kantama • myynti@Kantama.fi • www.Kantama.fi
+            Juuri Rahoitus • info@juurirahoitus.fi • www.Juuri Rahoitus.fi
           </p>
         </div>
       </div>

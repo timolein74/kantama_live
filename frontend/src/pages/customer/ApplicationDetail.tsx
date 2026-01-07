@@ -662,7 +662,7 @@ export default function CustomerApplicationDetail() {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center space-x-2 py-4 border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? 'border-Kantama-600 text-Kantama-600'
+                  ? 'border-green-600 text-green-600'
                   : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -846,7 +846,7 @@ export default function CustomerApplicationDetail() {
                   <div className="flex justify-between">
                     <dt className="text-slate-500">Linkki kohteeseen</dt>
                     <dd className="font-medium">
-                      <a href={(application as any).link_to_item} target="_blank" rel="noopener noreferrer" className="text-Kantama-600 hover:text-Kantama-700 underline">
+                      <a href={(application as any).link_to_item} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-700 underline">
                         Avaa linkki →
                       </a>
                     </dd>
@@ -868,7 +868,7 @@ export default function CustomerApplicationDetail() {
             {/* Company info */}
             <div className="card">
               <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
-                <Building2 className="w-5 h-5 mr-2 text-Kantama-600" />
+                <Building2 className="w-5 h-5 mr-2 text-green-600" />
                 Yrityksen tiedot
               </h3>
               <dl className="space-y-3">
@@ -1077,7 +1077,7 @@ export default function CustomerApplicationDetail() {
                                 <div class="logo">
                                   <div class="logo-icon">e</div>
                                   <div>
-                                    <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Kantama</div>
+                                    <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Juuri Rahoitus</div>
                                     <div style="font-size: 14px; color: #64748b;">Rahoitustarjous</div>
                                   </div>
                                 </div>
@@ -1119,7 +1119,7 @@ export default function CustomerApplicationDetail() {
                               
                               <div class="footer">
                                 <p>Tämä on alustava rahoitustarjous. Lopullinen sopimus syntyy vasta erillisellä allekirjoituksella.</p>
-                                <p style="margin-top: 8px;">Kantama • myynti@Kantama.fi</p>
+                                <p style="margin-top: 8px;">Juuri Rahoitus • info@juurirahoitus.fi</p>
                               </div>
                             </body>
                             </html>

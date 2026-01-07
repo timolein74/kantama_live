@@ -28,7 +28,7 @@ export default function PrivacyPolicy() {
           </p>
 
           <p className="lead text-lg text-slate-600 mb-8">
-            Kantama ("palvelu") on yrityksille suunnattu digitaalinen palvelu rahoitusleasing- ja 
+            Juuri Rahoitus ("palvelu") on yrityksille suunnattu digitaalinen palvelu rahoitusleasing- ja 
             takaisinvuokraushakemusten käsittelyyn. Tietosuoja on meille tärkeää. Tässä selosteessa 
             kerromme, miten käsittelemme henkilötietoja.
           </p>
@@ -37,8 +37,8 @@ export default function PrivacyPolicy() {
 
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">1. Rekisterinpitäjä</h2>
           <p>
-            Kantama<br />
-            Sähköposti: <a href="mailto:myynti@Kantama.fi" className="text-Kantama-600 hover:text-Kantama-700">myynti@Kantama.fi</a>
+            Juuri Rahoitus<br />
+            Sähköposti: <a href="mailto:info@juurirahoitus.fi" className="text-green-600 hover:text-green-700">info@juurirahoitus.fi</a>
           </p>
 
           <hr className="my-8" />
@@ -71,7 +71,7 @@ export default function PrivacyPolicy() {
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">4. Tietojen luovutus</h2>
           <p>Tietoja voidaan luovuttaa:</p>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Kantamain valitsemille rahoittajille hakemuksen käsittelyä varten</li>
+            <li>Juuri Rahoitusin valitsemille rahoittajille hakemuksen käsittelyä varten</li>
             <li>teknisille palveluntarjoajille (esim. sähköposti, hosting), vain palvelun toteuttamiseksi</li>
           </ul>
           <p className="mt-4 font-medium">Tietoja ei luovuteta ulkopuolisille markkinointitarkoituksiin.</p>
@@ -95,7 +95,7 @@ export default function PrivacyPolicy() {
             <li>peruuttaa suostumuksensa, siltä osin kuin käsittely perustuu suostumukseen</li>
           </ul>
           <p className="mt-4">
-            Pyynnöt: <a href="mailto:myynti@Kantama.fi" className="text-Kantama-600 hover:text-Kantama-700">myynti@Kantama.fi</a>
+            Pyynnöt: <a href="mailto:info@juurirahoitus.fi" className="text-green-600 hover:text-green-700">info@juurirahoitus.fi</a>
           </p>
 
           <hr className="my-8" />
@@ -118,7 +118,7 @@ export default function PrivacyPolicy() {
       <footer className="bg-midnight-950 text-white py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-slate-400">
-            © {new Date().getFullYear()} Kantama. Kaikki oikeudet pidätetään.
+            © {new Date().getFullYear()} Juuri Rahoitus. Kaikki oikeudet pidätetään.
           </p>
         </div>
       </footer>

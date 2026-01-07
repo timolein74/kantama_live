@@ -1,4 +1,4 @@
-Ôªøimport { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -131,12 +131,12 @@ export default function CustomerApplications() {
               className="input pl-10 min-w-[180px]"
             >
               <option value="">Kaikki tilat</option>
-              <option value="SUBMITTED">L√§hetetty</option>
-              <option value="SUBMITTED_TO_FINANCIER">K√§sittelyss√§</option>
-              <option value="INFO_REQUESTED">Lis√§tietopyynt√∂</option>
+              <option value="SUBMITTED">L‰hetetty</option>
+              <option value="SUBMITTED_TO_FINANCIER">K‰sittelyss‰</option>
+              <option value="INFO_REQUESTED">Lis‰tietopyyntˆ</option>
               <option value="OFFER_SENT">Tarjous saatavilla</option>
-              <option value="OFFER_ACCEPTED">Tarjous hyv√§ksytty</option>
-              <option value="CONTRACT_SENT">Sopimus l√§hetetty</option>
+              <option value="OFFER_ACCEPTED">Tarjous hyv‰ksytty</option>
+              <option value="CONTRACT_SENT">Sopimus l‰hetetty</option>
               <option value="SIGNED">Allekirjoitettu</option>
             </select>
           </div>
@@ -204,7 +204,7 @@ export default function CustomerApplications() {
                         </span>
                       </div>
                       <p className="text-sm text-slate-500 mt-1">
-                        {getApplicationTypeLabel(app.application_type)} ‚Ä¢ {app.equipment_description}
+                        {getApplicationTypeLabel(app.application_type)} ï {app.equipment_description}
                       </p>
                     </div>
                   </div>

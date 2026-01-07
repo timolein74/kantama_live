@@ -1,4 +1,4 @@
-Ôªøimport { useState } from 'react';
+import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 
 interface DemoUser {
@@ -18,7 +18,7 @@ const demoUsers: DemoUser[] = [
     label: 'Admin',
     firstName: 'Admin',
     lastName: 'Juuri',
-    icon: 'üëë',
+    icon: '??',
     color: 'from-purple-500 to-indigo-600',
   },
   {
@@ -27,7 +27,7 @@ const demoUsers: DemoUser[] = [
     label: 'Rahoittaja',
     firstName: 'Demo',
     lastName: 'Rahoittaja',
-    icon: 'üè¶',
+    icon: '??',
     color: 'from-emerald-500 to-teal-600',
   },
   {
@@ -36,7 +36,7 @@ const demoUsers: DemoUser[] = [
     label: 'Asiakas',
     firstName: 'Demo',
     lastName: 'Asiakas',
-    icon: 'üë§',
+    icon: '??',
     color: 'from-blue-500 to-cyan-600',
   },
   {
@@ -45,7 +45,7 @@ const demoUsers: DemoUser[] = [
     label: 'T. Leinonen',
     firstName: 'Timo',
     lastName: 'Leinonen',
-    icon: 'üßë‚Äçüíº',
+    icon: '?????',
     color: 'from-amber-500 to-orange-600',
   },
 ];
@@ -114,14 +114,14 @@ export function DemoPanel() {
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-emerald-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
-            <span className="text-xl">üå±</span>
+            <span className="text-xl">??</span>
             <span className="font-bold">Juuri Rahoitus Demo</span>
           </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setIsMinimized(!isMinimized)}
               className="text-white/80 hover:text-white p-1 rounded transition-colors"
-              title={isMinimized ? 'Laajenna' : 'Pienenn√§'}
+              title={isMinimized ? 'Laajenna' : 'Pienenn‰'}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {isMinimized ? (
@@ -168,7 +168,7 @@ export function DemoPanel() {
 
             {/* Demo users */}
             <div className="space-y-2">
-              <div className="text-xs text-gray-500 mb-2">Vaihda k√§ytt√§j√§√§:</div>
+              <div className="text-xs text-gray-500 mb-2">Vaihda k‰ytt‰j‰‰:</div>
               {demoUsers.map((demoUser) => (
                 <button
                   key={demoUser.email}
@@ -222,12 +222,12 @@ export function DemoPanel() {
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Tyhjenn√§ demo-data
+              Tyhjenn‰ demo-data
             </button>
 
             {/* Info */}
             <div className="mt-4 text-xs text-gray-400 text-center">
-              Demo-k√§ytt√§j√§t luodaan automaattisesti ensimm√§isell√§ kirjautumisella
+              Demo-k‰ytt‰j‰t luodaan automaattisesti ensimm‰isell‰ kirjautumisella
             </div>
           </div>
         )}

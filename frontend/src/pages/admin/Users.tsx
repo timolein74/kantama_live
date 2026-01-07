@@ -153,7 +153,7 @@ export default function AdminUsers() {
           <button
             key={stat.label}
             onClick={stat.onClick}
-            className="bg-white rounded-xl p-4 border border-slate-200 hover:border-Kantama-300 hover:shadow-sm transition-all text-left"
+            className="bg-white rounded-xl p-4 border border-slate-200 hover:border-green-300 hover:shadow-sm transition-all text-left"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -200,7 +200,7 @@ export default function AdminUsers() {
               type="checkbox"
               checked={showInactive}
               onChange={(e) => setShowInactive(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-Kantama-600 focus:ring-Kantama-500"
+              className="w-4 h-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
             />
             <span className="text-sm text-slate-600">Näytä deaktivoidut</span>
           </label>

@@ -195,7 +195,7 @@ export default function AdminOffers() {
                   <div className="flex items-center space-x-3 mb-2">
                     <Link
                       to={`/admin/applications/${offer.application_id}`}
-                      className="font-semibold text-midnight-900 hover:text-Kantama-600"
+                      className="font-semibold text-midnight-900 hover:text-green-600"
                     >
                       {offer.application?.reference_number || `Hakemus #${offer.application_id}`}
                     </Link>

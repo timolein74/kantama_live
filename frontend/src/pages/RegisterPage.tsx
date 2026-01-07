@@ -62,7 +62,7 @@ export default function RegisterPage() {
         <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10">
           <div className="text-center mb-8">
             <Link to="/" className="inline-flex items-center space-x-2 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-Kantama-500 to-Kantama-700 rounded-xl flex items-center justify-center">
+              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-2xl">e</span>
               </div>
             </Link>
@@ -180,13 +180,13 @@ export default function RegisterPage() {
               <input
                 type="checkbox"
                 required
-                className="w-4 h-4 mt-1 rounded border-slate-300 text-Kantama-600 focus:ring-Kantama-500"
+                className="w-4 h-4 mt-1 rounded border-slate-300 text-green-600 focus:ring-green-500"
               />
               <span className="ml-2 text-sm text-slate-600">
                 Hyväksyn{' '}
-                <a href="#" className="text-Kantama-600 hover:underline">käyttöehdot</a>
+                <a href="#" className="text-green-600 hover:underline">käyttöehdot</a>
                 {' '}ja{' '}
-                <a href="#" className="text-Kantama-600 hover:underline">tietosuojakäytännön</a>
+                <a href="#" className="text-green-600 hover:underline">tietosuojakäytännön</a>
               </span>
             </label>
 
@@ -203,7 +203,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <p className="text-slate-600">
               Onko sinulla jo tili?{' '}
-              <Link to="/login" className="text-Kantama-600 font-medium hover:text-Kantama-700">
+              <Link to="/login" className="text-green-600 font-medium hover:text-green-700">
                 Kirjaudu sisään
               </Link>
             </p>

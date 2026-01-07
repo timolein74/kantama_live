@@ -1,4 +1,4 @@
-Ôªøimport { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -43,8 +43,8 @@ interface DbApplication {
 // Financier-specific status labels
 const getFinancierStatusLabel = (status: string): string => {
   const labels: Record<string, string> = {
-    OFFER_RECEIVED: 'Tarjous l√§hetetty (odottaa adminia)',
-    OFFER_SENT: 'Tarjous l√§hetetty asiakkaalle',
+    OFFER_RECEIVED: 'Tarjous l‰hetetty (odottaa adminia)',
+    OFFER_SENT: 'Tarjous l‰hetetty asiakkaalle',
   };
   return labels[status] || getStatusLabel(status);
 };
@@ -137,16 +137,16 @@ export default function FinancierApplications() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold text-midnight-900">Hakemukset</h1>
-        <p className="text-slate-600 mt-1">K√§sittele hakemuksia ja tee tarjouksia</p>
+        <p className="text-slate-600 mt-1">K‰sittele hakemuksia ja tee tarjouksia</p>
       </div>
 
       {/* Quick stats */}
       <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
         {[
           { label: 'Uudet', value: stats.new, status: 'SUBMITTED_TO_FINANCIER', color: 'border-orange-300 bg-orange-50' },
-          { label: 'Lis√§tiedot', value: stats.infoRequested, status: 'INFO_REQUESTED', color: 'border-yellow-300 bg-yellow-50' },
+          { label: 'Lis‰tiedot', value: stats.infoRequested, status: 'INFO_REQUESTED', color: 'border-yellow-300 bg-yellow-50' },
           { label: 'Tarjottu', value: stats.offerSent, status: 'OFFER_SENT', color: 'border-blue-300 bg-blue-50' },
-          { label: 'Hyv√§ksytty', value: stats.accepted, status: 'OFFER_ACCEPTED', color: 'border-purple-300 bg-purple-50' },
+          { label: 'Hyv‰ksytty', value: stats.accepted, status: 'OFFER_ACCEPTED', color: 'border-purple-300 bg-purple-50' },
           { label: 'Sopimus', value: stats.contract, status: 'CONTRACT_SENT', color: 'border-indigo-300 bg-indigo-50' },
           { label: 'Valmis', value: stats.done, status: 'SIGNED', color: 'border-green-300 bg-green-50' },
         ].map((stat) => (
@@ -174,7 +174,7 @@ export default function FinancierApplications() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Hae viitteell√§, yrityksell√§, Y-tunnuksella..."
+              placeholder="Hae viitteell‰, yrityksell‰, Y-tunnuksella..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -194,10 +194,10 @@ export default function FinancierApplications() {
             >
               <option value="">Kaikki tilat</option>
               <option value="SUBMITTED_TO_FINANCIER">Uudet</option>
-              <option value="INFO_REQUESTED">Lis√§tietopyynt√∂</option>
-              <option value="OFFER_SENT">Tarjous l√§hetetty</option>
-              <option value="OFFER_ACCEPTED">Tarjous hyv√§ksytty</option>
-              <option value="CONTRACT_SENT">Sopimus l√§hetetty</option>
+              <option value="INFO_REQUESTED">Lis‰tietopyyntˆ</option>
+              <option value="OFFER_SENT">Tarjous l‰hetetty</option>
+              <option value="OFFER_ACCEPTED">Tarjous hyv‰ksytty</option>
+              <option value="CONTRACT_SENT">Sopimus l‰hetetty</option>
               <option value="SIGNED">Allekirjoitettu</option>
               <option value="CLOSED">Suljettu</option>
             </select>
@@ -222,7 +222,7 @@ export default function FinancierApplications() {
               }}
               className="btn-ghost text-sm"
             >
-              Tyhjenn√§ suodattimet
+              Tyhjenn‰ suodattimet
             </button>
           )}
         </div>
@@ -238,7 +238,7 @@ export default function FinancierApplications() {
           <div className="flex items-center space-x-3">
             <AlertCircle className="w-5 h-5 text-orange-600" />
             <span className="text-orange-900">
-              <strong>{stats.new}</strong> uutta hakemusta odottaa k√§sittely√§
+              <strong>{stats.new}</strong> uutta hakemusta odottaa k‰sittely‰
             </span>
           </div>
           <button
@@ -248,7 +248,7 @@ export default function FinancierApplications() {
             }}
             className="btn bg-orange-600 text-white hover:bg-orange-700"
           >
-            N√§yt√§ uudet
+            N‰yt‰ uudet
           </button>
         </motion.div>
       )}
@@ -262,7 +262,7 @@ export default function FinancierApplications() {
           </h3>
           <p className="text-slate-500">
             {appList.length === 0
-              ? 'Hakemukset n√§kyv√§t t√§√§ll√§ kun admin l√§hett√§√§ niit√§ k√§sittelyyn'
+              ? 'Hakemukset n‰kyv‰t t‰‰ll‰ kun admin l‰hett‰‰ niit‰ k‰sittelyyn'
               : 'Kokeile muuttaa hakuehtoja'}
           </p>
         </div>
@@ -303,7 +303,7 @@ export default function FinancierApplications() {
                       </div>
                       <p className="text-sm text-slate-500 mt-1">
                         <span className="font-medium">{app.company_name}</span>
-                        {' ‚Ä¢ '}{app.business_id}
+                        {' ï '}{app.business_id}
                       </p>
                       <p className="text-sm text-slate-400">{app.equipment_description || 'Ei kuvausta'}</p>
                     </div>
@@ -326,7 +326,7 @@ export default function FinancierApplications() {
       )}
 
       <div className="text-sm text-slate-500 text-center">
-        N√§ytet√§√§n {filteredApps.length} / {appList.length} hakemusta
+        N‰ytet‰‰n {filteredApps.length} / {appList.length} hakemusta
       </div>
     </div>
   );

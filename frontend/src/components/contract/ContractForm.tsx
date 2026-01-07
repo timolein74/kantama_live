@@ -1,4 +1,4 @@
-Ôªøimport { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -240,7 +240,7 @@ export default function ContractForm({
       <div className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-6">
         <h2 className="text-xl font-bold mb-1">Rahoitusleasingsopimus</h2>
         <p className="text-emerald-100 text-sm">
-          Hakemus: {application.reference_number} ‚Ä¢ {application.company_name}
+          Hakemus: {application.reference_number} ï {application.company_name}
         </p>
       </div>
 
@@ -260,7 +260,7 @@ export default function ContractForm({
             <div className="flex-1">
               <h4 className="font-medium text-emerald-900 mb-1">Rahoittajan logo</h4>
               <p className="text-sm text-emerald-700 mb-2">
-                Lis√§√§ logosi sopimukseen. Logo n√§kyy sopimuksen yl√§tunnisteessa.
+                Lis‰‰ logosi sopimukseen. Logo n‰kyy sopimuksen yl‰tunnisteessa.
               </p>
               <label className="btn bg-white border border-emerald-300 text-emerald-700 hover:bg-emerald-50 cursor-pointer inline-flex items-center">
                 <Upload className="w-4 h-4 mr-2" />
@@ -349,7 +349,7 @@ export default function ContractForm({
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Yhteyshenkil√∂</label>
+                  <label className="label">Yhteyshenkilˆ</label>
                   <input
                     type="text"
                     value={formData.lessee_contact_person || ''}
@@ -368,7 +368,7 @@ export default function ContractForm({
                 </div>
               </div>
               <div>
-                <label className="label">S√§hk√∂posti</label>
+                <label className="label">S‰hkˆposti</label>
                 <input
                   type="email"
                   value={formData.lessee_email || ''}
@@ -445,9 +445,9 @@ export default function ContractForm({
           )}
         </div>
 
-        {/* MYYJ√Ñ / SELLER */}
+        {/* MYYJƒ / SELLER */}
         <div>
-          <SectionHeader section="seller" title="Myyj√§ / Toimittaja" icon={Building2} />
+          <SectionHeader section="seller" title="Myyj‰ / Toimittaja" icon={Building2} />
           {expandedSections.includes('seller') && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -516,7 +516,7 @@ export default function ContractForm({
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="label">Yhteyshenkil√∂</label>
+                  <label className="label">Yhteyshenkilˆ</label>
                   <input
                     type="text"
                     value={formData.seller_contact_person || ''}
@@ -535,7 +535,7 @@ export default function ContractForm({
                 </div>
               </div>
               <div>
-                <label className="label">S√§hk√∂posti</label>
+                <label className="label">S‰hkˆposti</label>
                 <input
                   type="email"
                   value={formData.seller_email || ''}
@@ -572,14 +572,14 @@ export default function ContractForm({
                   </div>
                   <div className="grid md:grid-cols-4 gap-4">
                     <div>
-                      <label className="label">Uusi/K√§ytetty</label>
+                      <label className="label">Uusi/K‰ytetty</label>
                       <select
                         value={obj.is_new ? 'new' : 'used'}
                         onChange={(e) => handleLeaseObjectChange(index, 'is_new', e.target.value === 'new')}
                         className="input"
                       >
                         <option value="new">Uusi</option>
-                        <option value="used">K√§ytetty</option>
+                        <option value="used">K‰ytetty</option>
                       </select>
                     </div>
                     <div className="md:col-span-2">
@@ -605,7 +605,7 @@ export default function ContractForm({
                   </div>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <label className="label">Lis√§varusteet</label>
+                      <label className="label">Lis‰varusteet</label>
                       <input
                         type="text"
                         value={obj.accessories || ''}
@@ -631,10 +631,10 @@ export default function ContractForm({
                 className="btn-secondary w-full"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Lis√§√§ kohde
+                Lis‰‰ kohde
               </button>
               <div>
-                <label className="label">K√§ytt√∂paikka</label>
+                <label className="label">K‰yttˆpaikka</label>
                 <input
                   type="text"
                   value={formData.usage_location || ''}
@@ -669,7 +669,7 @@ export default function ContractForm({
                   </select>
                 </div>
                 <div>
-                  <label className="label">Arvioitu toimitusp√§iv√§</label>
+                  <label className="label">Arvioitu toimitusp‰iv‰</label>
                   <input
                     type="date"
                     value={formData.estimated_delivery_date || ''}
@@ -690,9 +690,9 @@ export default function ContractForm({
           )}
         </div>
 
-        {/* VUOKRAN M√Ñ√ÑR√Ñ / RENT */}
+        {/* VUOKRAN MƒƒRƒ / RENT */}
         <div>
-          <SectionHeader section="rent" title="Vuokran m√§√§r√§" icon={Euro} />
+          <SectionHeader section="rent" title="Vuokran m‰‰r‰" icon={Euro} />
           {expandedSections.includes('rent') && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -702,7 +702,7 @@ export default function ContractForm({
               {acceptedOffer && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
                   <p className="text-sm text-emerald-700">
-                    <strong>Tarjouksen tiedot:</strong> Kuukausier√§ {formatCurrency(acceptedOffer.monthly_payment)}, 
+                    <strong>Tarjouksen tiedot:</strong> Kuukausier‰ {formatCurrency(acceptedOffer.monthly_payment)}, 
                     Sopimuskausi {acceptedOffer.term_months} kk
                   </p>
                 </div>
@@ -719,7 +719,7 @@ export default function ContractForm({
                   />
                 </div>
                 <div>
-                  <label className="label">Vuokraer√§ (ALV 0%) *</label>
+                  <label className="label">Vuokraer‰ (ALV 0%) *</label>
                   <input
                     type="number"
                     value={formData.monthly_rent || ''}
@@ -731,7 +731,7 @@ export default function ContractForm({
               </div>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="label">Vuokraer√§t alkaen</label>
+                  <label className="label">Vuokraer‰t alkaen</label>
                   <input
                     type="number"
                     value={formData.rent_installments_start || ''}
@@ -741,7 +741,7 @@ export default function ContractForm({
                   />
                 </div>
                 <div>
-                  <label className="label">Vuokraer√§t p√§√§ttyen</label>
+                  <label className="label">Vuokraer‰t p‰‰ttyen</label>
                   <input
                     type="number"
                     value={formData.rent_installments_end || ''}
@@ -764,7 +764,7 @@ export default function ContractForm({
               </div>
               <div className="grid md:grid-cols-3 gap-4">
                 <div>
-                  <label className="label">J√§√§nn√∂sarvo (ALV 0%)</label>
+                  <label className="label">J‰‰nnˆsarvo (ALV 0%)</label>
                   <input
                     type="number"
                     value={formData.residual_value || ''}
@@ -774,7 +774,7 @@ export default function ContractForm({
                   />
                 </div>
                 <div>
-                  <label className="label">K√§sittelymaksu/er√§</label>
+                  <label className="label">K‰sittelymaksu/er‰</label>
                   <input
                     type="number"
                     value={formData.processing_fee || ''}
@@ -784,7 +784,7 @@ export default function ContractForm({
                   />
                 </div>
                 <div>
-                  <label className="label">J√§rjestelypalkkio</label>
+                  <label className="label">J‰rjestelypalkkio</label>
                   <input
                     type="number"
                     value={formData.arrangement_fee || ''}
@@ -795,7 +795,7 @@ export default function ContractForm({
                 </div>
               </div>
               <p className="text-sm text-slate-500 italic">
-                Vuokraan ja muihin palkkioihin lis√§t√§√§n arvonlis√§vero kulloinkin voimassaolevien s√§√§nn√∂sten mukaan.
+                Vuokraan ja muihin palkkioihin lis‰t‰‰n arvonlis‰vero kulloinkin voimassaolevien s‰‰nnˆsten mukaan.
               </p>
             </motion.div>
           )}
@@ -822,7 +822,7 @@ export default function ContractForm({
                   />
                 </div>
                 <div>
-                  <label className="label">Vuokra-ajan alkamisp√§iv√§</label>
+                  <label className="label">Vuokra-ajan alkamisp‰iv‰</label>
                   <input
                     type="date"
                     value={formData.lease_start_date || ''}
@@ -830,7 +830,7 @@ export default function ContractForm({
                     className="input"
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    Vuokra-aika alkaa vuokrakohteen toimitusp√§iv√§n√§.
+                    Vuokra-aika alkaa vuokrakohteen toimitusp‰iv‰n‰.
                   </p>
                 </div>
               </div>
@@ -855,13 +855,13 @@ export default function ContractForm({
                   className="input"
                 >
                   <option value="">Ei vakuutta</option>
-                  <option value="Henkil√∂takaus">Henkil√∂takaus</option>
+                  <option value="Henkilˆtakaus">Henkilˆtakaus</option>
                   <option value="Yrityskiinnitys">Yrityskiinnitys</option>
                   <option value="Pankkitakaus">Pankkitakaus</option>
                 </select>
               </div>
               <div>
-                <label className="label">Vakuudet ja lis√§tiedot</label>
+                <label className="label">Vakuudet ja lis‰tiedot</label>
                 <textarea
                   value={formData.guarantees || ''}
                   onChange={(e) => handleInputChange('guarantees', e.target.value)}
@@ -926,12 +926,12 @@ export default function ContractForm({
                 />
               </div>
               <div>
-                <label className="label">Sis√§iset muistiinpanot</label>
+                <label className="label">Sis‰iset muistiinpanot</label>
                 <textarea
                   value={formData.internal_notes || ''}
                   onChange={(e) => handleInputChange('internal_notes', e.target.value)}
                   className="input min-h-[60px]"
-                  placeholder="Sis√§iset muistiinpanot (ei n√§y asiakkaalle)..."
+                  placeholder="Sis‰iset muistiinpanot (ei n‰y asiakkaalle)..."
                 />
               </div>
             </motion.div>

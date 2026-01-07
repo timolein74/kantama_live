@@ -1,4 +1,4 @@
-ï»¿import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { Menu, X, LogIn, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
@@ -79,7 +79,7 @@ export default function PublicLayout() {
                 onClick={() => handleNavClick('how-it-works')} 
                 className="text-slate-300 hover:text-white transition-colors"
               >
-                NÃ¤in se toimii
+                Näin se toimii
               </button>
             </nav>
 
@@ -103,7 +103,7 @@ export default function PublicLayout() {
                   </Link>
                   <Link to="/register" className="btn-primary">
                     <UserPlus className="w-4 h-4 mr-2" />
-                    RekisterÃ¶idy
+                    Rekisteröidy
                   </Link>
                 </>
               )}
@@ -139,7 +139,7 @@ export default function PublicLayout() {
                 onClick={() => handleNavClick('how-it-works')} 
                 className="block text-slate-300 hover:text-white w-full text-left"
               >
-                NÃ¤in se toimii
+                Näin se toimii
               </button>
               <div className="pt-4 border-t border-white/10 space-y-2">
                 {isAuthenticated ? (
@@ -155,7 +155,7 @@ export default function PublicLayout() {
                       Kirjaudu
                     </Link>
                     <Link to="/register" className="btn-primary w-full">
-                      RekisterÃ¶idy
+                      Rekisteröidy
                     </Link>
                   </>
                 )}
@@ -193,12 +193,12 @@ export default function PublicLayout() {
               <h4 className="text-white font-semibold mb-4">Tietoa</h4>
               <ul className="space-y-2 text-sm">
                 <li><Link to="/privacy" className="hover:text-white transition-colors">Tietosuoja</Link></li>
-                <li><Link to="/terms" className="hover:text-white transition-colors">KÃ¤yttÃ¶ehdot</Link></li>
+                <li><Link to="/terms" className="hover:text-white transition-colors">Käyttöehdot</Link></li>
               </ul>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-white/10 text-center text-sm">
-            <p>Â© 2025 Juuri Rahoitus. Kaikki oikeudet pidÃ¤tetÃ¤Ã¤n.</p>
+            <p>© 2025 Juuri Rahoitus. Kaikki oikeudet pidätetään.</p>
           </div>
         </div>
       </footer>

@@ -396,7 +396,7 @@ export default function CustomerDashboard() {
             <h2 className="font-display font-bold text-midnight-900">Viimeisimmät hakemukset</h2>
             <Link
               to="/dashboard/applications"
-              className="text-Kantama-600 hover:text-Kantama-700 text-sm font-medium flex items-center"
+              className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center"
             >
               Näytä kaikki
               <ArrowRight className="w-4 h-4 ml-1" />
@@ -504,16 +504,16 @@ export default function CustomerDashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="card bg-gradient-to-r from-Kantama-600 to-Kantama-700 text-white"
+        className="card bg-gradient-to-r from-green-600 to-green-700 text-white"
       >
         <div className="flex flex-col md:flex-row items-center justify-between">
           <div className="mb-4 md:mb-0">
             <h3 className="text-xl font-display font-bold">Tarvitsetko lisää rahoitusta?</h3>
-            <p className="text-Kantama-100 mt-1">
+            <p className="text-green-100 mt-1">
               Hae uutta rahoitusta - saat tarjouksen nopeasti.
             </p>
           </div>
-          <Link to="/" className="btn bg-white text-Kantama-700 hover:bg-Kantama-50">
+          <Link to="/" className="btn bg-white text-green-700 hover:bg-green-50">
             Hae rahoitusta
             <ArrowRight className="w-4 h-4 ml-2" />
           </Link>

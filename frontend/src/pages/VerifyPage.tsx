@@ -1,4 +1,4 @@
-Ôªøimport { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Check, X, Loader } from 'lucide-react';
@@ -22,10 +22,10 @@ export default function VerifyPage() {
       try {
         await auth.verify(token);
         setStatus('success');
-        setMessage('S√§hk√∂postisi on vahvistettu!');
+        setMessage('S‰hkˆpostisi on vahvistettu!');
       } catch (error: any) {
         setStatus('error');
-        setMessage(error.response?.data?.detail || 'Vahvistus ep√§onnistui');
+        setMessage(error.response?.data?.detail || 'Vahvistus ep‰onnistui');
       }
     };
 
@@ -48,7 +48,7 @@ export default function VerifyPage() {
               Vahvistetaan...
             </h2>
             <p className="text-slate-600">
-              Odota hetki kun vahvistamme s√§hk√∂postiosoitteesi.
+              Odota hetki kun vahvistamme s‰hkˆpostiosoitteesi.
             </p>
           </>
         )}
@@ -65,7 +65,7 @@ export default function VerifyPage() {
               {message}
             </p>
             <Link to="/login" className="btn-primary">
-              Kirjaudu sis√§√§n
+              Kirjaudu sis‰‰n
             </Link>
           </>
         )}
@@ -76,14 +76,14 @@ export default function VerifyPage() {
               <X className="w-10 h-10 text-red-600" />
             </div>
             <h2 className="text-2xl font-display font-bold text-midnight-900 mb-4">
-              Vahvistus ep√§onnistui
+              Vahvistus ep‰onnistui
             </h2>
             <p className="text-slate-600 mb-6">
               {message}
             </p>
             <div className="space-y-3">
               <Link to="/login" className="btn-primary block">
-                Kirjaudu sis√§√§n
+                Kirjaudu sis‰‰n
               </Link>
               <Link to="/" className="btn-secondary block">
                 Takaisin etusivulle

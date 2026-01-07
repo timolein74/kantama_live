@@ -118,7 +118,7 @@ export default function AdminApplications() {
           <button
             key={stat.label}
             onClick={stat.onClick}
-            className="bg-white rounded-xl p-4 border border-slate-200 hover:border-Kantama-300 hover:shadow-sm transition-all text-left"
+            className="bg-white rounded-xl p-4 border border-slate-200 hover:border-green-300 hover:shadow-sm transition-all text-left"
           >
             <p className="text-sm text-slate-500">{stat.label}</p>
             <p className="text-2xl font-bold text-midnight-900 mt-1">{stat.value}</p>
@@ -220,7 +220,7 @@ export default function AdminApplications() {
                     <td className="py-4 px-6">
                       <Link
                         to={`/admin/applications/${app.id}`}
-                        className="font-medium text-Kantama-600 hover:text-Kantama-700"
+                        className="font-medium text-green-600 hover:text-green-700"
                       >
                         {app.reference_number}
                       </Link>

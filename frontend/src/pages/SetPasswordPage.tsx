@@ -1,4 +1,4 @@
-Ôªøimport { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,12 +12,12 @@ import Logo from '../components/Logo';
 
 const passwordSchema = z.object({
   password: z.string()
-    .min(8, 'Salasanan tulee olla v√§hint√§√§n 8 merkki√§')
-    .regex(/[A-Z]/, 'Salasanassa tulee olla v√§hint√§√§n yksi iso kirjain')
-    .regex(/[0-9]/, 'Salasanassa tulee olla v√§hint√§√§n yksi numero'),
+    .min(8, 'Salasanan tulee olla v‰hint‰‰n 8 merkki‰')
+    .regex(/[A-Z]/, 'Salasanassa tulee olla v‰hint‰‰n yksi iso kirjain')
+    .regex(/[0-9]/, 'Salasanassa tulee olla v‰hint‰‰n yksi numero'),
   password_confirm: z.string(),
 }).refine((data) => data.password === data.password_confirm, {
-  message: 'Salasanat eiv√§t t√§sm√§√§',
+  message: 'Salasanat eiv‰t t‰sm‰‰',
   path: ['password_confirm'],
 });
 
@@ -54,12 +54,12 @@ export default function SetPasswordPage() {
   });
 
   useEffect(() => {
-    // Tarkista onko k√§ytt√§j√§ kirjautunut magic linkill√§
+    // Tarkista onko k‰ytt‰j‰ kirjautunut magic linkill‰
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        toast.error('Kirjautumislinkki on vanhentunut. Pyyd√§ uusi kutsu.');
+        toast.error('Kirjautumislinkki on vanhentunut. Pyyd‰ uusi kutsu.');
         navigate('/');
         return;
       }
@@ -76,7 +76,7 @@ export default function SetPasswordPage() {
         .single();
 
       if (profile?.is_verified) {
-        // Jo rekister√∂itynyt - ohjaa oikeaan dashboardiin
+        // Jo rekisterˆitynyt - ohjaa oikeaan dashboardiin
         await checkAuth();
         navigate(getRedirectUrl(profile.role || role));
         return;
@@ -101,7 +101,7 @@ export default function SetPasswordPage() {
         throw updateError;
       }
 
-      // Hae k√§ytt√§j√§tiedot
+      // Hae k‰ytt‰j‰tiedot
       const { data: { user } } = await supabase.auth.getUser();
       
       if (user) {
@@ -136,20 +136,20 @@ export default function SetPasswordPage() {
             console.error('Profile creation error:', profileError);
           }
         } else {
-          // P√§ivit√§ olemassa oleva profiili
+          // P‰ivit‰ olemassa oleva profiili
           await supabase
             .from('profiles')
             .update({ is_verified: true })
             .eq('id', user.id);
         }
 
-        // P√§ivit√§ auth state
+        // P‰ivit‰ auth state
         await checkAuth();
 
         toast.success('Salasana asetettu! Tervetuloa!');
         navigate(getRedirectUrl(existingProfile?.role || role));
       } else {
-        throw new Error('K√§ytt√§j√§tietoja ei l√∂ytynyt');
+        throw new Error('K‰ytt‰j‰tietoja ei lˆytynyt');
       }
     } catch (error: any) {
       console.error('Password set error:', error);
@@ -188,7 +188,7 @@ export default function SetPasswordPage() {
             Luo salasana
           </h1>
           <p className="text-slate-600">
-            Aseta salasana, jolla kirjaudut jatkossa sis√§√§n
+            Aseta salasana, jolla kirjaudut jatkossa sis‰‰n
           </p>
         </div>
 
@@ -204,7 +204,7 @@ export default function SetPasswordPage() {
                 className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 pr-12 ${
                   errors.password ? 'border-red-500' : 'border-slate-300'
                 }`}
-                placeholder="V√§hint√§√§n 8 merkki√§"
+                placeholder="V‰hint‰‰n 8 merkki‰"
               />
               <button
                 type="button"
@@ -219,7 +219,7 @@ export default function SetPasswordPage() {
             )}
             <div className="mt-2 space-y-1">
               <p className="text-xs text-slate-500 flex items-center gap-1">
-                <Check className="w-3 h-3" /> V√§hint√§√§n 8 merkki√§
+                <Check className="w-3 h-3" /> V‰hint‰‰n 8 merkki‰
               </p>
               <p className="text-xs text-slate-500 flex items-center gap-1">
                 <Check className="w-3 h-3" /> Yksi iso kirjain

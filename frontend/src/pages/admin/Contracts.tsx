@@ -142,7 +142,7 @@ export default function AdminContracts() {
                   <div className="flex items-center space-x-3 mb-2">
                     <Link
                       to={`/admin/applications/${contract.application_id}`}
-                      className="font-semibold text-midnight-900 hover:text-Kantama-600"
+                      className="font-semibold text-midnight-900 hover:text-green-600"
                     >
                       {contract.application?.reference_number || `Hakemus #${contract.application_id}`}
                     </Link>

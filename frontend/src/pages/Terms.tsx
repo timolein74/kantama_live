@@ -28,13 +28,13 @@ export default function Terms() {
           </p>
 
           <p className="lead text-lg text-slate-600 mb-8">
-            Käyttämällä Kantama-palvelua hyväksyt nämä käyttöehdot.
+            Käyttämällä green-palvelua hyväksyt nämä käyttöehdot.
           </p>
 
           <hr className="my-8" />
 
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">1. Palvelun kuvaus</h2>
-          <p>Kantama on digitaalinen palvelu, jonka avulla yritykset voivat:</p>
+          <p>Juuri Rahoitus on digitaalinen palvelu, jonka avulla yritykset voivat:</p>
           <ul className="list-disc pl-6 space-y-2">
             <li>hakea rahoitusleasingiä</li>
             <li>hakea myynti- ja takaisinvuokrausjärjestelyjä</li>
@@ -42,7 +42,7 @@ export default function Terms() {
             <li>seurata hakemustensa käsittelyä</li>
           </ul>
           <p className="mt-4 font-medium">
-            Kantama ei ole pankki eikä rahoituslaitos, vaan toimii hakemusten ja tiedonvälityksen alustana.
+            Juuri Rahoitus ei ole pankki eikä rahoituslaitos, vaan toimii hakemusten ja tiedonvälityksen alustana.
           </p>
 
           <hr className="my-8" />
@@ -57,7 +57,7 @@ export default function Terms() {
 
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">3. Hakemukset ja tarjoukset</h2>
           <ul className="list-disc pl-6 space-y-2">
-            <li>Hakemuksen lähettäminen ei sido Kantamaia tai rahoittajaa tarjouksen tekemiseen.</li>
+            <li>Hakemuksen lähettäminen ei sido Juuri Rahoitusia tai rahoittajaa tarjouksen tekemiseen.</li>
             <li>Kaikki tarjoukset ovat rahoittajien antamia ja voivat sisältää ehtoja.</li>
             <li>Lopullinen sopimus syntyy vasta, kun asiakas ja rahoittaja ovat sen hyväksyneet.</li>
           </ul>
@@ -65,7 +65,7 @@ export default function Terms() {
           <hr className="my-8" />
 
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">4. Vastuunrajoitus</h2>
-          <p>Kantama ei vastaa:</p>
+          <p>Juuri Rahoitus ei vastaa:</p>
           <ul className="list-disc pl-6 space-y-2">
             <li>rahoittajien tekemistä päätöksistä</li>
             <li>tarjousten sisällöstä</li>
@@ -86,16 +86,16 @@ export default function Terms() {
 
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">6. Immateriaalioikeudet</h2>
           <p>
-            Kaikki Kantama-palveluun liittyvät oikeudet (ohjelmisto, ulkoasu, sisältö) kuuluvat 
-            Kantamaille tai sen lisenssinantajille.
+            Kaikki green-palveluun liittyvät oikeudet (ohjelmisto, ulkoasu, sisältö) kuuluvat 
+            Juuri Rahoitusille tai sen lisenssinantajille.
           </p>
 
           <hr className="my-8" />
 
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">7. Muutokset ja palvelun päättäminen</h2>
           <p>
-            Kantama voi muuttaa palvelua tai käyttöehtoja.
-            Kantamaillä on oikeus keskeyttää tai lopettaa palvelu perustellusta syystä.
+            Juuri Rahoitus voi muuttaa palvelua tai käyttöehtoja.
+            Juuri Rahoitusillä on oikeus keskeyttää tai lopettaa palvelu perustellusta syystä.
           </p>
 
           <hr className="my-8" />
@@ -111,7 +111,7 @@ export default function Terms() {
           <h2 className="text-xl font-bold text-midnight-900 mt-8 mb-4">9. Yhteystiedot</h2>
           <p>
             Kysymykset käyttöehdoista:<br />
-            📧 <a href="mailto:myynti@Kantama.fi" className="text-Kantama-600 hover:text-Kantama-700">myynti@Kantama.fi</a>
+            📧 <a href="mailto:info@juurirahoitus.fi" className="text-green-600 hover:text-green-700">info@juurirahoitus.fi</a>
           </p>
         </div>
       </main>
@@ -120,7 +120,7 @@ export default function Terms() {
       <footer className="bg-midnight-950 text-white py-8">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-slate-400">
-            © {new Date().getFullYear()} Kantama. Kaikki oikeudet pidätetään.
+            © {new Date().getFullYear()} Juuri Rahoitus. Kaikki oikeudet pidätetään.
           </p>
         </div>
       </footer>

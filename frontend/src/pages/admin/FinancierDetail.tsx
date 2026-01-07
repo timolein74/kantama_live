@@ -168,7 +168,7 @@ export default function AdminFinancierDetail() {
             <div className="space-y-3">
               <div className="flex items-center text-slate-600">
                 <Mail className="w-5 h-5 mr-3 text-slate-400" />
-                <a href={`mailto:${financier.email}`} className="hover:text-Kantama-600">
+                <a href={`mailto:${financier.email}`} className="hover:text-green-600">
                   {financier.email}
                 </a>
               </div>

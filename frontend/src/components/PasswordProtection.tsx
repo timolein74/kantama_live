@@ -5,7 +5,7 @@ interface PasswordProtectionProps {
   children: React.ReactNode;
 }
 
-const CORRECT_PASSWORD = import.meta.env.VITE_SITE_PASSWORD || 'kantama2024';
+const CORRECT_PASSWORD = import.meta.env.VITE_SITE_PASSWORD || 'Juuri Rahoitus2024';
 const STORAGE_KEY = 'site-authenticated';
 
 export function PasswordProtection({ children }: PasswordProtectionProps) {
@@ -66,7 +66,7 @@ export function PasswordProtection({ children }: PasswordProtectionProps) {
             <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <Lock className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Kantama Rahoitus</h1>
+            <h1 className="text-2xl font-bold text-white mb-2">Juuri Rahoitus</h1>
             <p className="text-slate-400">Sivusto on suojattu salasanalla</p>
           </div>
 

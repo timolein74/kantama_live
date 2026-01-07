@@ -1342,7 +1342,7 @@ export default function FinancierApplicationDetail() {
                                 <div class="logo">
                                   <div class="logo-icon">e</div>
                                   <div>
-                                    <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Kantama</div>
+                                    <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Juuri Rahoitus</div>
                                     <div style="font-size: 14px; color: #64748b;">Rahoitustarjous</div>
                                   </div>
                                 </div>
@@ -1391,7 +1391,7 @@ export default function FinancierApplicationDetail() {
                               
                               <div class="footer">
                                 <p>Tämä on alustava rahoitustarjous. Lopullinen sopimus syntyy vasta erillisellä allekirjoituksella.</p>
-                                <p style="margin-top: 8px;">Kantama • myynti@Kantama.fi</p>
+                                <p style="margin-top: 8px;">Juuri Rahoitus • info@juurirahoitus.fi</p>
                               </div>
                             </body>
                             </html>
@@ -1412,7 +1412,7 @@ export default function FinancierApplicationDetail() {
                         className="btn-primary"
                       >
                         <Send className="w-4 h-4 mr-2" />
-                        Lähetä tarjous Kantama adminiin
+                        Lähetä tarjous asiakkaalle
                       </button>
                     )}
                   </div>

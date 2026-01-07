@@ -306,10 +306,10 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-bold text-midnight-900 flex items-center">
-              <Euro className="w-5 h-5 mr-2 text-Kantama-600" />
+              <Euro className="w-5 h-5 mr-2 text-green-600" />
               Tarjoukset
             </h3>
-            <Link to="/admin/offers" className="text-Kantama-600 hover:text-Kantama-700 text-sm font-medium">
+            <Link to="/admin/offers" className="text-green-600 hover:text-green-700 text-sm font-medium">
               Näytä kaikki →
             </Link>
           </div>
@@ -337,10 +337,10 @@ export default function AdminDashboard() {
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-bold text-midnight-900 flex items-center">
-              <FileCheck className="w-5 h-5 mr-2 text-Kantama-600" />
+              <FileCheck className="w-5 h-5 mr-2 text-green-600" />
               Sopimukset
             </h3>
-            <Link to="/admin/contracts" className="text-Kantama-600 hover:text-Kantama-700 text-sm font-medium">
+            <Link to="/admin/contracts" className="text-green-600 hover:text-green-700 text-sm font-medium">
               Näytä kaikki →
             </Link>
           </div>
@@ -411,7 +411,7 @@ export default function AdminDashboard() {
           <h2 className="font-display font-bold text-midnight-900">Viimeisimmät hakemukset</h2>
           <Link
             to="/admin/applications"
-            className="text-Kantama-600 hover:text-Kantama-700 text-sm font-medium flex items-center"
+            className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center"
           >
             Näytä kaikki
             <ArrowRight className="w-4 h-4 ml-1" />
@@ -442,7 +442,7 @@ export default function AdminDashboard() {
                     <td className="py-3 px-4">
                       <Link
                         to={`/admin/applications/${app.id}`}
-                        className="font-medium text-Kantama-600 hover:text-Kantama-700"
+                        className="font-medium text-green-600 hover:text-green-700"
                       >
                         {app.reference_number}
                       </Link>
