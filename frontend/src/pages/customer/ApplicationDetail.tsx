@@ -148,7 +148,31 @@ export default function CustomerApplicationDetail() {
           .eq('application_id', id)
           .order('created_at', { ascending: true });
 
-        setInfoRequestList((messagesData || []) as InfoRequest[]);
+        // Transform requested_documents to documents format for UI
+        const docLabels: Record<string, string> = {
+          tilinpaatos: 'Tilinpäätös',
+          tulosTase: 'Tulos ja tase ajot',
+          henkilokortti: 'Kuvallinen henkilökortti',
+          kuvaKohteesta: 'Kuva kohteesta',
+          urakkasopimus: 'Urakkasopimus',
+          liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
+        };
+        
+        const transformedMessages = (messagesData || []).map((msg: any) => {
+          if (msg.requested_documents && Array.isArray(msg.requested_documents)) {
+            return {
+              ...msg,
+              documents: msg.requested_documents.map((docType: string) => ({
+                type: docType,
+                label: docLabels[docType] || docType,
+                required: true
+              }))
+            };
+          }
+          return msg;
+        });
+
+        setInfoRequestList(transformedMessages as InfoRequest[]);
 
         // Auto-select contracts tab if contract is sent
         if (appData?.status === 'CONTRACT_SENT' && (contractsData?.length || 0) > 0) {
