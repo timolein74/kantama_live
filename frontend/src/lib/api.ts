@@ -948,13 +948,43 @@ export const applications = {
   create: async (applicationData: any) => {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
-    const { data, error } = await supabase
-      .from('applications')
-      .insert([applicationData])
-      .select()
-      .single();
-    
-    return { data, error };
+    try {
+      const { data, error } = await supabase
+        .from('applications')
+        .insert([applicationData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating application:', error);
+        return { data: null, error };
+      }
+      
+      // Create notifications for all admins
+      try {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN');
+        
+        if (admins && admins.length > 0) {
+          const notifications = admins.map(admin => ({
+            user_id: admin.id,
+            title: 'Uusi hakemus',
+            message: `Uusi rahoitushakemus: ${applicationData.company_name || 'Uusi yritys'}`
+          }));
+          
+          await supabase.from('notifications').insert(notifications);
+        }
+      } catch (notifError) {
+        console.warn('Failed to create admin notifications:', notifError);
+      }
+      
+      return { data, error: null };
+    } catch (e) {
+      console.error('Unexpected error creating application:', e);
+      return { data: null, error: e };
+    }
   },
   get: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
