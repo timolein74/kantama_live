@@ -1609,10 +1609,14 @@ export default function FinancierApplicationDetail() {
                                 .from('uploads')
                                 .getPublicUrl(filePath);
                               
+                              // Find the accepted offer
+                              const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED');
+                              
                               const { data: newContract, error: contractError } = await supabase
                                 .from('contracts')
                                 .insert({
                                   application_id: id,
+                                  offer_id: acceptedOffer?.id || null,
                                   status: 'DRAFT',
                                   contract_pdf_url: urlData.publicUrl,
                                   lessor_company_name: 'Rahoittaja',
@@ -1692,11 +1696,15 @@ export default function FinancierApplicationDetail() {
                             .from('uploads')
                             .getPublicUrl(filePath);
                           
+                          // Find the accepted offer
+                          const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED');
+                          
                           // Create a simple contract record with the PDF
                           const { data: newContract, error: contractError } = await supabase
                             .from('contracts')
                             .insert({
                               application_id: id,
+                              offer_id: acceptedOffer?.id || null,
                               status: 'DRAFT',
                               contract_pdf_url: urlData.publicUrl,
                               lessor_company_name: 'Rahoittaja',
