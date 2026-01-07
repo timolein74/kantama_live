@@ -1262,15 +1262,41 @@ export const messages = {
     }
     
     // Add attachments if provided
-    if (attachments && attachments.length > 0) {
+    const hasAttachments = attachments && attachments.length > 0;
+    if (hasAttachments) {
       insertData.attachments = attachments;
     }
     
-    const { data, error } = await supabase
+    // Try to insert - if attachments column fails, retry without it
+    let data = null;
+    let error = null;
+    
+    const response = await supabase
       .from('app_messages')
       .insert(insertData)
       .select()
       .single();
+    
+    data = response.data;
+    error = response.error;
+    
+    // If failed due to attachments column cache issue, retry without attachments
+    if (error && error.message?.includes('attachments') && hasAttachments) {
+      console.warn('⚠️ Retrying without attachments due to schema cache issue');
+      const { attachments: _, ...insertDataWithoutAttachments } = insertData;
+      
+      // Add attachment info to message text instead
+      insertDataWithoutAttachments.message += `\n\n📎 Liitteet: ${attachments.length} kpl`;
+      
+      const retryResponse = await supabase
+        .from('app_messages')
+        .insert(insertDataWithoutAttachments)
+        .select()
+        .single();
+      
+      data = retryResponse.data;
+      error = retryResponse.error;
+    }
     
     // Create notifications based on sender role
     if (data && !error) {
