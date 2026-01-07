@@ -335,24 +335,45 @@ export const offers = {
   create: async (data: any) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
-    // Get current user to set financier_id
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { data: result, error } = await supabase
-      .from('offers')
-      .insert([{
-        ...data,
+    try {
+      // Get current user to set financier_id
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Clean up data - remove undefined values
+      const cleanData: any = {
+        application_id: data.application_id,
+        monthly_payment: data.monthly_payment,
+        term_months: data.term_months,
         financier_id: user?.id,
         status: data.status || 'DRAFT'
-      }])
-      .select()
-      .single();
-    
-    if (error) {
-      console.error('Error creating offer:', error);
+      };
+      
+      // Add optional fields only if they have values
+      if (data.upfront_payment) cleanData.upfront_payment = data.upfront_payment;
+      if (data.residual_value) cleanData.residual_value = data.residual_value;
+      if (data.notes) cleanData.notes = data.notes;
+      if (data.notes_to_customer) cleanData.notes_to_customer = data.notes_to_customer;
+      if (data.internal_notes) cleanData.internal_notes = data.internal_notes;
+      if (data.included_services) cleanData.included_services = data.included_services;
+      
+      console.log('Creating offer with data:', cleanData);
+      
+      const { data: result, error } = await supabase
+        .from('offers')
+        .insert([cleanData])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating offer:', error);
+        return { data: null, error };
+      }
+      
+      return { data: result, error: null };
+    } catch (e) {
+      console.error('Unexpected error creating offer:', e);
+      return { data: null, error: e };
     }
-    
-    return { data: result, error };
   },
   
   update: async (id: string | number, data: any) => {
@@ -394,117 +415,127 @@ export const offers = {
   accept: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
-    // Get offer details first
-    const { data: offer } = await supabase
-      .from('offers')
-      .select('*, applications(company_name, user_id)')
-      .eq('id', String(id))
-      .single();
-    
-    const { data, error } = await supabase
-      .from('offers')
-      .update({ status: 'ACCEPTED' })
-      .eq('id', String(id))
-      .select()
-      .single();
-    
-    // Create notifications for admin and financier
-    if (data && offer) {
-      // Get admin users
-      const { data: admins } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'ADMIN');
+    try {
+      // Get offer details first (simple query without join)
+      const { data: offer, error: offerError } = await supabase
+        .from('offers')
+        .select('*')
+        .eq('id', String(id))
+        .single();
       
-      const notificationsToCreate = [];
-      
-      // Notify admins
-      if (admins) {
-        for (const admin of admins) {
-          notificationsToCreate.push({
-            user_id: admin.id,
-            title: 'Tarjous hyväksytty',
-            message: `${offer.applications?.company_name || 'Asiakas'} hyväksyi tarjouksen`
-          });
-        }
+      if (offerError) {
+        console.error('Error fetching offer:', offerError);
+        return { data: null, error: offerError };
       }
       
-      // Notify financier
-      if (offer.financier_id) {
-        notificationsToCreate.push({
-          user_id: offer.financier_id,
-          title: 'Tarjous hyväksytty',
-          message: `${offer.applications?.company_name || 'Asiakas'} hyväksyi tarjouksesi`
-        });
-      }
+      // Update offer status
+      const { data, error } = await supabase
+        .from('offers')
+        .update({ status: 'ACCEPTED' })
+        .eq('id', String(id))
+        .select()
+        .single();
       
-      if (notificationsToCreate.length > 0) {
-        await supabase.from('notifications').insert(notificationsToCreate);
+      if (error) {
+        console.error('Error updating offer:', error);
+        return { data: null, error };
       }
       
       // Update application status
-      await supabase
-        .from('applications')
-        .update({ status: 'OFFER_ACCEPTED' })
-        .eq('id', offer.application_id);
+      if (offer?.application_id) {
+        await supabase
+          .from('applications')
+          .update({ status: 'OFFER_ACCEPTED' })
+          .eq('id', offer.application_id);
+      }
+      
+      // Create notifications (fire and forget)
+      try {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN');
+        
+        const notifs = [];
+        if (admins) {
+          for (const admin of admins) {
+            notifs.push({ user_id: admin.id, title: 'Tarjous hyväksytty', message: 'Asiakas hyväksyi tarjouksen' });
+          }
+        }
+        if (offer?.financier_id) {
+          notifs.push({ user_id: offer.financier_id, title: 'Tarjous hyväksytty', message: 'Asiakas hyväksyi tarjouksesi' });
+        }
+        if (notifs.length > 0) {
+          await supabase.from('notifications').insert(notifs);
+        }
+      } catch (e) {
+        console.warn('Failed to create notifications:', e);
+      }
+      
+      return { data, error: null };
+    } catch (e) {
+      console.error('Unexpected error in accept:', e);
+      return { data: null, error: e };
     }
-    
-    return { data, error };
   },
   
   reject: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
-    // Get offer details first
-    const { data: offer } = await supabase
-      .from('offers')
-      .select('*, applications(company_name, user_id)')
-      .eq('id', String(id))
-      .single();
-    
-    const { data, error } = await supabase
-      .from('offers')
-      .update({ status: 'REJECTED' })
-      .eq('id', String(id))
-      .select()
-      .single();
-    
-    // Create notifications for admin and financier
-    if (data && offer) {
-      // Get admin users
-      const { data: admins } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'ADMIN');
+    try {
+      // Get offer details first
+      const { data: offer, error: offerError } = await supabase
+        .from('offers')
+        .select('*')
+        .eq('id', String(id))
+        .single();
       
-      const notificationsToCreate = [];
+      if (offerError) {
+        console.error('Error fetching offer:', offerError);
+        return { data: null, error: offerError };
+      }
       
-      // Notify admins
-      if (admins) {
-        for (const admin of admins) {
-          notificationsToCreate.push({
-            user_id: admin.id,
-            title: 'Tarjous hylätty',
-            message: `${offer.applications?.company_name || 'Asiakas'} hylkäsi tarjouksen`
-          });
+      // Update offer status
+      const { data, error } = await supabase
+        .from('offers')
+        .update({ status: 'REJECTED' })
+        .eq('id', String(id))
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error updating offer:', error);
+        return { data: null, error };
+      }
+      
+      // Create notifications (fire and forget)
+      try {
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN');
+        
+        const notifs = [];
+        if (admins) {
+          for (const admin of admins) {
+            notifs.push({ user_id: admin.id, title: 'Tarjous hylätty', message: 'Asiakas hylkäsi tarjouksen' });
+          }
         }
+        if (offer?.financier_id) {
+          notifs.push({ user_id: offer.financier_id, title: 'Tarjous hylätty', message: 'Asiakas hylkäsi tarjouksesi' });
+        }
+        if (notifs.length > 0) {
+          await supabase.from('notifications').insert(notifs);
+        }
+      } catch (e) {
+        console.warn('Failed to create notifications:', e);
       }
       
-      // Notify financier
-      if (offer.financier_id) {
-        notificationsToCreate.push({
-          user_id: offer.financier_id,
-          title: 'Tarjous hylätty',
-          message: `${offer.applications?.company_name || 'Asiakas'} hylkäsi tarjouksesi`
-        });
-      }
-      
-      if (notificationsToCreate.length > 0) {
-        await supabase.from('notifications').insert(notificationsToCreate);
-      }
+      return { data, error: null };
+    } catch (e) {
+      console.error('Unexpected error in reject:', e);
+      return { data: null, error: e };
     }
-    
-    return { data, error };
   },
   
   getForApplication: async (applicationId: string | number) => {
