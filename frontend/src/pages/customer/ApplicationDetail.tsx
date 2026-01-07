@@ -169,7 +169,7 @@ export default function CustomerApplicationDetail() {
     fetchData();
   }, [id]);
 
-  const handleAcceptOffer = async (offerId: number) => {
+  const handleAcceptOffer = async (offerId: string | number) => {
     // DEMO MODE
     const token = localStorage.getItem('token');
     if (token?.startsWith('demo-token-')) {
@@ -215,8 +215,13 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
-      await offers.accept(offerId);
-      toast.success('Luottopäätös on haettu!');
+      const { error } = await offers.accept(offerId);
+      if (error) {
+        console.error('Error accepting offer:', error);
+        toast.error('Virhe tarjouksen hyväksymisessä');
+        return;
+      }
+      toast.success('Luottopäätös on haettu! Saat ilmoituksen kun rahoittaja käsittelee hakemuksesi.');
       // Refresh data
       const [appRes, offersRes] = await Promise.all([
         applications.get(id!),
@@ -225,11 +230,12 @@ export default function CustomerApplicationDetail() {
       setApplication(appRes.data);
       setOfferList(offersRes.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe tarjouksen hyväksymisessä');
+      console.error('Unexpected error:', error);
+      toast.error('Virhe tarjouksen hyväksymisessä');
     }
   };
 
-  const handleSendOfferQuestion = async (offerId: number) => {
+  const handleSendOfferQuestion = async (offerId: string | number) => {
     if (!offerQuestion.trim()) {
       toast.error('Kirjoita kysymyksesi');
       return;
@@ -261,12 +267,39 @@ export default function CustomerApplicationDetail() {
       return;
     }
     
-    // API call would go here
-    toast.success('Kysymys lähetetty');
-    setIsSendingQuestion(false);
+    try {
+      // Find the offer to get financier_id
+      const offer = offerList.find(o => String(o.id) === String(offerId));
+      
+      // Send message via app_messages
+      const { error } = await messages.send({
+        application_id: id!,
+        message: offerQuestion,
+        sender_role: 'CUSTOMER'
+      });
+      
+      if (error) {
+        console.error('Error sending question:', error);
+        toast.error('Virhe viestin lähettämisessä');
+        return;
+      }
+      
+      toast.success('Kysymys lähetetty rahoittajalle!');
+      setOfferQuestion('');
+      setShowOfferQuestionForm(null);
+      
+      // Refresh messages
+      const messagesRes = await messages.listByApplication(id!);
+      setMessageList(messagesRes.data || []);
+    } catch (error: any) {
+      console.error('Unexpected error:', error);
+      toast.error('Virhe viestin lähettämisessä');
+    } finally {
+      setIsSendingQuestion(false);
+    }
   };
 
-  const handleRejectOffer = async (offerId: number) => {
+  const handleRejectOffer = async (offerId: string | number) => {
     // DEMO MODE
     const token = localStorage.getItem('token');
     if (token?.startsWith('demo-token-')) {
@@ -288,7 +321,12 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
-      await offers.reject(offerId);
+      const { error } = await offers.reject(offerId);
+      if (error) {
+        console.error('Error rejecting offer:', error);
+        toast.error('Virhe tarjouksen hylkäämisessä');
+        return;
+      }
       toast.success('Tarjous hylätty');
       // Refresh data
       const [appRes, offersRes] = await Promise.all([

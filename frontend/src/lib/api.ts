@@ -394,17 +394,73 @@ export const offers = {
   accept: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
+    // Get offer details first
+    const { data: offer } = await supabase
+      .from('offers')
+      .select('*, applications(company_name, user_id)')
+      .eq('id', String(id))
+      .single();
+    
     const { data, error } = await supabase
       .from('offers')
       .update({ status: 'ACCEPTED' })
       .eq('id', String(id))
       .select()
       .single();
+    
+    // Create notifications for admin and financier
+    if (data && offer) {
+      // Get admin users
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'ADMIN');
+      
+      const notificationsToCreate = [];
+      
+      // Notify admins
+      if (admins) {
+        for (const admin of admins) {
+          notificationsToCreate.push({
+            user_id: admin.id,
+            title: 'Tarjous hyväksytty',
+            message: `${offer.applications?.company_name || 'Asiakas'} hyväksyi tarjouksen`
+          });
+        }
+      }
+      
+      // Notify financier
+      if (offer.financier_id) {
+        notificationsToCreate.push({
+          user_id: offer.financier_id,
+          title: 'Tarjous hyväksytty',
+          message: `${offer.applications?.company_name || 'Asiakas'} hyväksyi tarjouksesi`
+        });
+      }
+      
+      if (notificationsToCreate.length > 0) {
+        await supabase.from('notifications').insert(notificationsToCreate);
+      }
+      
+      // Update application status
+      await supabase
+        .from('applications')
+        .update({ status: 'OFFER_ACCEPTED' })
+        .eq('id', offer.application_id);
+    }
+    
     return { data, error };
   },
   
   reject: async (id: string | number) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Get offer details first
+    const { data: offer } = await supabase
+      .from('offers')
+      .select('*, applications(company_name, user_id)')
+      .eq('id', String(id))
+      .single();
     
     const { data, error } = await supabase
       .from('offers')
@@ -412,6 +468,42 @@ export const offers = {
       .eq('id', String(id))
       .select()
       .single();
+    
+    // Create notifications for admin and financier
+    if (data && offer) {
+      // Get admin users
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'ADMIN');
+      
+      const notificationsToCreate = [];
+      
+      // Notify admins
+      if (admins) {
+        for (const admin of admins) {
+          notificationsToCreate.push({
+            user_id: admin.id,
+            title: 'Tarjous hylätty',
+            message: `${offer.applications?.company_name || 'Asiakas'} hylkäsi tarjouksen`
+          });
+        }
+      }
+      
+      // Notify financier
+      if (offer.financier_id) {
+        notificationsToCreate.push({
+          user_id: offer.financier_id,
+          title: 'Tarjous hylätty',
+          message: `${offer.applications?.company_name || 'Asiakas'} hylkäsi tarjouksesi`
+        });
+      }
+      
+      if (notificationsToCreate.length > 0) {
+        await supabase.from('notifications').insert(notificationsToCreate);
+      }
+    }
+    
     return { data, error };
   },
   
@@ -716,11 +808,77 @@ export const messages = {
     documents?: any;
   }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+    
     const { data, error } = await supabase
       .from('app_messages')
-      .insert(messageData)
+      .insert({
+        ...messageData,
+        sender_id: messageData.sender_id || user?.id
+      })
       .select()
       .single();
+    
+    // Create notifications based on sender role
+    if (data && !error) {
+      // Get application details
+      const { data: app } = await supabase
+        .from('applications')
+        .select('company_name, user_id')
+        .eq('id', messageData.application_id)
+        .single();
+      
+      const notificationsToCreate = [];
+      
+      if (messageData.sender_role === 'CUSTOMER') {
+        // Customer sent message - notify admins and financiers
+        const { data: admins } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'ADMIN');
+        
+        const { data: financiers } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'FINANCIER');
+        
+        if (admins) {
+          for (const admin of admins) {
+            notificationsToCreate.push({
+              user_id: admin.id,
+              title: 'Uusi viesti',
+              message: `${app?.company_name || 'Asiakas'} lähetti viestin`
+            });
+          }
+        }
+        
+        if (financiers) {
+          for (const financier of financiers) {
+            notificationsToCreate.push({
+              user_id: financier.id,
+              title: 'Uusi viesti',
+              message: `${app?.company_name || 'Asiakas'} lähetti viestin`
+            });
+          }
+        }
+      } else {
+        // Admin/Financier sent message - notify customer
+        if (app?.user_id) {
+          notificationsToCreate.push({
+            user_id: app.user_id,
+            title: 'Uusi viesti',
+            message: messageData.is_info_request ? 'Sinulle on lisätietopyyntö' : 'Sait uuden viestin hakemukseesi'
+          });
+        }
+      }
+      
+      if (notificationsToCreate.length > 0) {
+        await supabase.from('notifications').insert(notificationsToCreate);
+      }
+    }
+    
     return { data, error };
   },
   
