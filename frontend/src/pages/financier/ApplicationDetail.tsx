@@ -153,11 +153,12 @@ export default function FinancierApplicationDetail() {
       }
       
       try {
+        // Use getForFinancier to only get messages relevant to this financier (not admin-customer messages)
         const [appRes, offersRes, contractsRes, infoRes] = await Promise.all([
           applications.get(id),
           offers.getForApplication(id),
           contracts.getForApplication(id),
-          infoRequests.getForApplication(id)
+          infoRequests.getForFinancier(id)
         ]);
         
         setApplication(appRes.data);
@@ -256,10 +257,10 @@ export default function FinancierApplicationDetail() {
       setInfoRequestMessage('');
       setInfoRequestItems('');
       
-      // Refresh data
+      // Refresh data - use getForFinancier to only get financier's own messages
       const [appRes, infoRes] = await Promise.all([
         applications.get(id),
-        infoRequests.getForApplication(id)
+        infoRequests.getForFinancier(id)
       ]);
       setApplication(appRes.data);
       setInfoRequestList(infoRes.data);

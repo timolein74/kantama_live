@@ -324,6 +324,46 @@ export const infoRequests = {
     return { data: data || [], error };
   },
   
+  // For financiers: only get messages they sent or replies to their messages
+  getForFinancier: async (applicationId: string | number) => {
+    if (!isSupabaseConfigured()) return { data: [], error: null };
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { data: [], error: null };
+    
+    // Get messages where financier is sender
+    const { data: financierMessages, error: err1 } = await supabase
+      .from('app_messages')
+      .select('*')
+      .eq('application_id', String(applicationId))
+      .eq('sender_id', user.id)
+      .order('created_at', { ascending: false });
+    
+    if (err1) return { data: [], error: err1 };
+    
+    // Get IDs of messages sent by financier
+    const financierMessageIds = (financierMessages || []).map(m => m.id);
+    
+    // Get replies to financier's messages
+    const { data: replies, error: err2 } = await supabase
+      .from('app_messages')
+      .select('*')
+      .eq('application_id', String(applicationId))
+      .in('parent_message_id', financierMessageIds.length > 0 ? financierMessageIds : ['no-match'])
+      .order('created_at', { ascending: false });
+    
+    if (err2) return { data: [], error: err2 };
+    
+    // Combine and sort by date
+    const allMessages = [...(financierMessages || []), ...(replies || [])];
+    const uniqueMessages = allMessages.filter((msg, index, self) => 
+      index === self.findIndex(m => m.id === msg.id)
+    );
+    uniqueMessages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    
+    return { data: uniqueMessages, error: null };
+  },
+  
   respond: async (data: { info_request_id: string; message: string; attachment_ids?: string[] }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
@@ -1039,35 +1079,57 @@ export const messages = {
       const companyName = app?.company_name || 'Asiakas';
       
       if (messageData.sender_role === 'CUSTOMER') {
-        // Customer sent message - notify admins and financiers
-        // Use "vastasi" in title so admin dashboard can detect it
-        const { data: admins } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'ADMIN');
-        
-        const { data: financiers } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('role', 'FINANCIER');
-        
-        if (admins) {
-          for (const admin of admins) {
+        // Customer sent message
+        // If replying to a message, only notify the ORIGINAL SENDER (not all financiers!)
+        if (reply_to_id) {
+          // Get the original message to find out who sent it
+          const { data: originalMessage } = await supabase
+            .from('app_messages')
+            .select('sender_id, sender_role')
+            .eq('id', reply_to_id)
+            .single();
+          
+          if (originalMessage?.sender_id) {
+            // Notify the original sender
             notificationsToCreate.push({
-              user_id: admin.id,
-              title: reply_to_id ? 'Asiakas vastasi viestiin' : 'Uusi viesti asiakkaalta',
-              message: `${companyName} ${reply_to_id ? 'vastasi viestiisi' : 'lähetti viestin'}`
+              user_id: originalMessage.sender_id,
+              title: 'Asiakas vastasi viestiin',
+              message: `${companyName} vastasi viestiisi`
             });
+            
+            // If original sender was a financier, also notify admins for tracking
+            if (originalMessage.sender_role === 'FINANCIER') {
+              const { data: admins } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('role', 'ADMIN');
+              
+              if (admins) {
+                for (const admin of admins) {
+                  notificationsToCreate.push({
+                    user_id: admin.id,
+                    title: 'Asiakas vastasi rahoittajalle',
+                    message: `${companyName} vastasi rahoittajan viestiin`
+                  });
+                }
+              }
+            }
           }
-        }
-        
-        if (financiers) {
-          for (const financier of financiers) {
-            notificationsToCreate.push({
-              user_id: financier.id,
-              title: reply_to_id ? 'Asiakas vastasi viestiin' : 'Uusi viesti asiakkaalta',
-              message: `${companyName} ${reply_to_id ? 'vastasi viestiisi' : 'lähetti viestin'}`
-            });
+        } else {
+          // New message (not a reply) - only notify admins, NOT all financiers
+          const { data: admins } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('role', 'ADMIN');
+          
+          if (admins) {
+            for (const admin of admins) {
+              notificationsToCreate.push({
+                user_id: admin.id,
+                title: 'Uusi viesti asiakkaalta',
+                message: `${companyName} lähetti viestin`
+              });
+            }
           }
         }
       } else {
