@@ -1427,22 +1427,25 @@ export default function CustomerApplicationDetail() {
                   </div>
 
                   <div className="flex flex-col md:flex-row justify-between gap-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowContractModal(contract)}
-                        className="btn-secondary"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Näytä sopimus
-                      </button>
-                      <button
-                        onClick={() => handlePrintContract(contract)}
-                        className="btn-ghost"
-                      >
-                        <Printer className="w-4 h-4 mr-2" />
-                        Tulosta
-                      </button>
-                    </div>
+                    {/* Only show these buttons if there's NO PDF attachment */}
+                    {!(contract as any).contract_pdf_url && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowContractModal(contract)}
+                          className="btn-secondary"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Näytä sopimus
+                        </button>
+                        <button
+                          onClick={() => handlePrintContract(contract)}
+                          className="btn-ghost"
+                        >
+                          <Printer className="w-4 h-4 mr-2" />
+                          Tulosta
+                        </button>
+                      </div>
+                    )}
                     
                     {contract.status === 'SENT' && (
                       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
