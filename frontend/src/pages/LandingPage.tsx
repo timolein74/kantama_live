@@ -357,9 +357,9 @@ export default function LandingPage() {
               transition={{ duration: 0.6 }}
             >
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-tight mb-6">
-                Yritysrahoitusta
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-Kantama-400 to-purple-400">
-                  {' '}helposti
+                Kasvun juuret
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-400">
+                  {' '}alkavat tästä.
                 </span>
               </h1>
               <p className="text-xl text-slate-300 mb-8 max-w-lg">
