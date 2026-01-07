@@ -1449,19 +1449,8 @@ export default function CustomerApplicationDetail() {
                     
                     {contract.status === 'SENT' && (
                       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-                        {/* E-signature button */}
-                        <button
-                          onClick={() => handleSignContract(contract.id)}
-                          disabled={isSigning}
-                          className="btn-primary"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          {isSigning ? 'Allekirjoitetaan...' : 'Allekirjoita sähköisesti'}
-                        </button>
-                        
-                        {/* OR upload signed PDF */}
+                        {/* Upload signed PDF */}
                         <div className="flex items-center gap-2">
-                          <span className="text-slate-400 text-sm">tai</span>
                           <input
                             type="file"
                             accept=".pdf"
@@ -1471,10 +1460,10 @@ export default function CustomerApplicationDetail() {
                           />
                           <label
                             htmlFor={`signed-${contract.id}`}
-                            className="btn-secondary cursor-pointer"
+                            className="btn-primary cursor-pointer"
                           >
                             <Upload className="w-4 h-4 mr-2" />
-                            {signedFile ? signedFile.name : 'Lataa allekirj. PDF'}
+                            {signedFile ? signedFile.name : 'Lataa allekirjoitettu sopimus'}
                           </label>
                           {signedFile && (
                             <button
