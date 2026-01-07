@@ -1397,6 +1397,30 @@ export default function CustomerApplicationDetail() {
                     </div>
                   )}
 
+                  {/* Contract PDF download if available */}
+                  {(contract as any).contract_pdf_url && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-6 h-6 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-blue-900">Sopimus-PDF</p>
+                            <p className="text-blue-700 text-sm">Lataa sopimus PDF-muodossa</p>
+                          </div>
+                        </div>
+                        <a 
+                          href={(contract as any).contract_pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Lataa PDF
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="text-sm text-slate-500 mb-4">
                     {contract.sent_at && <span>Lähetetty: {formatDateTime(contract.sent_at)}</span>}
                     {contract.signed_at && <span> • Allekirjoitettu: {formatDateTime(contract.signed_at)}</span>}

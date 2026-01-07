@@ -21,9 +21,11 @@ import {
   CheckCircle,
   X,
   Printer,
-  Eye
+  Eye,
+  ExternalLink
 } from 'lucide-react';
 import { applications, offers, contracts, infoRequests, files } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import {
   formatCurrency,
   formatDate,
@@ -86,6 +88,11 @@ export default function FinancierApplicationDetail() {
   const [previewContract, setPreviewContract] = useState<Contract | null>(null);
   const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
+  
+  // Contract PDF upload
+  const [contractPdfFile, setContractPdfFile] = useState<File | null>(null);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [uploadedPdfUrl, setUploadedPdfUrl] = useState<string | null>(null);
   
   // Document request form (for accepted offers)
   const [showDocumentRequest, setShowDocumentRequest] = useState(false);
@@ -645,6 +652,58 @@ export default function FinancierApplicationDetail() {
       }
       setPreviewContract(null);
     }, 100);
+  };
+
+  // Upload contract PDF
+  const handleUploadContractPdf = async (contractId: number, file: File) => {
+    if (!file || !file.type.includes('pdf')) {
+      toast.error('Valitse PDF-tiedosto');
+      return;
+    }
+    
+    setIsUploadingPdf(true);
+    
+    try {
+      // Upload to Supabase Storage
+      const fileName = `contract_${contractId}_${Date.now()}.pdf`;
+      const filePath = `contracts/${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('uploads')
+        .upload(filePath, file, { upsert: true });
+      
+      if (uploadError) throw uploadError;
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('uploads')
+        .getPublicUrl(filePath);
+      
+      const pdfUrl = urlData.publicUrl;
+      
+      // Update contract with PDF URL
+      const { error: updateError } = await supabase
+        .from('contracts')
+        .update({ contract_pdf_url: pdfUrl })
+        .eq('id', contractId);
+      
+      if (updateError) throw updateError;
+      
+      setUploadedPdfUrl(pdfUrl);
+      setContractPdfFile(null);
+      
+      // Update local state
+      setContractList(prev => prev.map(c => 
+        c.id === contractId ? { ...c, contract_pdf_url: pdfUrl } : c
+      ));
+      
+      toast.success('PDF-sopimus ladattu');
+    } catch (error: any) {
+      console.error('PDF upload error:', error);
+      toast.error('Virhe PDF:n latauksessa');
+    } finally {
+      setIsUploadingPdf(false);
+    }
   };
 
   const handleSendContract = async (contractId: number) => {
@@ -1617,6 +1676,80 @@ export default function FinancierApplicationDetail() {
                     {contract.sent_at && ` • Lähetetty: ${formatDateTime(contract.sent_at)}`}
                     {contract.signed_at && ` • Allekirjoitettu: ${formatDateTime(contract.signed_at)}`}
                   </div>
+
+                  {/* PDF Upload Section for DRAFT contracts */}
+                  {contract.status === 'DRAFT' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-start space-x-3">
+                        <FileText className="w-5 h-5 text-blue-600 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-medium text-blue-900 mb-2">Liitä sopimus-PDF</p>
+                          <p className="text-blue-700 text-sm mb-3">
+                            Voit liittää allekirjoitetun sopimuksen PDF-tiedoston asiakkaan portaaliin.
+                          </p>
+                          
+                          {(contract as any).contract_pdf_url ? (
+                            <div className="flex items-center space-x-3">
+                              <a 
+                                href={(contract as any).contract_pdf_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
+                              >
+                                <FileText className="w-4 h-4 mr-2" />
+                                Näytä liitetty PDF
+                                <ExternalLink className="w-3 h-3 ml-1" />
+                              </a>
+                              <span className="text-green-600 text-sm flex items-center">
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                PDF ladattu
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-3">
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleUploadContractPdf(contract.id, file);
+                                  }
+                                }}
+                                className="hidden"
+                                id={`contract-pdf-${contract.id}`}
+                              />
+                              <label
+                                htmlFor={`contract-pdf-${contract.id}`}
+                                className={`btn-secondary cursor-pointer ${isUploadingPdf ? 'opacity-50 pointer-events-none' : ''}`}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {isUploadingPdf ? 'Ladataan...' : 'Valitse PDF-tiedosto'}
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Show PDF link for sent/signed contracts */}
+                  {contract.status !== 'DRAFT' && (contract as any).contract_pdf_url && (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center space-x-3">
+                        <FileText className="w-5 h-5 text-slate-600" />
+                        <a 
+                          href={(contract as any).contract_pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Lataa sopimus-PDF
+                          <ExternalLink className="w-3 h-3 ml-1" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
