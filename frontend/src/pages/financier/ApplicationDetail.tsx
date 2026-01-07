@@ -1783,6 +1783,30 @@ export default function FinancierApplicationDetail() {
                         ))}
                       </ul>
                     )}
+                    {/* Show attachments from message */}
+                    {(ir as any).attachments && (ir as any).attachments.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-yellow-200">
+                        <p className="text-sm font-medium text-yellow-700 mb-2">📎 Liitteet:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(ir as any).attachments.map((path: string, i: number) => {
+                            const fileName = path.split('/').pop() || path;
+                            const downloadUrl = `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/documents/${path}`;
+                            return (
+                              <a
+                                key={i}
+                                href={downloadUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center bg-white text-emerald-700 px-2 py-1 rounded text-xs hover:bg-emerald-50 border border-emerald-200"
+                              >
+                                <Download className="w-3 h-3 mr-1" />
+                                {fileName.substring(0, 30)}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <p className="text-xs text-yellow-600 mt-2">{formatDateTime(ir.created_at)}</p>
                   </div>
 
@@ -1797,31 +1821,30 @@ export default function FinancierApplicationDetail() {
                             <span className="text-xs text-blue-500">{formatDateTime(resp.created_at)}</span>
                           </div>
                           <p className="text-blue-800">{resp.message}</p>
-                          {/* Show attachments if any */}
+                          {/* Show attachments from response */}
                           {resp.attachments && resp.attachments.length > 0 && (
                             <div className="mt-3 pt-3 border-t border-blue-200">
-                              <p className="text-sm font-medium text-blue-700 mb-2">📎 Liitetyt tiedostot:</p>
-                              <ul className="space-y-2">
-                                {resp.attachments.map((att: any, i: number) => (
-                                  <li key={i} className="flex items-center justify-between bg-white rounded-lg p-2 border border-blue-100">
-                                    <div className="flex items-center text-sm text-blue-600">
-                                      <FileText className="w-4 h-4 mr-2" />
-                                      <span className="font-medium">{att.filename}</span>
-                                    </div>
-                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                                      {att.type === 'tilinpaatos' ? 'Tilinpäätös' :
-                                       att.type === 'tulosTase' ? 'Tulos ja tase' :
-                                       att.type === 'kuvaKohteesta' ? 'Kuva kohteesta' :
-                                       att.type === 'urakkasopimus' ? 'Urakkasopimus' :
-                                       att.type === 'liiketoimintasuunnitelma' ? 'Liiketoimintasuunnitelma' :
-                                       att.type}
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                              <p className="text-xs text-blue-500 mt-2 italic">
-                                ℹ️ Demo-tilassa tiedostoja ei voi ladata. Tuotantoversiossa tiedostot ovat ladattavissa.
-                              </p>
+                              <p className="text-sm font-medium text-blue-700 mb-2">📎 Liitteet:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {resp.attachments.map((path: string, i: number) => {
+                                  const fileName = typeof path === 'string' ? path.split('/').pop() : (path as any).filename || 'tiedosto';
+                                  const downloadUrl = typeof path === 'string' 
+                                    ? `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/documents/${path}`
+                                    : '#';
+                                  return (
+                                    <a
+                                      key={i}
+                                      href={downloadUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center bg-white text-emerald-700 px-2 py-1 rounded text-xs hover:bg-emerald-50 border border-emerald-200"
+                                    >
+                                      <Download className="w-3 h-3 mr-1" />
+                                      {String(fileName).substring(0, 30)}
+                                    </a>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                         </div>

@@ -1241,6 +1241,7 @@ export const messages = {
     is_read?: boolean;
     reply_to_id?: string;
     documents?: any;
+    attachments?: string[];
   }) => {
     if (!isSupabaseConfigured()) return { data: null, error: null };
     
@@ -1248,7 +1249,7 @@ export const messages = {
     const { data: { user } } = await supabase.auth.getUser();
     
     // Map reply_to_id to parent_message_id for database
-    const { reply_to_id, documents, ...rest } = messageData;
+    const { reply_to_id, documents, attachments, ...rest } = messageData;
     
     const insertData: any = {
       ...rest,
@@ -1258,6 +1259,11 @@ export const messages = {
     // Add parent_message_id if reply_to_id is provided
     if (reply_to_id) {
       insertData.parent_message_id = reply_to_id;
+    }
+    
+    // Add attachments if provided
+    if (attachments && attachments.length > 0) {
+      insertData.attachments = attachments;
     }
     
     const { data, error } = await supabase

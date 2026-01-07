@@ -1409,6 +1409,30 @@ export default function AdminApplicationDetail() {
                           {label} • {formatDateTime(msg.created_at)}
                         </p>
                         <p className={`${textClass} whitespace-pre-wrap`}>{msg.message}</p>
+                        {/* Show attachments */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-slate-200">
+                            <p className="text-xs font-medium text-slate-600 mb-1">📎 Liitteet:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {msg.attachments.map((path: string, i: number) => {
+                                const fileName = path.split('/').pop() || path;
+                                const downloadUrl = `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/documents/${path}`;
+                                return (
+                                  <a
+                                    key={i}
+                                    href={downloadUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center bg-white text-emerald-700 px-2 py-1 rounded text-xs hover:bg-emerald-50 border border-emerald-200"
+                                  >
+                                    <Download className="w-3 h-3 mr-1" />
+                                    {fileName.substring(0, 30)}
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

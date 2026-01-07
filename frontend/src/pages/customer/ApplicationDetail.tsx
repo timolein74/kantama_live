@@ -473,7 +473,8 @@ export default function CustomerApplicationDetail() {
         message: fullMessage,
         sender_role: 'CUSTOMER',
         is_info_request: false,
-        reply_to_id: infoRequestId
+        reply_to_id: infoRequestId,
+        attachments: uploadedFiles.length > 0 ? uploadedFiles : undefined
       });
       
       if (error) {
