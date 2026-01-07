@@ -272,27 +272,34 @@ export default function FinancierApplicationDetail() {
     try {
       const requestedItems = selectedDocs.map(([key]) => documentLabels[key]);
       
-      await infoRequests.create({
-        application_id: id,
+      const { data, error } = await infoRequests.create({
+        application_id: id!,
         message: fullMessage,
         requested_items: requestedItems.length > 0 ? requestedItems : undefined,
         requested_documents: selectedDocs.map(([key]) => key)
       });
       
-      toast.success('Lisätietopyyntö lähetetty');
+      if (error) {
+        console.error('Info request error:', error);
+        toast.error('Virhe lisätietopyynnön lähetyksessä');
+        return;
+      }
+      
+      toast.success('Lisätietopyyntö lähetetty asiakkaalle!');
       setShowInfoRequestForm(false);
       setInfoRequestMessage('');
       setRequestedDocuments({ tilinpaatos: false, tulosTase: false, henkilokortti: false, kuvaKohteesta: false, urakkasopimus: false, liiketoimintasuunnitelma: false });
       
       // Refresh data - use getForFinancier to only get financier's own messages
       const [appRes, infoRes] = await Promise.all([
-        applications.get(id),
-        infoRequests.getForFinancier(id)
+        applications.get(id!),
+        infoRequests.getForFinancier(id!)
       ]);
       setApplication(appRes.data);
       setInfoRequestList(infoRes.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe pyynnön lähetyksessä');
+      console.error('Info request exception:', error);
+      toast.error(error?.message || 'Virhe pyynnön lähetyksessä');
     } finally {
       setIsSendingInfoRequest(false);
     }
@@ -478,17 +485,20 @@ export default function FinancierApplicationDetail() {
     
     // API call for production
     try {
-      await infoRequests.create(id, {
+      const selectedDocTypes = Object.entries(documentTypes)
+        .filter(([_, v]) => v.selected)
+        .map(([key]) => key);
+      
+      await infoRequests.create({
+        application_id: id!,
         message: documentRequestMessage,
-        items: Object.entries(documentTypes)
-          .filter(([_, v]) => v.selected)
-          .map(([key, val]) => `${key}:${val.required ? 'required' : 'optional'}`)
-          .join(',')
+        requested_documents: selectedDocTypes
       });
       toast.success('Liitepyyntö lähetetty');
       setShowDocumentRequest(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe pyynnön lähetyksessä');
+      console.error('Document request error:', error);
+      toast.error(error?.message || 'Virhe pyynnön lähetyksessä');
     } finally {
       setIsSendingDocumentRequest(false);
     }
