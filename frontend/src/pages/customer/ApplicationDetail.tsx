@@ -359,10 +359,17 @@ export default function CustomerApplicationDetail() {
     }
     
     try {
-      await infoRequests.respond({
+      const { data: result, error } = await infoRequests.respond({
         info_request_id: infoRequestId,
         message: responseMessage
       });
+      
+      if (error) {
+        console.error('Error responding to info request:', error);
+        toast.error('Virhe vastauksen lähettämisessä');
+        return;
+      }
+      
       toast.success('Vastaus lähetetty');
       setResponseMessage('');
       // Refresh
@@ -373,7 +380,8 @@ export default function CustomerApplicationDetail() {
       setApplication(appRes.data);
       setInfoRequestList(infoRes.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe vastauksen lähettämisessä');
+      console.error('Unexpected error:', error);
+      toast.error('Virhe vastauksen lähettämisessä');
     } finally {
       setIsResponding(false);
     }
