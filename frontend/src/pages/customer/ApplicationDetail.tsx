@@ -1098,18 +1098,25 @@ export default function CustomerApplicationDetail() {
                     <div className="bg-emerald-50 rounded-xl p-6 mb-6">
                       <p className="text-emerald-700 text-sm font-medium mb-1">Kuukausierä</p>
                       <p className="text-4xl font-bold text-emerald-700">{formatCurrency(offer.monthly_payment)} <span className="text-lg font-normal text-emerald-600">alv 0%</span></p>
+                      <p className="text-emerald-600 text-lg mt-1">{formatCurrency(offer.monthly_payment * 1.255)} <span className="text-sm">sis. alv 25,5%</span></p>
                     </div>
 
                     {/* Details - Single column, left aligned */}
-                    <div className="max-w-md">
+                    <div className="max-w-lg">
                       <div className="space-y-3">
                         <div className="flex justify-between py-2 border-b border-slate-100">
                           <span className="text-slate-600">Kauppasumma</span>
-                          <span className="font-semibold text-slate-900">{formatCurrency(application.equipment_price)}</span>
+                          <div className="text-right">
+                            <span className="font-semibold text-slate-900">{formatCurrency(application.equipment_price)}</span>
+                            <span className="text-slate-400 text-sm ml-2">({formatCurrency(application.equipment_price * 1.255)} sis. alv)</span>
+                          </div>
                         </div>
                         <div className="flex justify-between py-2 border-b border-slate-100">
                           <span className="text-slate-600">Käsiraha</span>
-                          <span className="font-semibold text-slate-900">{formatCurrency(offer.upfront_payment || 0)}</span>
+                          <div className="text-right">
+                            <span className="font-semibold text-slate-900">{formatCurrency(offer.upfront_payment || 0)}</span>
+                            <span className="text-slate-400 text-sm ml-2">({formatCurrency((offer.upfront_payment || 0) * 1.255)} sis. alv)</span>
+                          </div>
                         </div>
                         <div className="flex justify-between py-2 border-b border-slate-100">
                           <span className="text-slate-600">Rahoitettava osuus</span>
@@ -1121,11 +1128,17 @@ export default function CustomerApplicationDetail() {
                         </div>
                         <div className="flex justify-between py-2 border-b border-slate-100">
                           <span className="text-slate-600">Avausmaksu</span>
-                          <span className="font-semibold text-slate-900">{formatCurrency(offer.opening_fee || 300)}</span>
+                          <div className="text-right">
+                            <span className="font-semibold text-slate-900">{formatCurrency(offer.opening_fee || 300)}</span>
+                            <span className="text-slate-400 text-sm ml-2">({formatCurrency((offer.opening_fee || 300) * 1.255)} sis. alv)</span>
+                          </div>
                         </div>
                         <div className="flex justify-between py-2 border-b border-slate-100">
                           <span className="text-slate-600">Laskutuslisä</span>
-                          <span className="font-semibold text-slate-900">{offer.invoice_fee || 9} €/kk</span>
+                          <div className="text-right">
+                            <span className="font-semibold text-slate-900">{offer.invoice_fee || 9} €/kk</span>
+                            <span className="text-slate-400 text-sm ml-2">({formatCurrency((offer.invoice_fee || 9) * 1.255)} sis. alv)</span>
+                          </div>
                         </div>
                         {offer.residual_value && application.equipment_price && (
                           <div className="flex justify-between py-2 border-b border-slate-100">
@@ -1134,7 +1147,7 @@ export default function CustomerApplicationDetail() {
                           </div>
                         )}
                       </div>
-                      <p className="text-slate-400 text-xs mt-4">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+                      <p className="text-slate-400 text-xs mt-4">ALV 25,5% (voimassa oleva arvonlisävero)</p>
                     </div>
 
                     {offer.notes_to_customer && (
@@ -1146,7 +1159,7 @@ export default function CustomerApplicationDetail() {
 
                     {/* Notice */}
                     <p className="text-slate-500 text-sm mt-6">
-                      Tämä on alustava tarjous. Hyväksymällä haet virallisen luottopäätöksen.
+                      Tämä on alustava tarjous. Hakemalla virallisen luottopäätöksen, hyväksyt tarjouksen.
                     </p>
                   </div>
 
@@ -1222,7 +1235,7 @@ export default function CustomerApplicationDetail() {
                                 <p style="text-align: center; color: #94a3b8; font-size: 12px;">Hintoihin lisätään voimassa oleva arvonlisävero</p>
                                 
                                 <div class="footer">
-                                  Tämä on alustava rahoitustarjous - hae virallinen luottopäätös.
+                                  Tämä on alustava tarjous. Hakemalla virallisen luottopäätöksen, hyväksyt tarjouksen.
                                 </div>
                               </body>
                               </html>
