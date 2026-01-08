@@ -79,7 +79,7 @@ export default function CustomerApplicationDetail() {
   };
   
   // Offer question
-  const [showOfferQuestionForm, setShowOfferQuestionForm] = useState<number | null>(null);
+  const [showOfferQuestionForm, setShowOfferQuestionForm] = useState<string | number | null>(null);
   const [offerQuestion, setOfferQuestion] = useState('');
   const [isSendingQuestion, setIsSendingQuestion] = useState(false);
   
@@ -1246,7 +1246,7 @@ export default function CustomerApplicationDetail() {
                       {offer.status === 'SENT' && (
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => setShowOfferQuestionForm(showOfferQuestionForm === offer.id ? null : offer.id)}
+                            onClick={() => setShowOfferQuestionForm(showOfferQuestionForm && String(showOfferQuestionForm) === String(offer.id) ? null : offer.id)}
                             className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm flex items-center"
                           >
                             <MessageSquare className="w-4 h-4 mr-2" />
@@ -1271,7 +1271,7 @@ export default function CustomerApplicationDetail() {
                   </div>
 
                   {/* Question form */}
-                  {showOfferQuestionForm === offer.id && (
+                  {showOfferQuestionForm && String(showOfferQuestionForm) === String(offer.id) && (
                     <div className="mt-4 pt-4 border-t border-slate-200">
                       <h4 className="font-medium text-midnight-900 mb-2">Kysy lisätietoja tarjouksesta</h4>
                       <textarea
