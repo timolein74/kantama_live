@@ -1828,21 +1828,49 @@ export default function FinancierApplicationDetail() {
                           </p>
                           
                           {(contract as any).contract_pdf_url ? (
-                            <div className="flex items-center space-x-3">
-                              <a 
-                                href={(contract as any).contract_pdf_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <a 
+                                  href={(contract as any).contract_pdf_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  <FileText className="w-4 h-4 mr-2" />
+                                  Tarkista liitetty PDF
+                                  <ExternalLink className="w-3 h-3 ml-1" />
+                                </a>
+                                <span className="text-green-600 text-sm flex items-center">
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  PDF ladattu
+                                </span>
+                              </div>
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Haluatko varmasti poistaa liitetyn PDF:n?')) return;
+                                  try {
+                                    // Update contract to remove PDF URL
+                                    const { error } = await supabase
+                                      .from('contracts')
+                                      .update({ contract_pdf_url: null })
+                                      .eq('id', contract.id);
+                                    
+                                    if (error) throw error;
+                                    
+                                    // Update local state
+                                    setContractList(prev => prev.map(c => 
+                                      c.id === contract.id ? { ...c, contract_pdf_url: null } : c
+                                    ));
+                                    toast.success('PDF poistettu');
+                                  } catch (err: any) {
+                                    toast.error('Virhe PDF:n poistossa');
+                                  }
+                                }}
+                                className="text-red-500 hover:text-red-700 text-sm flex items-center"
                               >
-                                <FileText className="w-4 h-4 mr-2" />
-                                Näytä liitetty PDF
-                                <ExternalLink className="w-3 h-3 ml-1" />
-                              </a>
-                              <span className="text-green-600 text-sm flex items-center">
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                PDF ladattu
-                              </span>
+                                <X className="w-4 h-4 mr-1" />
+                                Poista PDF
+                              </button>
                             </div>
                           ) : (
                             <div className="flex items-center space-x-3">
@@ -1892,26 +1920,33 @@ export default function FinancierApplicationDetail() {
 
                   <div className="flex justify-between items-center">
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowContractModal(contract)}
-                        className="btn-secondary"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Näytä sopimus
-                      </button>
-                      <button
-                        onClick={() => handlePrintContract(contract)}
-                        className="btn-ghost"
-                      >
-                        <Printer className="w-4 h-4 mr-2" />
-                        Tulosta
-                      </button>
+                      {/* Only show hardcoded contract view if NO PDF is attached */}
+                      {!(contract as any).contract_pdf_url && (
+                        <>
+                          <button
+                            onClick={() => setShowContractModal(contract)}
+                            className="btn-secondary"
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            Näytä sopimus
+                          </button>
+                          <button
+                            onClick={() => handlePrintContract(contract)}
+                            className="btn-ghost"
+                          >
+                            <Printer className="w-4 h-4 mr-2" />
+                            Tulosta
+                          </button>
+                        </>
+                      )}
                     </div>
 
                     {contract.status === 'DRAFT' && (
                       <button
                         onClick={() => handleSendContract(contract.id)}
                         className="btn-primary"
+                        disabled={!(contract as any).contract_pdf_url}
+                        title={!(contract as any).contract_pdf_url ? 'Liitä ensin PDF-sopimus' : ''}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         Lähetä sopimus asiakkaalle: {application.contact_person || application.company_name}
