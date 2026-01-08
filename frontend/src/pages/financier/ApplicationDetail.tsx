@@ -1584,7 +1584,7 @@ export default function FinancierApplicationDetail() {
                         Hyväksy luottopäätös ja tee sopimus
                       </button>
                       
-                      {/* Upload existing PDF contract */}
+                      {/* Upload existing PDF contract - creates DRAFT first */}
                       <div className="relative">
                         <input
                           type="file"
@@ -1608,54 +1608,34 @@ export default function FinancierApplicationDetail() {
                                 .from('uploads')
                                 .getPublicUrl(filePath);
                               
-                              // Find the accepted offer
-                              const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED');
+                              // Find the accepted offer for values
+                              const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED') || offerList[0];
                               
+                              // Create contract as DRAFT (not sent yet)
                               const { data: newContract, error: contractError } = await supabase
                                 .from('contracts')
                                 .insert({
                                   application_id: id,
                                   offer_id: acceptedOffer?.id || null,
-                                  status: 'SENT',
+                                  status: 'DRAFT', // DRAFT - not sent yet!
                                   contract_pdf_url: urlData.publicUrl,
-                                  lessor_company_name: 'Rahoittaja',
+                                  lessor_company_name: 'Juuri Rahoitus',
                                   lessee_company_name: application.company_name,
                                   lessee_business_id: application.business_id,
+                                  // Copy values from offer
+                                  monthly_payment: acceptedOffer?.monthly_payment || application.equipment_price / 36,
+                                  term_months: acceptedOffer?.term_months || 36,
+                                  residual_value: acceptedOffer?.residual_value || 0,
+                                  equipment_description: application.equipment_description,
+                                  equipment_price: application.equipment_price,
                                 })
                                 .select()
                                 .single();
                               
                               if (contractError) throw contractError;
                               
-                              // Create notification for customer
-                              if (application.user_id) {
-                                await supabase.from('notifications').insert({
-                                  user_id: application.user_id,
-                                  title: 'Sopimus allekirjoitettavaksi',
-                                  message: 'Rahoitussopimus odottaa allekirjoitustasi'
-                                });
-                              }
-                              
-                              // Send email notification
-                              if (application.contact_email) {
-                                sendNotificationEmail({
-                                  to: application.contact_email,
-                                  subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
-                                  type: 'contract',
-                                  customer_name: application.contact_person || undefined,
-                                  company_name: application.company_name || undefined,
-                                });
-                              }
-                              
-                              // Update application status
-                              await supabase
-                                .from('applications')
-                                .update({ status: 'CONTRACT_SENT' })
-                                .eq('id', id);
-                              
-                              setApplication(prev => prev ? { ...prev, status: 'CONTRACT_SENT' } : null);
                               setContractList([...contractList, newContract]);
-                              toast.success('Sopimus lähetetty asiakkaalle!');
+                              toast.success('Sopimus-PDF ladattu! Mene Sopimus-välilehdelle lähettääksesi sen asiakkaalle.');
                             } catch (error: any) {
                               console.error('PDF upload error:', error);
                               toast.error('Virhe PDF:n latauksessa: ' + (error.message || 'Tuntematon virhe'));
@@ -1698,7 +1678,7 @@ export default function FinancierApplicationDetail() {
                     Tee sopimus
                   </button>
                   
-                  {/* Upload existing PDF contract */}
+                  {/* Upload existing PDF contract - creates DRAFT first */}
                   <div className="relative">
                     <input
                       type="file"
@@ -1724,55 +1704,34 @@ export default function FinancierApplicationDetail() {
                             .from('uploads')
                             .getPublicUrl(filePath);
                           
-                          // Find the accepted offer
-                          const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED');
+                          // Find the accepted offer for values
+                          const acceptedOffer = offerList.find(o => o.status === 'ACCEPTED') || offerList[0];
                           
-                          // Create contract and send directly to customer
+                          // Create contract as DRAFT (not sent yet)
                           const { data: newContract, error: contractError } = await supabase
                             .from('contracts')
                             .insert({
                               application_id: id,
                               offer_id: acceptedOffer?.id || null,
-                              status: 'SENT',
+                              status: 'DRAFT', // DRAFT - not sent yet!
                               contract_pdf_url: urlData.publicUrl,
-                              lessor_company_name: 'Rahoittaja',
+                              lessor_company_name: 'Juuri Rahoitus',
                               lessee_company_name: application.company_name,
                               lessee_business_id: application.business_id,
+                              // Copy values from offer
+                              monthly_payment: acceptedOffer?.monthly_payment || application.equipment_price / 36,
+                              term_months: acceptedOffer?.term_months || 36,
+                              residual_value: acceptedOffer?.residual_value || 0,
+                              equipment_description: application.equipment_description,
+                              equipment_price: application.equipment_price,
                             })
                             .select()
                             .single();
                           
                           if (contractError) throw contractError;
                           
-                          // Create notification for customer
-                          if (application.user_id) {
-                            await supabase.from('notifications').insert({
-                              user_id: application.user_id,
-                              title: 'Sopimus allekirjoitettavaksi',
-                              message: 'Rahoitussopimus odottaa allekirjoitustasi'
-                            });
-                          }
-                          
-                          // Send email notification
-                          if (application.contact_email) {
-                            sendNotificationEmail({
-                              to: application.contact_email,
-                              subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
-                              type: 'contract',
-                              customer_name: application.contact_person || undefined,
-                              company_name: application.company_name || undefined,
-                            });
-                          }
-                          
-                          // Update application status
-                          await supabase
-                            .from('applications')
-                            .update({ status: 'CONTRACT_SENT' })
-                            .eq('id', id);
-                          
-                          setApplication(prev => prev ? { ...prev, status: 'CONTRACT_SENT' } : null);
                           setContractList([...contractList, newContract]);
-                          toast.success('Sopimus lähetetty asiakkaalle!');
+                          toast.success('Sopimus-PDF ladattu! Voit nyt lähettää sen asiakkaalle.');
                         } catch (error: any) {
                           console.error('PDF upload error:', error);
                           toast.error('Virhe PDF:n latauksessa: ' + (error.message || 'Tuntematon virhe'));
