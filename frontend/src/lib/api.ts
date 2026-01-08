@@ -638,34 +638,38 @@ export const offers = {
       // Get current user to set financier_id
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Clean up data - remove undefined values
-      const cleanData: any = {
-        application_id: data.application_id,
-        monthly_payment: data.monthly_payment,
-        term_months: data.term_months,
-        financier_id: user?.id,
-        status: data.status || 'DRAFT'
-      };
+      console.log('Creating offer with RPC function, data:', data);
       
-      // Add optional fields only if they have values
-      if (data.upfront_payment) cleanData.upfront_payment = data.upfront_payment;
-      if (data.residual_value) cleanData.residual_value = data.residual_value;
-      if (data.notes) cleanData.notes = data.notes;
-      if (data.notes_to_customer) cleanData.notes_to_customer = data.notes_to_customer;
-      if (data.internal_notes) cleanData.internal_notes = data.internal_notes;
-      if (data.included_services) cleanData.included_services = data.included_services;
+      // Use RPC function to bypass PostgREST schema cache issues
+      const { data: newOfferId, error: rpcError } = await supabase.rpc('create_offer', {
+        p_application_id: data.application_id,
+        p_monthly_payment: data.monthly_payment,
+        p_term_months: data.term_months,
+        p_financier_id: user?.id || null,
+        p_status: data.status || 'DRAFT',
+        p_upfront_payment: data.upfront_payment || null,
+        p_residual_value: data.residual_value || null,
+        p_notes: data.notes || null,
+        p_notes_to_customer: data.notes_to_customer || null,
+        p_internal_notes: data.internal_notes || null,
+        p_included_services: data.included_services || null
+      });
       
-      console.log('Creating offer with data:', cleanData);
+      if (rpcError) {
+        console.error('Error creating offer via RPC:', rpcError);
+        return { data: null, error: rpcError };
+      }
       
-      const { data: result, error } = await supabase
+      // Fetch the created offer to return full data
+      const { data: result, error: fetchError } = await supabase
         .from('offers')
-        .insert([cleanData])
         .select()
+        .eq('id', newOfferId)
         .single();
       
-      if (error) {
-        console.error('Error creating offer:', error);
-        return { data: null, error };
+      if (fetchError) {
+        console.error('Error fetching created offer:', fetchError);
+        return { data: { id: newOfferId }, error: null }; // Return at least the ID
       }
       
       return { data: result, error: null };
