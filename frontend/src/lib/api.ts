@@ -411,11 +411,9 @@ export const infoRequests = {
     
     console.log('📝 Insert result:', result, 'Error:', error);
     
-    console.log('📝 Insert result:', result, 'Error:', error);
-    
     // Create notification for customer and send email
     if (result && !error) {
-      console.log('📨 [INFO_REQUEST] Message created, now sending notification...');
+      console.log('✅ [INFO_REQUEST] Message created successfully, now sending notification...');
       
       const { data: app } = await supabase
         .from('applications')
@@ -462,6 +460,8 @@ export const infoRequests = {
         .from('applications')
         .update({ status: 'INFO_REQUESTED' })
         .eq('id', data.application_id);
+    } else {
+      console.error('❌ [INFO_REQUEST] Insert failed or returned no data!', { result, error: error?.message });
     }
     
     return { data: result, error };
