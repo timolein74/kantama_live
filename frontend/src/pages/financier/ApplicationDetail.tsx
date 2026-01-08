@@ -745,8 +745,19 @@ export default function FinancierApplicationDetail() {
     }
     
     try {
-      await contracts.send(contractId);
-      toast.success('Sopimus lähetetty asiakkaalle');
+      console.log('📤 [SEND_CONTRACT] Sending contract:', contractId);
+      console.log('📤 [SEND_CONTRACT] Application:', application);
+      
+      const result = await contracts.send(contractId);
+      console.log('📤 [SEND_CONTRACT] Result:', result);
+      
+      if (result.error) {
+        console.error('❌ [SEND_CONTRACT] Error:', result.error);
+        toast.error('Virhe sopimuksen lähetyksessä: ' + result.error.message);
+        return;
+      }
+      
+      toast.success('Sopimus lähetetty asiakkaalle!');
       
       // Refresh
       const [appRes, contractsRes] = await Promise.all([
@@ -756,7 +767,8 @@ export default function FinancierApplicationDetail() {
       setApplication(appRes.data);
       setContractList(contractsRes.data);
     } catch (error: any) {
-      toast.error(error.response?.data?.detail || 'Virhe sopimuksen lähetyksessä');
+      console.error('❌ [SEND_CONTRACT] Exception:', error);
+      toast.error(error.response?.data?.detail || error.message || 'Virhe sopimuksen lähetyksessä');
     }
   };
 
