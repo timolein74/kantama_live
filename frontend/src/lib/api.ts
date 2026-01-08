@@ -640,7 +640,7 @@ export const offers = {
       
       console.log('Creating offer with direct INSERT, data:', data);
       
-      // Use direct INSERT (more reliable than RPC due to schema cache issues)
+      // Step 1: Insert only core fields (schema cache issues with optional text fields)
       const insertData: any = {
         application_id: data.application_id,
         monthly_payment: data.monthly_payment,
@@ -652,17 +652,6 @@ export const offers = {
         notes: data.notes || null,
         created_at: new Date().toISOString()
       };
-      
-      // Only add optional text fields if they have values (avoid schema cache issues)
-      if (data.notes_to_customer) {
-        insertData.notes_to_customer = data.notes_to_customer;
-      }
-      if (data.internal_notes) {
-        insertData.internal_notes = data.internal_notes;
-      }
-      if (data.included_services) {
-        insertData.included_services = data.included_services;
-      }
       
       const { data: result, error } = await supabase
         .from('offers')
@@ -676,6 +665,24 @@ export const offers = {
       }
       
       console.log('Offer created successfully:', result);
+      
+      // Step 2: Update optional text fields using RPC (bypasses schema cache)
+      if (data.notes_to_customer || data.internal_notes || data.included_services) {
+        const { error: rpcError } = await supabase.rpc('update_offer_text_fields', {
+          p_offer_id: result.id,
+          p_notes_to_customer: data.notes_to_customer || null,
+          p_internal_notes: data.internal_notes || null,
+          p_included_services: data.included_services || null
+        });
+        
+        if (rpcError) {
+          console.warn('Could not update optional text fields:', rpcError);
+          // Continue anyway - the core offer was created
+        } else {
+          console.log('Optional text fields updated successfully');
+        }
+      }
+      
       return { data: result, error: null };
     } catch (e) {
       console.error('Unexpected error creating offer:', e);
