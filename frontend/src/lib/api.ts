@@ -998,12 +998,35 @@ export const contracts = {
       .eq('id', String(id))
       .single();
     
-    const { data, error } = await supabase
-      .from('contracts')
-      .update({ status: 'SENT', sent_at: new Date().toISOString() })
-      .eq('id', String(id))
-      .select()
-      .single();
+    // Update contract status - try with sent_at, fallback without if column doesn't exist
+    let data = null;
+    let error = null;
+    
+    try {
+      const response = await supabase
+        .from('contracts')
+        .update({ status: 'SENT', sent_at: new Date().toISOString() })
+        .eq('id', String(id))
+        .select()
+        .single();
+      data = response.data;
+      error = response.error;
+      
+      // If sent_at column doesn't exist, retry without it
+      if (error?.message?.includes('sent_at')) {
+        console.log('⚠️ sent_at column not found, retrying without it');
+        const fallbackResponse = await supabase
+          .from('contracts')
+          .update({ status: 'SENT' })
+          .eq('id', String(id))
+          .select()
+          .single();
+        data = fallbackResponse.data;
+        error = fallbackResponse.error;
+      }
+    } catch (e) {
+      console.error('Contract update error:', e);
+    }
     
     // Create notification for customer and send email
     if (data && !error && contract?.application_id) {
