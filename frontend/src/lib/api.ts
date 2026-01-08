@@ -1522,39 +1522,34 @@ export const messages = {
             }
           }
           
-          // Also notify the financier who sent the latest offer for this application
-          const { data: latestOffer } = await supabase
-            .from('offers')
-            .select('financier_id')
-            .eq('application_id', messageData.application_id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+          // Also notify ALL financiers about the customer's message
+          const { data: financiers } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .eq('role', 'FINANCIER');
           
-          if (latestOffer?.financier_id) {
-            notificationsToCreate.push({
-              user_id: latestOffer.financier_id,
-              title: 'Asiakas kysyi lisätietoja tarjouksesta',
-              message: `${companyName} lähetti kysymyksen tarjouksesta`
-            });
-            
-            // Also send email to financier
-            const { data: financierProfile } = await supabase
-              .from('profiles')
-              .select('email')
-              .eq('id', latestOffer.financier_id)
-              .single();
-            
-            if (financierProfile?.email) {
-              console.log('📧 [MESSAGE] Sending email to financier:', financierProfile.email);
-              await sendNotificationEmail({
-                to: financierProfile.email,
-                subject: 'Asiakas kysyi lisätietoja tarjouksesta - Juuri Rahoitus',
-                type: 'message',
-                customer_name: companyName,
-                company_name: companyName,
+          if (financiers && financiers.length > 0) {
+            for (const financier of financiers) {
+              notificationsToCreate.push({
+                user_id: financier.id,
+                title: 'Asiakas lähetti viestin',
+                message: `${companyName} lähetti kysymyksen hakemuksesta`
               });
+              
+              // Send email to each financier
+              if (financier.email) {
+                console.log('📧 [MESSAGE] Sending email to financier:', financier.email);
+                await sendNotificationEmail({
+                  to: financier.email,
+                  subject: 'Uusi viesti asiakkaalta - Juuri Rahoitus',
+                  type: 'message',
+                  customer_name: companyName,
+                  company_name: companyName,
+                });
+              }
             }
+          } else {
+            console.warn('⚠️ [MESSAGE] No financiers found in system!');
           }
         }
       } else {
