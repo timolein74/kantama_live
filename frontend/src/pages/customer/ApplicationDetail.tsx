@@ -828,10 +828,16 @@ export default function CustomerApplicationDetail() {
                         case 'SUBMITTED_TO_FINANCIER': return 1;
                         case 'INFO_REQUESTED': return 1;
                         case 'OFFER_RECEIVED': return 2;
+                        case 'OFFER_PREPARING': return 2;
                         case 'OFFER_SENT': return 3;
                         case 'OFFER_ACCEPTED': return 4;
+                        case 'CREDIT_DECISION_PENDING': return 4; // After accepting offer
+                        case 'CREDIT_APPROVED': return 4;
+                        case 'CONTRACT_PREPARING': return 4;
                         case 'CONTRACT_SENT': return 4;
+                        case 'CONTRACT_SIGNED': return 5;
                         case 'SIGNED': return 5;
+                        case 'ACTIVE': return 5;
                         case 'CLOSED': return 5;
                         default: return 0;
                       }

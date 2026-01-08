@@ -16,7 +16,7 @@ import {
   Upload,
   MessageSquare
 } from 'lucide-react';
-import { applications, messages, notifications as notificationsApi } from '../../lib/api';
+import { applications, messages, notifications as notificationsApi, offers } from '../../lib/api';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../../lib/utils';
@@ -28,6 +28,7 @@ export default function CustomerDashboard() {
   const [appList, setAppList] = useState<Application[]>([]);
   const [notificationList, setNotificationList] = useState<Notification[]>([]);
   const [pendingInfoRequests, setPendingInfoRequests] = useState<any[]>([]);
+  const [totalOffers, setTotalOffers] = useState(0); // Count of available offers
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -51,6 +52,16 @@ export default function CustomerDashboard() {
           toast.error('Virhe hakemusten latauksessa');
         } else {
           setAppList((userApps || []) as Application[]);
+          
+          // Fetch offers for all applications and count available ones
+          let offerCount = 0;
+          for (const app of (userApps || [])) {
+            const { data: appOffers } = await offers.getForApplication(String(app.id));
+            // Count offers that are SENT (available for customer to view/accept)
+            const sentOffers = (appOffers || []).filter((o: any) => o.status === 'SENT');
+            offerCount += sentOffers.length;
+          }
+          setTotalOffers(offerCount);
           
           // Check for applications with INFO_REQUESTED status (excluding rejected ones) and fetch their messages
           const infoRequestedApps = (userApps || []).filter((a: Application) => 
@@ -108,7 +119,8 @@ export default function CustomerDashboard() {
   ).length;
   // "Hakemuksia" = just submitted, waiting for admin to accept
   const newApplications = activeApps.filter(a => a.status === 'SUBMITTED').length;
-  const offersAvailable = activeApps.filter(a => a.status === 'OFFER_SENT').length;
+  // Use actual offer count from database, not application status
+  const offersAvailable = totalOffers;
   const contractsReady = activeApps.filter(a => a.status === 'CONTRACT_SENT').length;
   const completed = appList.filter(a => ['SIGNED', 'CLOSED'].includes(a.status)).length;
   const rejectedCount = appList.filter(a => rejectedStatuses.includes(a.status)).length;
