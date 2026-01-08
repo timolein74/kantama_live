@@ -17,7 +17,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { applications, messages, notifications as notificationsApi } from '../../lib/api';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { formatCurrency, formatDate, getStatusLabel, getStatusColor } from '../../lib/utils';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -350,11 +350,28 @@ export default function CustomerDashboard() {
           className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 flex items-start space-x-3"
         >
           <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-          <div>
+          <div className="flex-1">
             <p className="text-yellow-800 font-medium">Vahvista sähköpostiosoitteesi</p>
             <p className="text-yellow-700 text-sm mt-1">
-              Tarkista sähköpostisi ja klikkaa vahvistuslinkkiä, jotta voit seurata hakemuksiasi.
+              Tarkista sähköpostisi (myös roskaposti) ja klikkaa vahvistuslinkkiä.
             </p>
+            <button
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.auth.resend({
+                    type: 'signup',
+                    email: user.email,
+                  });
+                  if (error) throw error;
+                  toast.success('Vahvistusviesti lähetetty! Tarkista sähköpostisi.');
+                } catch (err: any) {
+                  toast.error('Virhe viestin lähetyksessä: ' + (err.message || 'Tuntematon virhe'));
+                }
+              }}
+              className="mt-2 text-yellow-800 underline hover:text-yellow-900 text-sm font-medium"
+            >
+              Lähetä vahvistusviesti uudelleen →
+            </button>
           </div>
         </motion.div>
       )}
