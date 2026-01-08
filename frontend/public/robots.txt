@@ -1,0 +1,9 @@
+# Robots.txt for juurirahoitus.fi
+User-agent: *
+Allow: /
+Disallow: /dashboard/
+Disallow: /admin/
+Disallow: /financier/
+
+# Sitemap location
+Sitemap: https://juurirahoitus.fi/sitemap.xml
