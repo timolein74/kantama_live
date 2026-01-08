@@ -158,18 +158,33 @@ export default function CustomerApplicationDetail() {
           liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
         };
         
-        const transformedMessages = (messagesData || []).map((msg: any) => {
+        // Only show info requests from financiers/admins (not customer responses)
+        const infoRequests = (messagesData || []).filter((msg: any) => 
+          msg.is_info_request === true || msg.sender_role === 'FINANCIER' || msg.sender_role === 'ADMIN'
+        );
+        
+        // Find responses for each info request
+        const responses = (messagesData || []).filter((msg: any) => 
+          msg.sender_role === 'CUSTOMER' && msg.parent_message_id
+        );
+        
+        const transformedMessages = infoRequests.map((msg: any) => {
+          // Find any responses to this info request
+          const msgResponses = responses.filter((r: any) => r.parent_message_id === msg.id);
+          
+          let transformed: any = {
+            ...msg,
+            responses: msgResponses,
+          };
+          
           if (msg.requested_documents && Array.isArray(msg.requested_documents)) {
-            return {
-              ...msg,
-              documents: msg.requested_documents.map((docType: string) => ({
-                type: docType,
-                label: docLabels[docType] || docType,
-                required: true
-              }))
-            };
+            transformed.documents = msg.requested_documents.map((docType: string) => ({
+              type: docType,
+              label: docLabels[docType] || docType,
+              required: true
+            }));
           }
-          return msg;
+          return transformed;
         });
 
         setInfoRequestList(transformedMessages as InfoRequest[]);
@@ -1676,18 +1691,38 @@ export default function CustomerApplicationDetail() {
                     )}
                   </div>
 
-                  {/* Responses */}
+                  {/* Responses (from customer) */}
                   {ir.responses && ir.responses.length > 0 && (
                     <div className="space-y-3 mb-4">
-                      {ir.responses.map((resp) => (
-                        <div key={resp.id} className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
+                      {ir.responses.map((resp: any) => (
+                        <div key={resp.id} className="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-blue-600">
-                              {resp.user.first_name || resp.user.email}
+                            <span className="text-sm font-medium text-green-600">
+                              Oma vastauksesi
                             </span>
-                            <span className="text-xs text-blue-500">{formatDateTime(resp.created_at)}</span>
+                            <span className="text-xs text-green-500">{formatDateTime(resp.created_at)}</span>
                           </div>
-                          <p className="text-blue-800">{resp.message}</p>
+                          <p className="text-green-800">{resp.message}</p>
+                          {/* Show attachments */}
+                          {resp.attachments && resp.attachments.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {resp.attachments.map((att: string, i: number) => {
+                                const fileName = att.split('/').pop() || att;
+                                return (
+                                  <a 
+                                    key={i}
+                                    href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/uploads/${att}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center text-sm bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
+                                  >
+                                    <Download className="w-3 h-3 mr-1" />
+                                    {fileName.substring(fileName.indexOf('_') + 1)}
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
