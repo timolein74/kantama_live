@@ -686,14 +686,25 @@ export const offers = {
   },
   
   send: async (id: string | number) => {
-    if (!isSupabaseConfigured()) return { data: null, error: null };
+    console.log('📤 [OFFER.SEND] Called with id:', id);
+    
+    if (!isSupabaseConfigured()) {
+      console.error('❌ [OFFER.SEND] Supabase not configured!');
+      return { data: null, error: null };
+    }
     
     // Get offer with application details first
-    const { data: offer } = await supabase
+    const { data: offer, error: offerError } = await supabase
       .from('offers')
       .select('application_id')
       .eq('id', String(id))
       .single();
+    
+    console.log('📤 [OFFER.SEND] Offer query result:', { offer, offerError });
+    
+    if (offerError) {
+      console.error('❌ [OFFER.SEND] Failed to get offer:', offerError);
+    }
     
     const { data, error } = await supabase
       .from('offers')
@@ -702,24 +713,38 @@ export const offers = {
       .select()
       .single();
     
+    console.log('📤 [OFFER.SEND] Update result:', { data, error });
+    
     // Create notification for customer and send email
     if (data && !error && offer?.application_id) {
-      const { data: app } = await supabase
+      console.log('📤 [OFFER.SEND] Getting application:', offer.application_id);
+      
+      const { data: app, error: appError } = await supabase
         .from('applications')
         .select('user_id, company_name, contact_email, contact_person')
         .eq('id', offer.application_id)
         .single();
       
+      console.log('📤 [OFFER.SEND] Application data:', { app, appError });
+      
       if (app?.user_id) {
-        await supabase.from('notifications').insert({
+        console.log('📤 [OFFER.SEND] Creating notification for user:', app.user_id);
+        
+        const { error: notifError } = await supabase.from('notifications').insert({
           user_id: app.user_id,
           title: 'Uusi tarjous!',
           message: 'Sait rahoitustarjouksen hakemukseesi'
         });
         
+        if (notifError) {
+          console.error('❌ [OFFER.SEND] Notification insert failed:', notifError);
+        } else {
+          console.log('✅ [OFFER.SEND] Notification created');
+        }
+        
         // Send email notification - AWAIT and log result
         if (app.contact_email) {
-          console.log('📧 [OFFER] Sending email to:', app.contact_email);
+          console.log('📧 [OFFER.SEND] Sending email to:', app.contact_email);
           const emailResult = await sendNotificationEmail({
             to: app.contact_email,
             subject: 'Uusi rahoitustarjous - Juuri Rahoitus',
@@ -728,13 +753,15 @@ export const offers = {
             company_name: app.company_name || undefined,
           });
           if (!emailResult.success) {
-            console.error('❌ [OFFER] EMAIL FAILED:', emailResult.error);
+            console.error('❌ [OFFER.SEND] EMAIL FAILED:', emailResult.error);
           } else {
-            console.log('✅ [OFFER] Email sent successfully');
+            console.log('✅ [OFFER.SEND] Email sent successfully');
           }
         } else {
-          console.warn('⚠️ [OFFER] No contact_email found!');
+          console.warn('⚠️ [OFFER.SEND] No contact_email found!');
         }
+      } else {
+        console.warn('⚠️ [OFFER.SEND] No user_id found in application!');
       }
       
       // Update application status
@@ -742,6 +769,12 @@ export const offers = {
         .from('applications')
         .update({ status: 'OFFER_SENT' })
         .eq('id', offer.application_id);
+    } else {
+      console.error('❌ [OFFER.SEND] Condition failed:', { 
+        hasData: !!data, 
+        hasError: !!error, 
+        applicationId: offer?.application_id 
+      });
     }
     
     return { data, error };
