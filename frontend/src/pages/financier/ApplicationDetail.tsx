@@ -1798,30 +1798,6 @@ export default function FinancierApplicationDetail() {
                     </span>
                   </div>
 
-                  {/* Contract summary */}
-                  <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-slate-500 block">Vuokraerä</span>
-                        <span className="font-semibold text-emerald-700">
-                          {formatCurrency(contract.monthly_rent || 0)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Sopimuskausi</span>
-                        <span className="font-semibold">{contract.lease_period_months} kk</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Jäännösarvo</span>
-                        <span className="font-semibold">{formatCurrency(contract.residual_value || 0)}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Ennakkovuokra</span>
-                        <span className="font-semibold">{formatCurrency(contract.advance_payment || 0)}</span>
-                      </div>
-                    </div>
-                  </div>
-
                   <div className="text-sm text-slate-500 mb-4">
                     Luotu: {formatDateTime(contract.created_at)}
                     {contract.sent_at && ` • Lähetetty: ${formatDateTime(contract.sent_at)}`}
