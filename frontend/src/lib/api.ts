@@ -638,40 +638,44 @@ export const offers = {
       // Get current user to set financier_id
       const { data: { user } } = await supabase.auth.getUser();
       
-      console.log('Creating offer with RPC function, data:', data);
+      console.log('Creating offer with direct INSERT, data:', data);
       
-      // Use RPC function to bypass PostgREST schema cache issues
-      const { data: newOfferId, error: rpcError } = await supabase.rpc('create_offer', {
-        p_application_id: data.application_id,
-        p_monthly_payment: data.monthly_payment,
-        p_term_months: data.term_months,
-        p_financier_id: user?.id || null,
-        p_status: data.status || 'DRAFT',
-        p_upfront_payment: data.upfront_payment || null,
-        p_residual_value: data.residual_value || null,
-        p_notes: data.notes || null,
-        p_notes_to_customer: data.notes_to_customer || null,
-        p_internal_notes: data.internal_notes || null,
-        p_included_services: data.included_services || null
-      });
+      // Use direct INSERT (more reliable than RPC due to schema cache issues)
+      const insertData: any = {
+        application_id: data.application_id,
+        monthly_payment: data.monthly_payment,
+        term_months: data.term_months,
+        financier_id: user?.id || null,
+        status: data.status || 'DRAFT',
+        upfront_payment: data.upfront_payment || 0,
+        residual_value: data.residual_value || 0,
+        notes: data.notes || null,
+        created_at: new Date().toISOString()
+      };
       
-      if (rpcError) {
-        console.error('Error creating offer via RPC:', rpcError);
-        return { data: null, error: rpcError };
+      // Only add optional text fields if they have values (avoid schema cache issues)
+      if (data.notes_to_customer) {
+        insertData.notes_to_customer = data.notes_to_customer;
+      }
+      if (data.internal_notes) {
+        insertData.internal_notes = data.internal_notes;
+      }
+      if (data.included_services) {
+        insertData.included_services = data.included_services;
       }
       
-      // Fetch the created offer to return full data
-      const { data: result, error: fetchError } = await supabase
+      const { data: result, error } = await supabase
         .from('offers')
+        .insert(insertData)
         .select()
-        .eq('id', newOfferId)
         .single();
       
-      if (fetchError) {
-        console.error('Error fetching created offer:', fetchError);
-        return { data: { id: newOfferId }, error: null }; // Return at least the ID
+      if (error) {
+        console.error('Error creating offer:', error);
+        return { data: null, error };
       }
       
+      console.log('Offer created successfully:', result);
       return { data: result, error: null };
     } catch (e) {
       console.error('Unexpected error creating offer:', e);
