@@ -85,6 +85,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         .single();
 
       if (profile) {
+        // Check email verification from Supabase Auth (not profiles table)
+        const isEmailVerified = !!session.user.email_confirmed_at;
+        
         const user: User = {
           id: profile.id,
           email: profile.email,
@@ -95,7 +98,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           business_id: profile.business_id,
           phone: profile.phone,
           is_active: profile.is_active,
-          is_verified: profile.is_verified,
+          is_verified: isEmailVerified, // Use Auth state, not profiles table
           created_at: profile.created_at,
           updated_at: profile.updated_at,
         };
@@ -175,6 +178,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       throw new Error('Käyttäjäprofiilia ei löytynyt');
     }
 
+    // Check email verification from Supabase Auth (not profiles table)
+    const isEmailVerified = !!data.user.email_confirmed_at;
+    
     const user: User = {
       id: profile.id,
       email: profile.email,
@@ -185,7 +191,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
       business_id: profile.business_id,
       phone: profile.phone,
       is_active: profile.is_active,
-      is_verified: profile.is_verified,
+      is_verified: isEmailVerified, // Use Auth state, not profiles table
       created_at: profile.created_at,
       updated_at: profile.updated_at,
     };
@@ -254,6 +260,9 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
         .single();
 
       if (profile) {
+        // Check email verification from Supabase Auth
+        const isEmailVerified = !!authData.user.email_confirmed_at;
+        
         const user: User = {
           id: profile.id,
           email: profile.email,
@@ -264,7 +273,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
           business_id: profile.business_id,
           phone: profile.phone,
           is_active: profile.is_active,
-          is_verified: profile.is_verified,
+          is_verified: isEmailVerified, // Use Auth state, not profiles table
           created_at: profile.created_at,
           updated_at: profile.updated_at,
         };
