@@ -21,7 +21,7 @@ const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(
         <div className="flex items-center justify-between mb-8 pb-6 border-b-2 border-slate-200">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">e</span>
+              <span className="text-white font-bold text-xl">J</span>
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Juuri Rahoitus</h1>
@@ -30,7 +30,9 @@ const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(
           </div>
           <div className="text-right text-sm text-slate-600">
             <p><strong>Päivämäärä:</strong> {today}</p>
-            <p><strong>Viite:</strong> {application.reference_number}</p>
+            {application.reference_number && (
+              <p><strong>Viite:</strong> {application.reference_number}</p>
+            )}
           </div>
         </div>
 
@@ -142,10 +144,7 @@ const OfferPDF = forwardRef<HTMLDivElement, OfferPDFProps>(
 
         {/* Footer */}
         <div className="mt-12 pt-6 border-t border-slate-200 text-center text-sm text-slate-500">
-          <p>Tämä on alustava rahoitustarjous. Lopullinen sopimus syntyy vasta erillisellä allekirjoituksella.</p>
-          <p className="mt-2">
-            Juuri Rahoitus • info@juurirahoitus.fi • www.Juuri Rahoitus.fi
-          </p>
+          <p>Tämä on alustava rahoitustarjous - hae virallinen luottopäätös.</p>
         </div>
       </div>
     );

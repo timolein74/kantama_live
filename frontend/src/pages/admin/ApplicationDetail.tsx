@@ -1051,7 +1051,7 @@ export default function AdminApplicationDetail() {
                             <!DOCTYPE html>
                             <html>
                             <head>
-                              <title>Rahoitustarjous - ${application.reference_number}</title>
+                              <title>Rahoitustarjous${application.reference_number ? ` - ${application.reference_number}` : ''}</title>
                               <style>
                                 body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
                                 .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
@@ -1075,7 +1075,7 @@ export default function AdminApplicationDetail() {
                             <body>
                               <div class="header">
                                 <div class="logo">
-                                  <div class="logo-icon">e</div>
+                                  <div class="logo-icon">J</div>
                                   <div>
                                     <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Juuri Rahoitus</div>
                                     <div style="font-size: 14px; color: #64748b;">Rahoitustarjous</div>
@@ -1083,7 +1083,7 @@ export default function AdminApplicationDetail() {
                                 </div>
                                 <div style="text-align: right; font-size: 14px; color: #64748b;">
                                   <div><strong>Päivämäärä:</strong> ${new Date().toLocaleDateString('fi-FI')}</div>
-                                  <div><strong>Viite:</strong> ${application.reference_number}</div>
+                                  ${application.reference_number ? `<div><strong>Viite:</strong> ${application.reference_number}</div>` : ''}
                                 </div>
                               </div>
                               
@@ -1125,8 +1125,7 @@ export default function AdminApplicationDetail() {
                               ` : ''}
                               
                               <div class="footer">
-                                <p>Tämä on alustava rahoitustarjous. Lopullinen sopimus syntyy vasta erillisellä allekirjoituksella.</p>
-                                <p style="margin-top: 8px;">Juuri Rahoitus • info@juurirahoitus.fi</p>
+                                <p>Tämä on alustava rahoitustarjous - hae virallinen luottopäätös.</p>
                               </div>
                             </body>
                             </html>
