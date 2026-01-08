@@ -423,36 +423,38 @@ export const infoRequests = {
       
       console.log('📨 [INFO_REQUEST] Application data:', app);
       
+      const senderName = senderRole === 'FINANCIER' ? 'Rahoittaja' : 'Juuri Rahoitus';
+      
+      // Create in-app notification if user_id exists
       if (app?.user_id) {
-        const senderName = senderRole === 'FINANCIER' ? 'Rahoittaja' : 'Juuri Rahoitus';
         await supabase.from('notifications').insert({
           user_id: app.user_id,
           title: 'Lisätietopyyntö',
           message: `${senderName} pyytää lisätietoja hakemukseesi liittyen`
         });
         console.log('✅ [INFO_REQUEST] In-app notification created');
+      } else {
+        console.log('ℹ️ [INFO_REQUEST] No user_id, skipping in-app notification');
+      }
+      
+      // ALWAYS send email if contact_email exists (regardless of user_id)
+      if (app?.contact_email) {
+        console.log('📧 [INFO_REQUEST] Sending email to:', app.contact_email);
+        const emailResult = await sendNotificationEmail({
+          to: app.contact_email,
+          subject: 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus',
+          type: 'info_request',
+          customer_name: app.contact_person || undefined,
+          company_name: app.company_name || undefined,
+        });
         
-        // Send email notification - AWAIT and check result
-        if (app.contact_email) {
-          console.log('📧 [INFO_REQUEST] Sending email to:', app.contact_email);
-          const emailResult = await sendNotificationEmail({
-            to: app.contact_email,
-            subject: 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus',
-            type: 'info_request',
-            customer_name: app.contact_person || undefined,
-            company_name: app.company_name || undefined,
-          });
-          
-          if (!emailResult.success) {
-            console.error('❌ [INFO_REQUEST] EMAIL FAILED:', emailResult.error);
-          } else {
-            console.log('✅ [INFO_REQUEST] Email sent successfully');
-          }
+        if (!emailResult.success) {
+          console.error('❌ [INFO_REQUEST] EMAIL FAILED:', emailResult.error);
         } else {
-          console.warn('⚠️ [INFO_REQUEST] No contact_email found for application!');
+          console.log('✅ [INFO_REQUEST] Email sent successfully');
         }
       } else {
-        console.warn('⚠️ [INFO_REQUEST] No user_id found for application!');
+        console.warn('⚠️ [INFO_REQUEST] No contact_email found for application!');
       }
       
       // Update application status to INFO_REQUESTED
@@ -727,6 +729,7 @@ export const offers = {
       
       console.log('📤 [OFFER.SEND] Application data:', { app, appError });
       
+      // Create in-app notification if user_id exists
       if (app?.user_id) {
         console.log('📤 [OFFER.SEND] Creating notification for user:', app.user_id);
         
@@ -741,27 +744,27 @@ export const offers = {
         } else {
           console.log('✅ [OFFER.SEND] Notification created');
         }
-        
-        // Send email notification - AWAIT and log result
-        if (app.contact_email) {
-          console.log('📧 [OFFER.SEND] Sending email to:', app.contact_email);
-          const emailResult = await sendNotificationEmail({
-            to: app.contact_email,
-            subject: 'Uusi rahoitustarjous - Juuri Rahoitus',
-            type: 'offer',
-            customer_name: app.contact_person || undefined,
-            company_name: app.company_name || undefined,
-          });
-          if (!emailResult.success) {
-            console.error('❌ [OFFER.SEND] EMAIL FAILED:', emailResult.error);
-          } else {
-            console.log('✅ [OFFER.SEND] Email sent successfully');
-          }
+      } else {
+        console.log('ℹ️ [OFFER.SEND] No user_id, skipping in-app notification');
+      }
+      
+      // ALWAYS send email if contact_email exists (regardless of user_id)
+      if (app?.contact_email) {
+        console.log('📧 [OFFER.SEND] Sending email to:', app.contact_email);
+        const emailResult = await sendNotificationEmail({
+          to: app.contact_email,
+          subject: 'Uusi rahoitustarjous - Juuri Rahoitus',
+          type: 'offer',
+          customer_name: app.contact_person || undefined,
+          company_name: app.company_name || undefined,
+        });
+        if (!emailResult.success) {
+          console.error('❌ [OFFER.SEND] EMAIL FAILED:', emailResult.error);
         } else {
-          console.warn('⚠️ [OFFER.SEND] No contact_email found!');
+          console.log('✅ [OFFER.SEND] Email sent successfully');
         }
       } else {
-        console.warn('⚠️ [OFFER.SEND] No user_id found in application!');
+        console.warn('⚠️ [OFFER.SEND] No contact_email found!');
       }
       
       // Update application status
@@ -1010,31 +1013,35 @@ export const contracts = {
         .eq('id', contract.application_id)
         .single();
       
+      // Create in-app notification if user_id exists
       if (app?.user_id) {
         await supabase.from('notifications').insert({
           user_id: app.user_id,
           title: 'Sopimus allekirjoitettavaksi',
           message: 'Rahoitussopimus odottaa allekirjoitustasi'
         });
-        
-        // Send email notification - AWAIT and log result
-        if (app.contact_email) {
-          console.log('📧 [CONTRACT] Sending email to:', app.contact_email);
-          const emailResult = await sendNotificationEmail({
-            to: app.contact_email,
-            subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
-            type: 'contract',
-            customer_name: app.contact_person || undefined,
-            company_name: app.company_name || undefined,
-          });
-          if (!emailResult.success) {
-            console.error('❌ [CONTRACT] EMAIL FAILED:', emailResult.error);
-          } else {
-            console.log('✅ [CONTRACT] Email sent successfully');
-          }
+        console.log('✅ [CONTRACT] In-app notification created');
+      } else {
+        console.log('ℹ️ [CONTRACT] No user_id, skipping in-app notification');
+      }
+      
+      // ALWAYS send email if contact_email exists (regardless of user_id)
+      if (app?.contact_email) {
+        console.log('📧 [CONTRACT] Sending email to:', app.contact_email);
+        const emailResult = await sendNotificationEmail({
+          to: app.contact_email,
+          subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
+          type: 'contract',
+          customer_name: app.contact_person || undefined,
+          company_name: app.company_name || undefined,
+        });
+        if (!emailResult.success) {
+          console.error('❌ [CONTRACT] EMAIL FAILED:', emailResult.error);
         } else {
-          console.warn('⚠️ [CONTRACT] No contact_email found!');
+          console.log('✅ [CONTRACT] Email sent successfully');
         }
+      } else {
+        console.warn('⚠️ [CONTRACT] No contact_email found!');
       }
       
       // Update application status
@@ -1479,37 +1486,40 @@ export const messages = {
         }
       } else {
         // Admin/Financier sent message - notify customer
+        
+        // Create in-app notification if user_id exists
         if (app?.user_id) {
           notificationsToCreate.push({
             user_id: app.user_id,
             title: messageData.is_info_request ? 'Lisätietopyyntö' : 'Uusi viesti',
             message: messageData.is_info_request ? 'Sinulle on lisätietopyyntö hakemukseesi' : 'Sait uuden viestin hakemukseesi'
           });
-          
-          // Get customer email for notification
-          const { data: appWithEmail } = await supabase
-            .from('applications')
-            .select('contact_email, contact_person, company_name')
-            .eq('id', messageData.application_id)
-            .single();
-          
-          if (appWithEmail?.contact_email) {
-            console.log('📧 [MESSAGE] Sending email to:', appWithEmail.contact_email);
-            const emailResult = await sendNotificationEmail({
-              to: appWithEmail.contact_email,
-              subject: messageData.is_info_request ? 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus' : 'Uusi viesti - Juuri Rahoitus',
-              type: messageData.is_info_request ? 'info_request' : 'message',
-              customer_name: appWithEmail.contact_person || undefined,
-              company_name: appWithEmail.company_name || undefined,
-            });
-            if (!emailResult.success) {
-              console.error('❌ [MESSAGE] EMAIL FAILED:', emailResult.error);
-            } else {
-              console.log('✅ [MESSAGE] Email sent successfully');
-            }
+        }
+        
+        // ALWAYS send email if contact_email exists (regardless of user_id)
+        // Get customer email for notification
+        const { data: appWithEmail } = await supabase
+          .from('applications')
+          .select('contact_email, contact_person, company_name')
+          .eq('id', messageData.application_id)
+          .single();
+        
+        if (appWithEmail?.contact_email) {
+          console.log('📧 [MESSAGE] Sending email to:', appWithEmail.contact_email);
+          const emailResult = await sendNotificationEmail({
+            to: appWithEmail.contact_email,
+            subject: messageData.is_info_request ? 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus' : 'Uusi viesti - Juuri Rahoitus',
+            type: messageData.is_info_request ? 'info_request' : 'message',
+            customer_name: appWithEmail.contact_person || undefined,
+            company_name: appWithEmail.company_name || undefined,
+          });
+          if (!emailResult.success) {
+            console.error('❌ [MESSAGE] EMAIL FAILED:', emailResult.error);
           } else {
-            console.warn('⚠️ [MESSAGE] No contact_email found!');
+            console.log('✅ [MESSAGE] Email sent successfully');
           }
+        } else {
+          console.warn('⚠️ [MESSAGE] No contact_email found!');
         }
       }
       
