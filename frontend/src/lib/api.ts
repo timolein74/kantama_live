@@ -41,8 +41,26 @@ api.interceptors.response.use(
   }
 );
 
-// Email notification helper - calls Edge Function (deployed on idmcvfyekoxzelddkymv project)
+// Email notification helper - calls Edge Function
 const EDGE_FUNCTION_URL = 'https://iquhgqeicalsrsfzdopd.supabase.co/functions/v1/send-notification-email';
+
+// Test function - call from browser console: testEmailFunction('your@email.com')
+(window as any).testEmailFunction = async (email: string) => {
+  console.log('🧪 Testing email to:', email);
+  const response = await fetch(EDGE_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      to: email,
+      subject: 'Testi - Juuri Rahoitus',
+      type: 'message',
+      customer_name: 'Testi',
+    }),
+  });
+  const data = await response.json();
+  console.log('Response:', response.status, data);
+  return data;
+};
 
 export const sendNotificationEmail = async (params: {
   to: string;
@@ -51,7 +69,19 @@ export const sendNotificationEmail = async (params: {
   customer_name?: string;
   company_name?: string;
   html?: string;
-}) => {
+}): Promise<{ success: boolean; data?: any; error?: string }> => {
+  console.log('📧 [EMAIL] Attempting to send email:', {
+    to: params.to,
+    subject: params.subject,
+    type: params.type,
+    url: EDGE_FUNCTION_URL
+  });
+  
+  if (!params.to) {
+    console.error('❌ [EMAIL] No recipient email provided!');
+    return { success: false, error: 'Vastaanottajan sähköposti puuttuu' };
+  }
+  
   try {
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
@@ -60,12 +90,30 @@ export const sendNotificationEmail = async (params: {
       },
       body: JSON.stringify(params),
     });
+    
     const data = await response.json();
-    console.log('Email notification sent:', data);
+    
+    if (!response.ok) {
+      console.error('❌ [EMAIL] Edge Function returned error:', response.status, data);
+      return { 
+        success: false, 
+        error: data.error || `HTTP ${response.status}: ${response.statusText}` 
+      };
+    }
+    
+    if (data.error) {
+      console.error('❌ [EMAIL] Email service error:', data.error);
+      return { success: false, error: data.error };
+    }
+    
+    console.log('✅ [EMAIL] Email sent successfully:', data);
     return { success: true, data };
-  } catch (error) {
-    console.error('Failed to send email notification:', error);
-    return { success: false, error };
+  } catch (error: any) {
+    console.error('❌ [EMAIL] Network/fetch error:', error);
+    return { 
+      success: false, 
+      error: error.message || 'Verkkovirhe sähköpostin lähetyksessä' 
+    };
   }
 };
 
@@ -367,11 +415,15 @@ export const infoRequests = {
     
     // Create notification for customer and send email
     if (result && !error) {
+      console.log('📨 [INFO_REQUEST] Message created, now sending notification...');
+      
       const { data: app } = await supabase
         .from('applications')
         .select('user_id, company_name, contact_email, contact_person')
         .eq('id', data.application_id)
         .single();
+      
+      console.log('📨 [INFO_REQUEST] Application data:', app);
       
       if (app?.user_id) {
         const senderName = senderRole === 'FINANCIER' ? 'Rahoittaja' : 'Juuri Rahoitus';
@@ -380,17 +432,29 @@ export const infoRequests = {
           title: 'Lisätietopyyntö',
           message: `${senderName} pyytää lisätietoja hakemukseesi liittyen`
         });
+        console.log('✅ [INFO_REQUEST] In-app notification created');
         
-        // Send email notification
+        // Send email notification - AWAIT and check result
         if (app.contact_email) {
-          sendNotificationEmail({
+          console.log('📧 [INFO_REQUEST] Sending email to:', app.contact_email);
+          const emailResult = await sendNotificationEmail({
             to: app.contact_email,
             subject: 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus',
             type: 'info_request',
             customer_name: app.contact_person || undefined,
             company_name: app.company_name || undefined,
           });
+          
+          if (!emailResult.success) {
+            console.error('❌ [INFO_REQUEST] EMAIL FAILED:', emailResult.error);
+          } else {
+            console.log('✅ [INFO_REQUEST] Email sent successfully');
+          }
+        } else {
+          console.warn('⚠️ [INFO_REQUEST] No contact_email found for application!');
         }
+      } else {
+        console.warn('⚠️ [INFO_REQUEST] No user_id found for application!');
       }
       
       // Update application status to INFO_REQUESTED
@@ -653,15 +717,23 @@ export const offers = {
           message: 'Sait rahoitustarjouksen hakemukseesi'
         });
         
-        // Send email notification
+        // Send email notification - AWAIT and log result
         if (app.contact_email) {
-          sendNotificationEmail({
+          console.log('📧 [OFFER] Sending email to:', app.contact_email);
+          const emailResult = await sendNotificationEmail({
             to: app.contact_email,
             subject: 'Uusi rahoitustarjous - Juuri Rahoitus',
             type: 'offer',
             customer_name: app.contact_person || undefined,
             company_name: app.company_name || undefined,
           });
+          if (!emailResult.success) {
+            console.error('❌ [OFFER] EMAIL FAILED:', emailResult.error);
+          } else {
+            console.log('✅ [OFFER] Email sent successfully');
+          }
+        } else {
+          console.warn('⚠️ [OFFER] No contact_email found!');
         }
       }
       
@@ -912,15 +984,23 @@ export const contracts = {
           message: 'Rahoitussopimus odottaa allekirjoitustasi'
         });
         
-        // Send email notification
+        // Send email notification - AWAIT and log result
         if (app.contact_email) {
-          sendNotificationEmail({
+          console.log('📧 [CONTRACT] Sending email to:', app.contact_email);
+          const emailResult = await sendNotificationEmail({
             to: app.contact_email,
             subject: 'Sopimus allekirjoitettavaksi - Juuri Rahoitus',
             type: 'contract',
             customer_name: app.contact_person || undefined,
             company_name: app.company_name || undefined,
           });
+          if (!emailResult.success) {
+            console.error('❌ [CONTRACT] EMAIL FAILED:', emailResult.error);
+          } else {
+            console.log('✅ [CONTRACT] Email sent successfully');
+          }
+        } else {
+          console.warn('⚠️ [CONTRACT] No contact_email found!');
         }
       }
       
@@ -1381,13 +1461,21 @@ export const messages = {
             .single();
           
           if (appWithEmail?.contact_email) {
-            sendNotificationEmail({
+            console.log('📧 [MESSAGE] Sending email to:', appWithEmail.contact_email);
+            const emailResult = await sendNotificationEmail({
               to: appWithEmail.contact_email,
               subject: messageData.is_info_request ? 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus' : 'Uusi viesti - Juuri Rahoitus',
               type: messageData.is_info_request ? 'info_request' : 'message',
               customer_name: appWithEmail.contact_person || undefined,
               company_name: appWithEmail.company_name || undefined,
             });
+            if (!emailResult.success) {
+              console.error('❌ [MESSAGE] EMAIL FAILED:', emailResult.error);
+            } else {
+              console.log('✅ [MESSAGE] Email sent successfully');
+            }
+          } else {
+            console.warn('⚠️ [MESSAGE] No contact_email found!');
           }
         }
       }
