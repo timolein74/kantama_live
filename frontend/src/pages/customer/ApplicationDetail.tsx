@@ -1349,50 +1349,52 @@ export default function CustomerApplicationDetail() {
                     </span>
                   </div>
 
-                  {/* Contract summary */}
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 mb-4">
-                    <h4 className="font-medium text-emerald-800 mb-3">Sopimuksen yhteenveto</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-slate-500 block">Vuokraerä</span>
-                        <span className="font-bold text-lg text-emerald-700">
-                          {formatCurrency(contract.monthly_rent || 0)}
-                        </span>
-                        <span className="text-xs text-slate-500 block">alv 0 %</span>
+                  {/* Contract summary - only show if NO PDF attached AND there's actual data */}
+                  {!(contract as any).contract_pdf_url && (contract.monthly_rent || contract.lease_period_months) && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-5 mb-4">
+                      <h4 className="font-medium text-emerald-800 mb-3">Sopimuksen yhteenveto</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-slate-500 block">Vuokraerä</span>
+                          <span className="font-bold text-lg text-emerald-700">
+                            {formatCurrency(contract.monthly_rent || 0)}
+                          </span>
+                          <span className="text-xs text-slate-500 block">alv 0 %</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Sopimuskausi</span>
+                          <span className="font-semibold text-midnight-900">
+                            {contract.lease_period_months} kk
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Jäännösarvo</span>
+                          <span className="font-semibold text-midnight-900">
+                            {formatCurrency(contract.residual_value || 0)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 block">Ennakkovuokra</span>
+                          <span className="font-semibold text-midnight-900">
+                            {formatCurrency(contract.advance_payment || 0)}
+                          </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-slate-500 block">Sopimuskausi</span>
-                        <span className="font-semibold text-midnight-900">
-                          {contract.lease_period_months} kk
-                        </span>
+                      <div className="mt-4 pt-3 border-t border-emerald-200 grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-slate-500">Käsittelymaksu/erä: </span>
+                          <span className="font-medium">{formatCurrency(contract.processing_fee || 500)}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Järjestelypalkkio: </span>
+                          <span className="font-medium">{formatCurrency(contract.arrangement_fee || 10)}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-slate-500 block">Jäännösarvo</span>
-                        <span className="font-semibold text-midnight-900">
-                          {formatCurrency(contract.residual_value || 0)}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500 block">Ennakkovuokra</span>
-                        <span className="font-semibold text-midnight-900">
-                          {formatCurrency(contract.advance_payment || 0)}
-                        </span>
-                      </div>
+                      <p className="text-xs text-slate-500 mt-3 italic">
+                        Hintoihin lisätään voimassa oleva arvonlisävero
+                      </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-emerald-200 grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-slate-500">Käsittelymaksu/erä: </span>
-                        <span className="font-medium">{formatCurrency(contract.processing_fee || 500)}</span>
-                      </div>
-                      <div>
-                        <span className="text-slate-500">Järjestelypalkkio: </span>
-                        <span className="font-medium">{formatCurrency(contract.arrangement_fee || 10)}</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-3 italic">
-                      Hintoihin lisätään voimassa oleva arvonlisävero
-                    </p>
-                  </div>
+                  )}
 
                   {contract.message_to_customer && (
                     <div className="bg-slate-50 rounded-xl p-4 mb-4">
