@@ -1681,11 +1681,13 @@ export default function FinancierApplicationDetail() {
               </div>
             )}
 
-            {/* Create contract button for OFFER_ACCEPTED (skip document request) */}
-            {application.status === 'OFFER_ACCEPTED' && !contractList.length && !showContractForm && (
+            {/* Create contract button - show for multiple statuses */}
+            {['OFFER_ACCEPTED', 'OFFER_SENT', 'INFO_REQUESTED', 'IN_PROGRESS', 'SUBMITTED_TO_FINANCIER'].includes(application.status) && !contractList.length && !showContractForm && (
               <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
                 <p className="text-purple-800 text-sm mb-2">
-                  Voit pyytää liitteitä luottopäätöstä varten ylhäältä, tai ohittaa ja tehdä sopimuksen suoraan:
+                  {application.status === 'OFFER_ACCEPTED' 
+                    ? 'Asiakas on hyväksynyt tarjouksen. Voit pyytää liitteitä luottopäätöstä varten ylhäältä, tai tehdä sopimuksen suoraan:'
+                    : 'Luo sopimus asiakkaalle:'}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <button
@@ -1693,7 +1695,7 @@ export default function FinancierApplicationDetail() {
                     className="btn-primary"
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Tee sopimus suoraan
+                    Tee sopimus
                   </button>
                   
                   {/* Upload existing PDF contract */}
