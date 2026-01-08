@@ -2105,106 +2105,153 @@ export default function FinancierApplicationDetail() {
               </motion.div>
             )}
 
-            {/* Existing info requests */}
+            {/* All messages - both from financier and customer */}
             {infoRequestList.length === 0 ? (
               <div className="card text-center py-12">
                 <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-midnight-900 mb-2">Ei viestejä</h3>
-                <p className="text-slate-500">Lisätietopyynnöt näkyvät tässä.</p>
+                <p className="text-slate-500">Viestit asiakkaan kanssa näkyvät tässä.</p>
               </div>
             ) : (
-              infoRequestList.map((ir) => (
-                <div key={ir.id} className="card">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-midnight-900">Lisätietopyyntö</h4>
-                    <span className={`badge ${
-                      ir.status === 'PENDING' ? 'badge-yellow' :
-                      ir.status === 'RESPONDED' ? 'badge-green' : 'badge-gray'
-                    }`}>
-                      {ir.status === 'PENDING' ? 'Odottaa' :
-                       ir.status === 'RESPONDED' ? 'Vastattu' : 'Suljettu'}
-                    </span>
-                  </div>
+              infoRequestList.map((ir) => {
+                const isFromCustomer = (ir as any).sender_role === 'CUSTOMER';
+                const isInfoRequest = (ir as any).is_info_request === true;
+                
+                return (
+                  <div key={ir.id} className="card">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-semibold text-midnight-900">
+                        {isFromCustomer ? '💬 Viesti asiakkaalta' : (isInfoRequest ? '📋 Lisätietopyyntö' : '📤 Lähetetty viesti')}
+                      </h4>
+                      <div className="flex items-center gap-2">
+                        {isFromCustomer && !(ir as any).is_read && (
+                          <span className="badge badge-red animate-pulse">Uusi!</span>
+                        )}
+                        <span className={`badge ${
+                          isFromCustomer ? 'badge-blue' :
+                          ir.status === 'PENDING' ? 'badge-yellow' :
+                          ir.status === 'RESPONDED' ? 'badge-green' : 'badge-gray'
+                        }`}>
+                          {isFromCustomer ? 'Asiakkaalta' :
+                           ir.status === 'PENDING' ? 'Odottaa vastausta' :
+                           ir.status === 'RESPONDED' ? 'Vastattu' : 'Suljettu'}
+                        </span>
+                      </div>
+                    </div>
 
-                  <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg mb-4">
-                    <p className="text-yellow-800">{ir.message}</p>
-                    {ir.requested_items && ir.requested_items.length > 0 && (
-                      <ul className="mt-2 list-disc list-inside text-yellow-700">
-                        {ir.requested_items.map((item, i) => (
-                          <li key={i}>{item}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {/* Show attachments from message */}
-                    {(ir as any).attachments && (ir as any).attachments.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-yellow-200">
-                        <p className="text-sm font-medium text-yellow-700 mb-2">📎 Liitteet:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(ir as any).attachments.map((path: string, i: number) => {
-                            const fileName = path.split('/').pop() || path;
-                            const downloadUrl = `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/documents/${path}`;
-                            return (
-                              <a
-                                key={i}
-                                href={downloadUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center bg-white text-emerald-700 px-2 py-1 rounded text-xs hover:bg-emerald-50 border border-emerald-200"
-                              >
-                                <Download className="w-3 h-3 mr-1" />
-                                {fileName.substring(0, 30)}
-                              </a>
-                            );
-                          })}
+                    {/* Message content - different styling based on sender */}
+                    <div className={`${isFromCustomer ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-yellow-50 border-l-4 border-yellow-400'} p-4 rounded-r-lg mb-4`}>
+                      <p className={isFromCustomer ? 'text-blue-800' : 'text-yellow-800'}>{ir.message}</p>
+                      {ir.requested_items && ir.requested_items.length > 0 && (
+                        <ul className="mt-2 list-disc list-inside text-yellow-700">
+                          {ir.requested_items.map((item, i) => (
+                            <li key={i}>{item}</li>
+                          ))}
+                        </ul>
+                      )}
+                      {/* Show requested documents */}
+                      {(ir as any).requested_documents && (ir as any).requested_documents.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-medium text-yellow-700">Pyydetyt dokumentit:</p>
+                          <ul className="list-disc list-inside text-yellow-600 text-sm">
+                            {(ir as any).requested_documents.map((doc: string, i: number) => (
+                              <li key={i}>{doc}</li>
+                            ))}
+                          </ul>
                         </div>
+                      )}
+                      {/* Show attachments */}
+                      {(ir as any).attachments && (ir as any).attachments.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-slate-200">
+                          <p className="text-sm font-medium mb-2">📎 Liitteet:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {(ir as any).attachments.map((path: string, i: number) => {
+                              const fileName = path.split('/').pop() || path;
+                              const downloadUrl = `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/uploads/${path}`;
+                              return (
+                                <a
+                                  key={i}
+                                  href={downloadUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center bg-white text-emerald-700 px-3 py-1.5 rounded text-sm hover:bg-emerald-50 border border-emerald-200"
+                                >
+                                  <Download className="w-4 h-4 mr-1" />
+                                  {fileName.substring(fileName.indexOf('_') + 1, 40)}
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-500 mt-2">{formatDateTime(ir.created_at)}</p>
+                    </div>
+
+                    {/* Responses/replies */}
+                    {ir.responses && ir.responses.length > 0 && (
+                      <div className="space-y-2 mb-4">
+                        {ir.responses.map((resp: any) => {
+                          const respIsFromCustomer = resp.sender_role === 'CUSTOMER';
+                          return (
+                            <div key={resp.id} className={`${respIsFromCustomer ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-green-50 border-l-4 border-green-400'} p-4 rounded-r-lg ml-4`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className={`text-sm font-medium ${respIsFromCustomer ? 'text-blue-600' : 'text-green-600'}`}>
+                                  {respIsFromCustomer ? '👤 Asiakas' : '🏦 Rahoittaja'}
+                                </span>
+                                <span className="text-xs text-slate-500">{formatDateTime(resp.created_at)}</span>
+                              </div>
+                              <p className={respIsFromCustomer ? 'text-blue-800' : 'text-green-800'}>{resp.message}</p>
+                              {/* Show attachments from response */}
+                              {resp.attachments && resp.attachments.length > 0 && (
+                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                  <p className="text-sm font-medium mb-2">📎 Liitteet:</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {resp.attachments.map((path: string, i: number) => {
+                                      const fileName = typeof path === 'string' ? path.split('/').pop() : 'tiedosto';
+                                      const downloadUrl = typeof path === 'string' 
+                                        ? `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/uploads/${path}`
+                                        : '#';
+                                      return (
+                                        <a
+                                          key={i}
+                                          href={downloadUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center bg-white text-emerald-700 px-3 py-1.5 rounded text-sm hover:bg-emerald-50 border border-emerald-200"
+                                        >
+                                          <Download className="w-4 h-4 mr-1" />
+                                          {String(fileName).substring(String(fileName).indexOf('_') + 1, 40)}
+                                        </a>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                    <p className="text-xs text-yellow-600 mt-2">{formatDateTime(ir.created_at)}</p>
-                  </div>
 
-                  {ir.responses && ir.responses.length > 0 && (
-                    <div className="space-y-2">
-                      {ir.responses.map((resp: any) => (
-                        <div key={resp.id} className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-r-lg">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-blue-600">
-                              Asiakas: {resp.user?.first_name || resp.user?.email || 'Asiakas'}
-                            </span>
-                            <span className="text-xs text-blue-500">{formatDateTime(resp.created_at)}</span>
-                          </div>
-                          <p className="text-blue-800">{resp.message}</p>
-                          {/* Show attachments from response */}
-                          {resp.attachments && resp.attachments.length > 0 && (
-                            <div className="mt-3 pt-3 border-t border-blue-200">
-                              <p className="text-sm font-medium text-blue-700 mb-2">📎 Liitteet:</p>
-                              <div className="flex flex-wrap gap-2">
-                                {resp.attachments.map((path: string, i: number) => {
-                                  const fileName = typeof path === 'string' ? path.split('/').pop() : (path as any).filename || 'tiedosto';
-                                  const downloadUrl = typeof path === 'string' 
-                                    ? `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/documents/${path}`
-                                    : '#';
-                                  return (
-                                    <a
-                                      key={i}
-                                      href={downloadUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center bg-white text-emerald-700 px-2 py-1 rounded text-xs hover:bg-emerald-50 border border-emerald-200"
-                                    >
-                                      <Download className="w-3 h-3 mr-1" />
-                                      {String(fileName).substring(0, 30)}
-                                    </a>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
+                    {/* Reply button for customer messages - TODO: add reply form */}
+                    {isFromCustomer && (
+                      <div className="border-t pt-4">
+                        <button
+                          onClick={() => {
+                            // For now, open info request form to reply
+                            setShowInfoRequestForm(true);
+                            setInfoRequestMessage(`Vastaus viestiin: `);
+                          }}
+                          className="btn-secondary text-sm"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Vastaa asiakkaalle
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         )}

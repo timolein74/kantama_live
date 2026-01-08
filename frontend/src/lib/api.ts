@@ -481,44 +481,33 @@ export const infoRequests = {
     return { data: data || [], error };
   },
   
-  // For financiers: only get messages they sent or replies to their messages
+  // For financiers: get ALL messages for an application (both from financier and customer)
   getForFinancier: async (applicationId: string | number) => {
     if (!isSupabaseConfigured()) return { data: [], error: null };
     
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return { data: [], error: null };
-    
-    // Get messages where financier is sender
-    const { data: financierMessages, error: err1 } = await supabase
+    // Get ALL messages for this application
+    const { data: allMessages, error } = await supabase
       .from('app_messages')
       .select('*')
       .eq('application_id', String(applicationId))
-      .eq('sender_id', user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: true }); // oldest first for conversation flow
     
-    if (err1) return { data: [], error: err1 };
+    if (error) return { data: [], error };
     
-    // Get IDs of messages sent by financier
-    const financierMessageIds = (financierMessages || []).map(m => m.id);
+    // Group messages: parent messages and their replies
+    const parentMessages = (allMessages || []).filter(m => !m.parent_message_id);
+    const replies = (allMessages || []).filter(m => m.parent_message_id);
     
-    // Get replies to financier's messages
-    const { data: replies, error: err2 } = await supabase
-      .from('app_messages')
-      .select('*')
-      .eq('application_id', String(applicationId))
-      .in('parent_message_id', financierMessageIds.length > 0 ? financierMessageIds : ['no-match'])
-      .order('created_at', { ascending: false });
+    // Attach replies to their parent messages
+    const messagesWithReplies = parentMessages.map(parent => ({
+      ...parent,
+      responses: replies.filter(r => r.parent_message_id === parent.id)
+    }));
     
-    if (err2) return { data: [], error: err2 };
+    // Sort by newest first for display
+    messagesWithReplies.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     
-    // Combine and sort by date
-    const allMessages = [...(financierMessages || []), ...(replies || [])];
-    const uniqueMessages = allMessages.filter((msg, index, self) => 
-      index === self.findIndex(m => m.id === msg.id)
-    );
-    uniqueMessages.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    
-    return { data: uniqueMessages, error: null };
+    return { data: messagesWithReplies, error: null };
   },
   
   respond: async (data: { info_request_id: string; message: string; attachment_ids?: string[] }) => {
