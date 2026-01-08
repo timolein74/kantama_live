@@ -1246,8 +1246,11 @@ export default function CustomerApplicationDetail() {
                       {offer.status === 'SENT' && (
                         <div className="flex items-center gap-3">
                           <button
-                            onClick={() => setShowOfferQuestionForm(showOfferQuestionForm && String(showOfferQuestionForm) === String(offer.id) ? null : offer.id)}
-                            className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm flex items-center"
+                            onClick={() => {
+                              console.log('Kysy lisätietoja clicked, offer.id:', offer.id);
+                              setShowOfferQuestionForm(showOfferQuestionForm && String(showOfferQuestionForm) === String(offer.id) ? null : offer.id);
+                            }}
+                            className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-sm font-medium flex items-center transition-colors"
                           >
                             <MessageSquare className="w-4 h-4 mr-2" />
                             Kysy lisätietoja
@@ -1272,13 +1275,16 @@ export default function CustomerApplicationDetail() {
 
                   {/* Question form */}
                   {showOfferQuestionForm && String(showOfferQuestionForm) === String(offer.id) && (
-                    <div className="mt-4 pt-4 border-t border-slate-200">
-                      <h4 className="font-medium text-midnight-900 mb-2">Kysy lisätietoja tarjouksesta</h4>
+                    <div className="px-8 py-6 bg-blue-50 border-t-2 border-blue-200">
+                      <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                        <MessageSquare className="w-5 h-5 mr-2" />
+                        Kysy lisätietoja tarjouksesta
+                      </h4>
                       <textarea
                         value={offerQuestion}
                         onChange={(e) => setOfferQuestion(e.target.value)}
                         placeholder="Kirjoita kysymyksesi rahoittajalle..."
-                        className="input min-h-[100px] mb-3"
+                        className="w-full p-4 border border-blue-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 min-h-[120px] mb-4"
                       />
                       <div className="flex justify-end space-x-3">
                         <button
@@ -1286,14 +1292,14 @@ export default function CustomerApplicationDetail() {
                             setShowOfferQuestionForm(null);
                             setOfferQuestion('');
                           }}
-                          className="btn-ghost"
+                          className="px-4 py-2 text-slate-600 hover:text-slate-800 rounded-lg"
                         >
                           Peruuta
                         </button>
                         <button
                           onClick={() => handleSendOfferQuestion(offer.id)}
                           disabled={isSendingQuestion}
-                          className="btn-primary"
+                          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium flex items-center"
                         >
                           <Send className="w-4 h-4 mr-2" />
                           {isSendingQuestion ? 'Lähetetään...' : 'Lähetä kysymys'}
