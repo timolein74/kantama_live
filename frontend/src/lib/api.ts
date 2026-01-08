@@ -1506,7 +1506,7 @@ export const messages = {
             }
           }
         } else {
-          // New message (not a reply) - only notify admins, NOT all financiers
+          // New message (not a reply) - notify admins AND the financier assigned to the application
           const { data: admins } = await supabase
             .from('profiles')
             .select('id')
@@ -1518,6 +1518,41 @@ export const messages = {
                 user_id: admin.id,
                 title: 'Uusi viesti asiakkaalta',
                 message: `${companyName} lähetti viestin`
+              });
+            }
+          }
+          
+          // Also notify the financier who sent the latest offer for this application
+          const { data: latestOffer } = await supabase
+            .from('offers')
+            .select('financier_id')
+            .eq('application_id', messageData.application_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+          
+          if (latestOffer?.financier_id) {
+            notificationsToCreate.push({
+              user_id: latestOffer.financier_id,
+              title: 'Asiakas kysyi lisätietoja tarjouksesta',
+              message: `${companyName} lähetti kysymyksen tarjouksesta`
+            });
+            
+            // Also send email to financier
+            const { data: financierProfile } = await supabase
+              .from('profiles')
+              .select('email')
+              .eq('id', latestOffer.financier_id)
+              .single();
+            
+            if (financierProfile?.email) {
+              console.log('📧 [MESSAGE] Sending email to financier:', financierProfile.email);
+              await sendNotificationEmail({
+                to: financierProfile.email,
+                subject: 'Asiakas kysyi lisätietoja tarjouksesta - Juuri Rahoitus',
+                type: 'message',
+                customer_name: companyName,
+                company_name: companyName,
               });
             }
           }
