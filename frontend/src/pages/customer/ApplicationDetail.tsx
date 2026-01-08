@@ -1093,67 +1093,61 @@ export default function CustomerApplicationDetail() {
                   </div>
 
                   {/* Main Content */}
-                  <div className="p-8">
+                  <div className="p-6">
                     {/* Monthly Payment - Hero */}
-                    <div className="text-center mb-8 pb-8 border-b border-slate-100">
-                      <p className="text-slate-500 text-sm uppercase tracking-wide mb-2">Kuukausierä</p>
-                      <p className="text-5xl font-bold text-emerald-600">{formatCurrency(offer.monthly_payment)}</p>
-                      <p className="text-slate-400 text-sm mt-1">alv 0%</p>
+                    <div className="bg-emerald-50 rounded-xl p-6 mb-6">
+                      <p className="text-emerald-700 text-sm font-medium mb-1">Kuukausierä</p>
+                      <p className="text-4xl font-bold text-emerald-700">{formatCurrency(offer.monthly_payment)} <span className="text-lg font-normal text-emerald-600">alv 0%</span></p>
                     </div>
 
-                    {/* Details Grid */}
-                    <div className="grid grid-cols-2 gap-6 mb-8">
-                      <div className="space-y-4">
-                        <div className="flex justify-between py-3 border-b border-slate-100">
-                          <span className="text-slate-500">Kauppasumma</span>
+                    {/* Details - Single column, left aligned */}
+                    <div className="max-w-md">
+                      <div className="space-y-3">
+                        <div className="flex justify-between py-2 border-b border-slate-100">
+                          <span className="text-slate-600">Kauppasumma</span>
                           <span className="font-semibold text-slate-900">{formatCurrency(application.equipment_price)}</span>
                         </div>
-                        <div className="flex justify-between py-3 border-b border-slate-100">
-                          <span className="text-slate-500">Käsiraha</span>
+                        <div className="flex justify-between py-2 border-b border-slate-100">
+                          <span className="text-slate-600">Käsiraha</span>
                           <span className="font-semibold text-slate-900">{formatCurrency(offer.upfront_payment || 0)}</span>
                         </div>
-                        <div className="flex justify-between py-3 border-b border-slate-100">
-                          <span className="text-slate-500">Rahoitettava</span>
+                        <div className="flex justify-between py-2 border-b border-slate-100">
+                          <span className="text-slate-600">Rahoitettava osuus</span>
                           <span className="font-semibold text-slate-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</span>
                         </div>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex justify-between py-3 border-b border-slate-100">
-                          <span className="text-slate-500">Sopimusaika</span>
+                        <div className="flex justify-between py-2 border-b border-slate-100">
+                          <span className="text-slate-600">Sopimusaika</span>
                           <span className="font-semibold text-slate-900">{offer.term_months} kk</span>
                         </div>
-                        <div className="flex justify-between py-3 border-b border-slate-100">
-                          <span className="text-slate-500">Avausmaksu</span>
+                        <div className="flex justify-between py-2 border-b border-slate-100">
+                          <span className="text-slate-600">Avausmaksu</span>
                           <span className="font-semibold text-slate-900">{formatCurrency(offer.opening_fee || 300)}</span>
                         </div>
-                        <div className="flex justify-between py-3 border-b border-slate-100">
-                          <span className="text-slate-500">Laskutuslisä</span>
+                        <div className="flex justify-between py-2 border-b border-slate-100">
+                          <span className="text-slate-600">Laskutuslisä</span>
                           <span className="font-semibold text-slate-900">{offer.invoice_fee || 9} €/kk</span>
                         </div>
                         {offer.residual_value && application.equipment_price && (
-                          <div className="flex justify-between py-3 border-b border-slate-100">
-                            <span className="text-slate-500">Jäännösarvo</span>
+                          <div className="flex justify-between py-2 border-b border-slate-100">
+                            <span className="text-slate-600">Jäännösarvo</span>
                             <span className="font-semibold text-slate-900">{((offer.residual_value / application.equipment_price) * 100).toFixed(1)}%</span>
                           </div>
                         )}
                       </div>
+                      <p className="text-slate-400 text-xs mt-4">Hintoihin lisätään voimassa oleva arvonlisävero</p>
                     </div>
 
-                    <p className="text-slate-400 text-xs text-center mb-6">Hintoihin lisätään voimassa oleva arvonlisävero</p>
-
                     {offer.notes_to_customer && (
-                      <div className="bg-slate-50 rounded-xl p-5 mb-6">
-                        <p className="text-sm text-slate-500 mb-2">Lisätiedot</p>
+                      <div className="mt-6 p-4 bg-slate-50 rounded-lg">
+                        <p className="text-sm text-slate-500 mb-1">Lisätiedot</p>
                         <p className="text-slate-700">{offer.notes_to_customer}</p>
                       </div>
                     )}
 
                     {/* Notice */}
-                    <div className="bg-slate-50 rounded-xl p-4 mb-6">
-                      <p className="text-slate-600 text-sm text-center">
-                        Tämä on alustava tarjous. Hyväksymällä haet virallisen luottopäätöksen.
-                      </p>
-                    </div>
+                    <p className="text-slate-500 text-sm mt-6">
+                      Tämä on alustava tarjous. Hyväksymällä haet virallisen luottopäätöksen.
+                    </p>
                   </div>
 
                   {/* Actions */}
