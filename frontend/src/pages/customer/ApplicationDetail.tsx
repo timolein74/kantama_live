@@ -1068,207 +1068,206 @@ export default function CustomerApplicationDetail() {
                   key={offer.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden"
+                  className="bg-white rounded-2xl border border-slate-200 overflow-hidden"
                 >
-                  {/* Header */}
-                  <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-6 py-4">
+                  {/* Clean Header */}
+                  <div className="px-8 py-6 border-b border-slate-100">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-white text-lg flex items-center">
-                        <Euro className="w-5 h-5 mr-2" />
-                        Alustava rahoitustarjous
-                      </h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                        offer.status === 'SENT' ? 'bg-white/20 text-white' :
-                        offer.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
-                        offer.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-slate-100 text-slate-800'
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-emerald-600 rounded-xl flex items-center justify-center">
+                          <span className="text-white font-bold text-xl">J</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-slate-900">Rahoitustarjous</h3>
+                          <p className="text-slate-500 text-sm">{application.company_name}</p>
+                        </div>
+                      </div>
+                      <span className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                        offer.status === 'SENT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                        offer.status === 'ACCEPTED' ? 'bg-emerald-100 text-emerald-800' :
+                        offer.status === 'REJECTED' ? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-600'
                       }`}>
                         {getOfferStatusLabel(offer.status)}
                       </span>
                     </div>
-                    {/* Equipment name */}
-                    <p className="text-green-100 mt-2 flex items-center">
-                      <FileText className="w-4 h-4 mr-2" />
-                      Kohde: <span className="font-semibold text-white ml-1">{application.equipment_description}</span>
-                    </p>
-                  </div>
-                  
-                  {/* Preliminary offer notice */}
-                  <div className="bg-amber-50 border-l-4 border-amber-400 p-4">
-                    <p className="text-amber-800 text-sm">
-                      <strong>Huom!</strong> Tämä on alustava tarjous. Hyväksymällä tarjouksen haet virallisen luottopäätöksen, 
-                      jonka jälkeen saat sopimuksen luettavaksi ja allekirjoitettavaksi.
-                    </p>
                   </div>
 
-                  {/* Excel-like Grid */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <tbody>
-                        <tr className="border-b border-slate-100">
-                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-48 border-r border-slate-200">Kauppasumma</td>
-                          <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency(application.equipment_price)} <span className="text-slate-500">alv 0%</span></td>
-                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 w-48 border-r border-l border-slate-200">Sopimusaika</td>
-                          <td className="px-4 py-3 font-semibold text-midnight-900">{offer.term_months} kk</td>
-                        </tr>
-                        <tr className="border-b border-slate-100">
-                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Käsiraha</td>
-                          <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency(offer.upfront_payment || 0)} <span className="text-slate-500">alv 0%</span></td>
-                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Rahoitettava osuus</td>
-                          <td className="px-4 py-3 font-semibold text-emerald-700">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} <span className="text-slate-500">alv 0%</span></td>
-                        </tr>
-                        <tr className="border-b border-slate-100 bg-green-50">
-                          <td className="px-4 py-4 bg-green-100 font-bold text-green-800 border-r border-green-200">Kuukausierä</td>
-                          <td className="px-4 py-4 font-bold text-green-700 text-xl" colSpan={3}>
-                            {formatCurrency(offer.monthly_payment)} <span className="text-green-600 text-base">alv 0%</span>
-                          </td>
-                        </tr>
-                        <tr className="border-b border-slate-100">
-                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Avausmaksu</td>
-                          <td className="px-4 py-3 font-semibold text-midnight-900">{formatCurrency(offer.opening_fee || 300)} <span className="text-slate-500">alv 0%</span></td>
-                          <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-l border-slate-200">Laskutuslisä</td>
-                          <td className="px-4 py-3 font-semibold text-midnight-900">{offer.invoice_fee || 9} €/kk</td>
-                        </tr>
-                        {offer.residual_value && application.equipment_price && (
-                          <tr className="border-b border-slate-100">
-                            <td className="px-4 py-3 bg-slate-50 font-medium text-slate-600 border-r border-slate-200">Jäännösarvo</td>
-                            <td className="px-4 py-3 font-semibold text-midnight-900" colSpan={3}>
-                              {((offer.residual_value / application.equipment_price) * 100).toFixed(1)}%
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="px-4 py-2 bg-slate-50 border-t border-slate-200">
-                    <p className="text-xs text-slate-500 italic">Hintoihin lisätään voimassa oleva arvonlisävero</p>
-                  </div>
-
-                  {offer.notes_to_customer && (
-                    <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                      <p className="text-sm font-medium text-slate-600 mb-1">Rahoittajan viesti:</p>
-                      <p className="text-slate-700">{offer.notes_to_customer}</p>
+                  {/* Main Content */}
+                  <div className="p-8">
+                    {/* Monthly Payment - Hero */}
+                    <div className="text-center mb-8 pb-8 border-b border-slate-100">
+                      <p className="text-slate-500 text-sm uppercase tracking-wide mb-2">Kuukausierä</p>
+                      <p className="text-5xl font-bold text-emerald-600">{formatCurrency(offer.monthly_payment)}</p>
+                      <p className="text-slate-400 text-sm mt-1">alv 0%</p>
                     </div>
-                  )}
 
-                  <div className="flex justify-between items-center">
-                    <button
-                      onClick={() => {
-                        const printWindow = window.open('', '_blank');
-                        if (printWindow) {
-                          const residualPercent = offer.residual_value && application.equipment_price
-                            ? ((offer.residual_value / application.equipment_price) * 100).toFixed(1)
-                            : null;
-                          printWindow.document.write(`
-                            <!DOCTYPE html>
-                            <html>
-                            <head>
-                              <title>Rahoitustarjous${application.reference_number ? ` - ${application.reference_number}` : ''}</title>
-                              <style>
-                                body { font-family: Arial, sans-serif; padding: 40px; max-width: 800px; margin: 0 auto; }
-                                .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 30px; }
-                                .logo { display: flex; align-items: center; gap: 12px; }
-                                .logo-icon { width: 48px; height: 48px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px; }
-                                .section { margin-bottom: 30px; }
-                                .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: #1e293b; }
-                                .info-box { background: #f8fafc; padding: 16px; border-radius: 8px; }
-                                table { width: 100%; border-collapse: collapse; }
-                                td { padding: 12px 16px; border-bottom: 1px solid #e5e7eb; }
-                                .label { color: #64748b; }
-                                .value { text-align: right; font-weight: 600; color: #1e293b; }
-                                .highlight { background: #ecfdf5; }
-                                .highlight .label { color: #059669; font-weight: 500; }
-                                .highlight .value { color: #059669; font-size: 20px; font-weight: 700; }
-                                .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #64748b; font-size: 14px; }
-                                .note { font-size: 14px; color: #64748b; font-style: italic; margin-top: 12px; }
-                                @media print { body { padding: 20px; } }
-                              </style>
-                            </head>
-                            <body>
-                              <div class="header">
-                                <div class="logo">
-                                  <div class="logo-icon">J</div>
-                                  <div>
-                                    <div style="font-size: 24px; font-weight: bold; color: #1e293b;">Juuri Rahoitus</div>
-                                    <div style="font-size: 14px; color: #64748b;">Rahoitustarjous</div>
-                                  </div>
-                                </div>
-                                <div style="text-align: right; font-size: 14px; color: #64748b;">
-                                  <div><strong>Päivämäärä:</strong> ${new Date().toLocaleDateString('fi-FI')}</div>
-                                  ${application.reference_number ? `<div><strong>Viite:</strong> ${application.reference_number}</div>` : ''}
-                                </div>
-                              </div>
-                              
-                              <div class="section">
-                                <div class="section-title">Asiakas</div>
-                                <div class="info-box">
-                                  <div style="font-weight: 600; color: #1e293b;">${application.company_name}</div>
-                                  <div style="color: #64748b;">Y-tunnus: ${application.business_id}</div>
-                                </div>
-                              </div>
-                              
-                              <div class="section">
-                                <div class="section-title">Rahoitustarjous</div>
-                                <table>
-                                  <tr><td class="label">Kauppasumma:</td><td class="value">${formatCurrency(application.equipment_price)} alv 0 %</td></tr>
-                                  <tr><td class="label">Käsiraha:</td><td class="value">${formatCurrency(offer.upfront_payment || 0)} alv 0 %</td></tr>
-                                  <tr style="background: #f8fafc;"><td class="label">Rahoitettava osuus:</td><td class="value">${formatCurrency(application.equipment_price - (offer.upfront_payment || 0))} alv 0 %</td></tr>
-                                  <tr class="highlight"><td class="label">Kuukausierä:</td><td class="value">${formatCurrency(offer.monthly_payment)} alv 0 %</td></tr>
-                                  <tr><td class="label">Sopimusaika:</td><td class="value">${offer.term_months} kk</td></tr>
-                                  <tr><td class="label">Avausmaksu:</td><td class="value">300 € alv 0 %</td></tr>
-                                  <tr><td class="label">Laskutuslisä:</td><td class="value">9 €/kk</td></tr>
-                                  ${residualPercent ? `<tr><td class="label">Jäännösarvo:</td><td class="value">${residualPercent} %</td></tr>` : ''}
-                                </table>
-                                <p class="note">Hintoihin lisätään voimassa oleva arvonlisävero</p>
-                              </div>
-                              
-                              ${offer.notes_to_customer ? `
-                              <div class="section">
-                                <div class="section-title">Lisätiedot</div>
-                                <div class="info-box">${offer.notes_to_customer}</div>
-                              </div>
-                              ` : ''}
-                              
-                              <div class="footer">
-                                <p>Tämä on alustava rahoitustarjous - hae virallinen luottopäätös.</p>
-                              </div>
-                            </body>
-                            </html>
-                          `);
-                          printWindow.document.close();
-                          printWindow.print();
-                        }
-                      }}
-                      className="btn-secondary"
-                    >
-                      <Printer className="w-4 h-4 mr-2" />
-                      Tulosta tarjous
-                    </button>
+                    {/* Details Grid */}
+                    <div className="grid grid-cols-2 gap-6 mb-8">
+                      <div className="space-y-4">
+                        <div className="flex justify-between py-3 border-b border-slate-100">
+                          <span className="text-slate-500">Kauppasumma</span>
+                          <span className="font-semibold text-slate-900">{formatCurrency(application.equipment_price)}</span>
+                        </div>
+                        <div className="flex justify-between py-3 border-b border-slate-100">
+                          <span className="text-slate-500">Käsiraha</span>
+                          <span className="font-semibold text-slate-900">{formatCurrency(offer.upfront_payment || 0)}</span>
+                        </div>
+                        <div className="flex justify-between py-3 border-b border-slate-100">
+                          <span className="text-slate-500">Rahoitettava</span>
+                          <span className="font-semibold text-slate-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</span>
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex justify-between py-3 border-b border-slate-100">
+                          <span className="text-slate-500">Sopimusaika</span>
+                          <span className="font-semibold text-slate-900">{offer.term_months} kk</span>
+                        </div>
+                        <div className="flex justify-between py-3 border-b border-slate-100">
+                          <span className="text-slate-500">Avausmaksu</span>
+                          <span className="font-semibold text-slate-900">{formatCurrency(offer.opening_fee || 300)}</span>
+                        </div>
+                        <div className="flex justify-between py-3 border-b border-slate-100">
+                          <span className="text-slate-500">Laskutuslisä</span>
+                          <span className="font-semibold text-slate-900">{offer.invoice_fee || 9} €/kk</span>
+                        </div>
+                        {offer.residual_value && application.equipment_price && (
+                          <div className="flex justify-between py-3 border-b border-slate-100">
+                            <span className="text-slate-500">Jäännösarvo</span>
+                            <span className="font-semibold text-slate-900">{((offer.residual_value / application.equipment_price) * 100).toFixed(1)}%</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                    {offer.status === 'SENT' && (
-                      <div className="flex space-x-3">
-                        <button
-                          onClick={() => setShowOfferQuestionForm(showOfferQuestionForm === offer.id ? null : offer.id)}
-                          className="btn-ghost text-blue-600"
-                        >
-                          <MessageSquare className="w-4 h-4 mr-2" />
-                          Kysy lisätietoja
-                        </button>
-                        <button
-                          onClick={() => handleRejectOffer(offer.id)}
-                          className="btn-ghost text-red-600"
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Hylkää
-                        </button>
-                        <button
-                          onClick={() => handleAcceptOffer(offer.id)}
-                          className="btn-primary bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Hae virallinen luottopäätös
-                        </button>
+                    <p className="text-slate-400 text-xs text-center mb-6">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+
+                    {offer.notes_to_customer && (
+                      <div className="bg-slate-50 rounded-xl p-5 mb-6">
+                        <p className="text-sm text-slate-500 mb-2">Lisätiedot</p>
+                        <p className="text-slate-700">{offer.notes_to_customer}</p>
                       </div>
                     )}
+
+                    {/* Notice */}
+                    <div className="bg-slate-50 rounded-xl p-4 mb-6">
+                      <p className="text-slate-600 text-sm text-center">
+                        Tämä on alustava tarjous. Hyväksymällä haet virallisen luottopäätöksen.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="px-8 py-6 bg-slate-50 border-t border-slate-100">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                      <button
+                        onClick={() => {
+                          const printWindow = window.open('', '_blank');
+                          if (printWindow) {
+                            const residualPercent = offer.residual_value && application.equipment_price
+                              ? ((offer.residual_value / application.equipment_price) * 100).toFixed(1)
+                              : null;
+                            printWindow.document.write(`
+                              <!DOCTYPE html>
+                              <html>
+                              <head>
+                                <title>Rahoitustarjous${application.reference_number ? ` - ${application.reference_number}` : ''}</title>
+                                <style>
+                                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 700px; margin: 0 auto; color: #1e293b; }
+                                  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 24px; margin-bottom: 32px; }
+                                  .logo { display: flex; align-items: center; gap: 16px; }
+                                  .logo-icon { width: 48px; height: 48px; background: #059669; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 24px; }
+                                  .company { font-size: 20px; font-weight: 600; }
+                                  .date { color: #64748b; font-size: 14px; }
+                                  .hero { text-align: center; padding: 40px 0; border-bottom: 1px solid #e2e8f0; margin-bottom: 32px; }
+                                  .hero-label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+                                  .hero-value { font-size: 48px; font-weight: 700; color: #059669; margin: 8px 0; }
+                                  .hero-note { color: #94a3b8; font-size: 14px; }
+                                  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+                                  .item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+                                  .item-label { color: #64748b; }
+                                  .item-value { font-weight: 600; }
+                                  .footer { text-align: center; color: #94a3b8; font-size: 13px; padding-top: 24px; border-top: 1px solid #e2e8f0; margin-top: 32px; }
+                                  @media print { body { padding: 20px; } }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="header">
+                                  <div class="logo">
+                                    <div class="logo-icon">J</div>
+                                    <div>
+                                      <div class="company">Juuri Rahoitus</div>
+                                      <div class="date">${new Date().toLocaleDateString('fi-FI')}</div>
+                                    </div>
+                                  </div>
+                                  <div style="text-align: right;">
+                                    <div style="font-weight: 600;">${application.company_name}</div>
+                                    <div style="color: #64748b; font-size: 14px;">Y-tunnus: ${application.business_id}</div>
+                                  </div>
+                                </div>
+                                
+                                <div class="hero">
+                                  <div class="hero-label">Kuukausierä</div>
+                                  <div class="hero-value">${formatCurrency(offer.monthly_payment)}</div>
+                                  <div class="hero-note">alv 0%</div>
+                                </div>
+                                
+                                <div class="grid">
+                                  <div>
+                                    <div class="item"><span class="item-label">Kauppasumma</span><span class="item-value">${formatCurrency(application.equipment_price)}</span></div>
+                                    <div class="item"><span class="item-label">Käsiraha</span><span class="item-value">${formatCurrency(offer.upfront_payment || 0)}</span></div>
+                                    <div class="item"><span class="item-label">Rahoitettava</span><span class="item-value">${formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</span></div>
+                                  </div>
+                                  <div>
+                                    <div class="item"><span class="item-label">Sopimusaika</span><span class="item-value">${offer.term_months} kk</span></div>
+                                    <div class="item"><span class="item-label">Avausmaksu</span><span class="item-value">${formatCurrency(offer.opening_fee || 300)}</span></div>
+                                    <div class="item"><span class="item-label">Laskutuslisä</span><span class="item-value">${offer.invoice_fee || 9} €/kk</span></div>
+                                    ${residualPercent ? `<div class="item"><span class="item-label">Jäännösarvo</span><span class="item-value">${residualPercent}%</span></div>` : ''}
+                                  </div>
+                                </div>
+                                
+                                <p style="text-align: center; color: #94a3b8; font-size: 12px;">Hintoihin lisätään voimassa oleva arvonlisävero</p>
+                                
+                                <div class="footer">
+                                  Tämä on alustava rahoitustarjous - hae virallinen luottopäätös.
+                                </div>
+                              </body>
+                              </html>
+                            `);
+                            printWindow.document.close();
+                            printWindow.print();
+                          }
+                        }}
+                        className="text-slate-500 hover:text-slate-700 text-sm flex items-center"
+                      >
+                        <Printer className="w-4 h-4 mr-2" />
+                        Tulosta
+                      </button>
+
+                      {offer.status === 'SENT' && (
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setShowOfferQuestionForm(showOfferQuestionForm === offer.id ? null : offer.id)}
+                            className="px-4 py-2 text-slate-600 hover:text-slate-800 text-sm flex items-center"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Kysy lisätietoja
+                          </button>
+                          <button
+                            onClick={() => handleRejectOffer(offer.id)}
+                            className="px-4 py-2 text-slate-500 hover:text-slate-700 text-sm flex items-center"
+                          >
+                            Hylkää
+                          </button>
+                          <button
+                            onClick={() => handleAcceptOffer(offer.id)}
+                            className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium flex items-center transition-colors"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Hae virallinen luottopäätös
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Question form */}
