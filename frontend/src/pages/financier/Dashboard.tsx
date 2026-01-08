@@ -169,6 +169,17 @@ export default function FinancierDashboard() {
               <Link
                 key={notif.id}
                 to={notif.action_url || '/financier/applications'}
+                onClick={async (e) => {
+                  // Mark notification as read and remove from list
+                  try {
+                    await notificationsApi.markAsRead(String(notif.id));
+                    setNotificationList(prev => prev.map(n => 
+                      n.id === notif.id ? { ...n, is_read: true } : n
+                    ));
+                  } catch (err) {
+                    console.error('Error marking notification as read:', err);
+                  }
+                }}
                 className="block bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-colors group"
               >
                 <div className="flex items-center justify-between">

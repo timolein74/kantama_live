@@ -248,19 +248,46 @@ export default function AdminDashboard() {
                     : `${customerResponseNotifications.length} asiakasta vastasi lisätietopyyntöön!`}
                 </h2>
                 <p className="text-purple-100 mt-1">
-                  {customerResponseNotifications.length === 1 
-                    ? customerResponseNotifications[0].message 
-                    : 'Asiakkaat ovat toimittaneet pyydetyt lisätiedot.'}
+                  Klikkaa ilmoitusta avataksesi ja poistaaksesi sen.
                 </p>
               </div>
             </div>
-            <Link
-              to={customerResponseNotifications[0]?.action_url || '/admin/applications'}
-              className="bg-white text-purple-600 px-6 py-3 rounded-xl font-semibold hover:bg-purple-50 transition-colors flex items-center"
-            >
-              <Eye className="w-5 h-5 mr-2" />
-              Katso vastaukset
-            </Link>
+          </div>
+          {/* Individual notification items - click to open & dismiss */}
+          <div className="mt-4 pt-4 border-t border-white/20 space-y-2">
+            {customerResponseNotifications.slice(0, 5).map((notif) => (
+              <Link
+                key={notif.id}
+                to={notif.action_url || '/admin/applications'}
+                onClick={async () => {
+                  try {
+                    await notificationsApi.markAsRead(String(notif.id));
+                    setCustomerResponseNotifications(prev => 
+                      prev.filter(n => n.id !== notif.id)
+                    );
+                  } catch (err) {
+                    console.error('Error marking notification as read:', err);
+                  }
+                }}
+                className="block bg-white/10 rounded-lg p-4 hover:bg-white/20 transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <span className="font-bold text-lg block">{notif.title}</span>
+                      <span className="text-sm text-purple-200">{notif.message}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2 bg-white text-purple-700 px-4 py-2 rounded-lg font-semibold group-hover:bg-purple-50 transition-colors">
+                    <span>Avaa lisätiedot</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                </div>
+              </Link>
+            ))}
           </div>
         </motion.div>
       )}
