@@ -1078,50 +1078,7 @@ export default function CustomerApplicationDetail() {
               </dl>
             </div>
 
-            {/* Pending offer section on details tab */}
-            {offerList.filter(o => o.status === 'SENT').length > 0 && (
-              <div className="lg:col-span-2">
-                <div className="card border-2 border-green-200 bg-green-50">
-                  <h3 className="font-semibold text-midnight-900 mb-4 flex items-center">
-                    <Euro className="w-5 h-5 mr-2 text-green-600" />
-                    Sinulla on hyväksymätön tarjous!
-                  </h3>
-                  {offerList.filter(o => o.status === 'SENT').map((offer) => (
-                    <div key={offer.id} className="bg-white rounded-xl p-4 mb-4">
-                      <div className="grid md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                          <span className="text-slate-500 text-sm">Kuukausimaksu</span>
-                          <p className="font-bold text-green-700 text-xl">{formatCurrency(offer.monthly_payment)}</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 text-sm">Sopimuskausi</span>
-                          <p className="font-semibold text-midnight-900">{offer.term_months} kk</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-500 text-sm">Rahoitettava summa</span>
-                          <p className="font-semibold text-midnight-900">{formatCurrency(application.equipment_price - (offer.upfront_payment || 0))}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => setActiveTab('offers')}
-                          className="btn-secondary flex-1"
-                        >
-                          Katso tarjouksen tiedot
-                        </button>
-                        <button
-                          onClick={() => handleAcceptOffer(offer.id)}
-                          className="btn-primary bg-green-600 hover:bg-green-700 flex-1"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Hae virallinen luottopäätös
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Offer section removed - now shown prominently at top of page */}
             </div>
           </div>
         )}
