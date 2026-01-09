@@ -58,18 +58,15 @@ export default function FinancierDashboard() {
       }
 
       try {
-        // Fetch applications assigned to this financier or with status SUBMITTED_TO_FINANCIER
-        const { data: apps, error: appsError } = await applications.list();
+        // Fetch applications: only ones this financier has made offers on, or new SUBMITTED ones
+        const { data: apps, error: appsError } = await applications.list(user?.id, 'FINANCIER');
         
         if (appsError) {
           console.error('Error fetching applications:', appsError);
           toast.error('Virhe hakemusten latauksessa');
         } else {
-          // Filter applications that are relevant for financier
-          const financierApps = (apps || []).filter((app: DbApplication) => 
-            ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'OFFER_RECEIVED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'CONTRACT_SENT', 'SIGNED', 'CLOSED'].includes(app.status)
-          );
-          setAppList(financierApps);
+          // All returned apps are already filtered for this financier
+          setAppList(apps || []);
           
           // Find applications with accepted offers
           const acceptedApps = financierApps.filter((app: DbApplication) => app.status === 'OFFER_ACCEPTED');

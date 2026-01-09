@@ -1681,10 +1681,9 @@ export const applications = {
   list: async (userId?: string, role?: string, email?: string) => {
     if (!isSupabaseConfigured()) return { data: [], error: null };
     
-    let query = supabase.from('applications').select('*');
-    
     // For customers, filter by user_id or email
     if (role === 'CUSTOMER' && (userId || email)) {
+      let query = supabase.from('applications').select('*');
       if (userId && email) {
         query = query.or(`user_id.eq.${userId},contact_email.ilike.${email}`);
       } else if (userId) {
@@ -1692,9 +1691,40 @@ export const applications = {
       } else if (email) {
         query = query.ilike('contact_email', email);
       }
+      const { data, error } = await query.order('created_at', { ascending: false });
+      return { data, error };
     }
     
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // For financiers, only show applications where they have made an offer OR new applications
+    if (role === 'FINANCIER' && userId) {
+      // First get application IDs where this financier has made offers
+      const { data: financierOffers } = await supabase
+        .from('offers')
+        .select('application_id')
+        .eq('financier_id', userId);
+      
+      const offerAppIds = financierOffers?.map(o => o.application_id) || [];
+      
+      // Get applications: either new (SUBMITTED) or ones they have offers on
+      let query = supabase.from('applications').select('*');
+      
+      if (offerAppIds.length > 0) {
+        // Show SUBMITTED apps OR apps where financier has made an offer
+        query = query.or(`status.eq.SUBMITTED,id.in.(${offerAppIds.join(',')})`);
+      } else {
+        // Only show SUBMITTED apps (new applications)
+        query = query.eq('status', 'SUBMITTED');
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
+      return { data, error };
+    }
+    
+    // For admins or no role specified, show all
+    const { data, error } = await supabase
+      .from('applications')
+      .select('*')
+      .order('created_at', { ascending: false });
     return { data, error };
   },
   create: async (applicationData: any) => {

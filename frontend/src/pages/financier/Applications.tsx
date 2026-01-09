@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { applications } from '../../lib/api';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
   formatDate,
@@ -50,6 +51,7 @@ const getFinancierStatusLabel = (status: string): string => {
 };
 
 export default function FinancierApplications() {
+  const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
   const [appList, setAppList] = useState<DbApplication[]>([]);
   const [filteredApps, setFilteredApps] = useState<DbApplication[]>([]);
@@ -68,20 +70,17 @@ export default function FinancierApplications() {
       }
 
       try {
-        const { data, error } = await applications.list();
+        // Fetch only applications where this financier has made offers OR new SUBMITTED ones
+        const { data, error } = await applications.list(user?.id, 'FINANCIER');
         if (error) {
           console.error('Error fetching applications:', error);
           toast.error('Virhe hakemusten latauksessa');
           return;
         }
         
-        // Filter applications that are relevant for financier
-        const financierApps = (data || []).filter((app: DbApplication) => 
-          ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'OFFER_RECEIVED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'CONTRACT_SENT', 'SIGNED', 'CLOSED'].includes(app.status)
-        );
-        
-        setAppList(financierApps);
-        setFilteredApps(financierApps);
+        // All returned apps are already filtered for this financier
+        setAppList(data || []);
+        setFilteredApps(data || []);
       } catch (error) {
         console.error('Failed to fetch applications:', error);
         toast.error('Virhe hakemusten latauksessa');
@@ -90,7 +89,7 @@ export default function FinancierApplications() {
       }
     };
     fetchApps();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     let filtered = appList;
