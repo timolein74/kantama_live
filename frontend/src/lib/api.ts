@@ -272,7 +272,7 @@ export const financiers = {
       // Generate a temporary password - user will reset it
       const tempPassword = `Temp${Date.now()}!${Math.random().toString(36).slice(2, 10)}`;
       
-      // Create user with signUp - this may send a confirmation email depending on settings
+      // Create user with signUp - redirect to set-password page
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: tempPassword,
@@ -282,7 +282,7 @@ export const financiers = {
             last_name: data.name.split(' ').slice(1).join(' ') || null,
             role: 'FINANCIER'
           },
-          emailRedirectTo: 'https://juurirahoitus.fi/login'
+          emailRedirectTo: 'https://juurirahoitus.fi/set-password'
         }
       });
       
@@ -295,7 +295,7 @@ export const financiers = {
         return { data: null, error: new Error('Failed to create user') };
       }
       
-      // Create/update profile
+      // Create/update profile with FINANCIER role
       const nameParts = data.name.split(' ');
       const { error: profileError } = await supabase.from('profiles').upsert({
         id: authData.user.id,
@@ -304,6 +304,7 @@ export const financiers = {
         last_name: nameParts.slice(1).join(' ') || null,
         role: 'FINANCIER',
         is_active: true,
+        is_verified: false,
         phone: data.phone || null,
         company_name: data.company_name || null,
         business_id: data.business_id || null
@@ -312,9 +313,6 @@ export const financiers = {
       if (profileError) {
         console.error('Profile error:', profileError);
       }
-      
-      // Note: signUp already sends confirmation email with link to set password
-      // No need to call resetPasswordForEmail - that would send a second email
       
       return { data: { user_id: authData.user.id, message: 'Kutsu lähetetty!' }, error: null };
     } catch (e: any) {
