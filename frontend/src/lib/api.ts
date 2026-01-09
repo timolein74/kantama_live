@@ -269,50 +269,33 @@ export const financiers = {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
     try {
-      // Generate a random password (user will set their own via magic link)
-      const tempPassword = Math.random().toString(36).slice(-12) + Math.random().toString(36).slice(-12);
+      // Generate a secure temporary password
+      const tempPassword = 'Temp!' + Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
       
-      // Create user in Supabase Auth with invite
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Create user using signUp (works without admin API)
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: data.email,
         password: tempPassword,
-        email_confirm: false, // Don't auto-confirm, send confirmation email
-        user_metadata: {
-          first_name: data.name.split(' ')[0],
-          last_name: data.name.split(' ').slice(1).join(' ') || null,
-          role: 'FINANCIER'
+        options: {
+          data: {
+            first_name: data.name.split(' ')[0],
+            last_name: data.name.split(' ').slice(1).join(' ') || null,
+            role: 'FINANCIER'
+          },
+          emailRedirectTo: `${window.location.origin}/set-password`
         }
       });
       
-      // If admin API fails (no service role), try inviteUserByEmail instead
-      if (authError) {
-        console.log('Admin API failed, trying inviteUserByEmail:', authError.message);
-        
-        // Use the Edge Function to send invite
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-financier`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-          },
-          body: JSON.stringify({
-            email: data.email,
-            name: data.name,
-            phone: data.phone,
-            company_name: data.company_name,
-            business_id: data.business_id
-          })
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to invite financier');
-        }
-        
-        return { data: await response.json(), error: null };
+      if (signUpError) {
+        console.error('SignUp error:', signUpError);
+        return { data: null, error: signUpError };
       }
       
-      // Create profile for the new user
+      if (!authData.user) {
+        return { data: null, error: new Error('User creation failed') };
+      }
+      
+      // Create/update profile for the new user
       const nameParts = data.name.split(' ');
       const { error: profileError } = await supabase
         .from('profiles')
@@ -332,7 +315,7 @@ export const financiers = {
         console.error('Profile creation error:', profileError);
       }
       
-      // Send password reset email so user can set their password
+      // Send password reset email so user can set their own password
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {
         redirectTo: `${window.location.origin}/set-password`
       });
@@ -341,7 +324,16 @@ export const financiers = {
         console.error('Password reset email error:', resetError);
       }
       
-      return { data: authData, error: null };
+      // Also send notification email via our email function
+      await sendNotificationEmail({
+        to: data.email,
+        subject: 'Kutsu Juuri Rahoitus -portaaliin',
+        type: 'message',
+        customer_name: data.name,
+        company_name: data.company_name || 'Juuri Rahoitus'
+      });
+      
+      return { data: { user: authData.user, message: 'Kutsu lähetetty!' }, error: null };
     } catch (e: any) {
       console.error('Invite financier error:', e);
       return { data: null, error: e };
