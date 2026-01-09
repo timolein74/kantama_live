@@ -753,18 +753,58 @@ export default function CustomerApplicationDetail() {
         </motion.div>
       )}
 
+      {/* PROMINENT OFFER CARD - Show at top when offer is available */}
       {application.status === 'OFFER_SENT' && activeOffer && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start space-x-3"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-6 text-white shadow-xl"
         >
-          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-green-800 font-medium">Tarjous saatavilla!</p>
-            <p className="text-green-700 text-sm mt-1">
-              Olet saanut rahoitustarjouksen. Tarkista tarjous ja hyväksy tai hylkää se.
-            </p>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-start space-x-4">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Euro className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold flex items-center">
+                  <Gift className="w-5 h-5 mr-2" />
+                  Sinulla on hyväksymätön tarjous!
+                </h2>
+                <div className="mt-2 flex flex-wrap gap-4 text-green-100">
+                  <div>
+                    <span className="text-sm opacity-80">Kuukausimaksu</span>
+                    <p className="text-2xl font-bold text-white">{formatCurrency(activeOffer.monthly_payment)}</p>
+                  </div>
+                  <div>
+                    <span className="text-sm opacity-80">Sopimuskausi</span>
+                    <p className="text-2xl font-bold text-white">{activeOffer.term_months} kk</p>
+                  </div>
+                  <div>
+                    <span className="text-sm opacity-80">Rahoitettava</span>
+                    <p className="text-2xl font-bold text-white">{formatCurrency(application.equipment_price - (activeOffer.upfront_payment || 0))}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setActiveTab('offers')}
+                className="bg-white text-green-700 px-6 py-3 rounded-xl font-bold hover:bg-green-50 transition-colors flex items-center justify-center shadow-lg"
+              >
+                Katso tarjouksen tiedot
+                <ArrowLeft className="w-5 h-5 ml-2 rotate-180" />
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('offers');
+                  // Scroll to offer and trigger accept
+                }}
+                className="bg-green-700 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-800 transition-colors flex items-center justify-center border border-white/30"
+              >
+                <Rocket className="w-5 h-5 mr-2" />
+                Hae virallinen luottopäätös
+              </button>
+            </div>
           </div>
         </motion.div>
       )}
