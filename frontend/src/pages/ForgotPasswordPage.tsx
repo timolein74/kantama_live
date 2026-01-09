@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Logo } from '../components/Logo';
+import Logo from '../components/Logo';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
