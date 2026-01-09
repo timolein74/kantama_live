@@ -234,7 +234,10 @@ export default function AdminApplicationDetail() {
       // Send notification and email to the selected financier
       try {
         // Get financier details
+        console.log('🔍 Looking for financier with ID:', selectedFinancierId);
+        console.log('🔍 Available financiers:', financierList.map(f => ({ id: f.id, name: f.name, email: f.email })));
         const selectedFinancier = financierList.find(f => f.id === selectedFinancierId);
+        console.log('🔍 Found financier:', selectedFinancier);
         
         if (selectedFinancier) {
           // Create in-app notification
@@ -574,12 +577,18 @@ export default function AdminApplicationDetail() {
               <label className="label">Valitse rahoittaja</label>
                 <select
                   value={selectedFinancierId || ''}
-                  onChange={(e) => setSelectedFinancierId(e.target.value || null)}
+                  onChange={(e) => {
+                    const newId = e.target.value || null;
+                    setSelectedFinancierId(newId);
+                    console.log('Selected financier ID:', newId);
+                    const fin = financierList.find(f => f.id === newId);
+                    console.log('Selected financier details:', fin);
+                  }}
                   className="input"
                 >
                   <option value="">-- Valitse --</option>
                   {availableFinanciers.map(f => (
-                    <option key={f.id} value={f.id}>{f.name}</option>
+                    <option key={f.id} value={f.id}>{f.name} ({f.email})</option>
                   ))}
                 </select>
             </div>
@@ -907,12 +916,16 @@ export default function AdminApplicationDetail() {
                   <div>
                     <select
                       value={selectedFinancierId || ''}
-                      onChange={(e) => setSelectedFinancierId(e.target.value || null)}
+                      onChange={(e) => {
+                        const newId = e.target.value || null;
+                        setSelectedFinancierId(newId);
+                        console.log('Selected financier ID:', newId);
+                      }}
                       className="input"
                     >
                       <option value="">-- Valitse rahoittaja --</option>
                       {availableFinanciers.map(f => (
-                        <option key={f.id} value={f.id}>{f.name}</option>
+                        <option key={f.id} value={f.id}>{f.name} ({f.email})</option>
                       ))}
                     </select>
                   </div>
