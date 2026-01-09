@@ -16,6 +16,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import VerifyPage from './pages/VerifyPage';
 import SetPasswordPage from './pages/SetPasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import Terms from './pages/Terms';
 
@@ -84,6 +85,9 @@ function App() {
 
         {/* Set password page (after magic link) */}
         <Route path="/set-password" element={<SetPasswordPage />} />
+
+        {/* Forgot password page */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
         {/* Legal pages (standalone) */}
         <Route path="/tietosuoja" element={<PrivacyPolicy />} />
