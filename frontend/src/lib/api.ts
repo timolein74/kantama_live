@@ -269,71 +269,23 @@ export const financiers = {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
     try {
-      // Generate a secure temporary password
-      const tempPassword = 'Temp!' + Math.random().toString(36).slice(-10) + Math.random().toString(36).slice(-10);
-      
-      // Create user using signUp (works without admin API)
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: tempPassword,
-        options: {
-          data: {
-            first_name: data.name.split(' ')[0],
-            last_name: data.name.split(' ').slice(1).join(' ') || null,
-            role: 'FINANCIER'
-          },
-          emailRedirectTo: `${window.location.origin}/set-password`
+      // Use Edge Function to create user and send single invite email
+      const response = await supabase.functions.invoke('invite-financier', {
+        body: {
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          company_name: data.company_name,
+          business_id: data.business_id
         }
       });
       
-      if (signUpError) {
-        console.error('SignUp error:', signUpError);
-        return { data: null, error: signUpError };
+      if (response.error) {
+        console.error('Invite error:', response.error);
+        return { data: null, error: response.error };
       }
       
-      if (!authData.user) {
-        return { data: null, error: new Error('User creation failed') };
-      }
-      
-      // Create/update profile for the new user
-      const nameParts = data.name.split(' ');
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .upsert({
-          id: authData.user.id,
-          email: data.email,
-          first_name: nameParts[0],
-          last_name: nameParts.slice(1).join(' ') || null,
-          role: 'FINANCIER',
-          is_active: true,
-          phone: data.phone || null,
-          company_name: data.company_name || null,
-          business_id: data.business_id || null
-        });
-      
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-      }
-      
-      // Send password reset email so user can set their own password
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: `${window.location.origin}/set-password`
-      });
-      
-      if (resetError) {
-        console.error('Password reset email error:', resetError);
-      }
-      
-      // Also send notification email via our email function
-      await sendNotificationEmail({
-        to: data.email,
-        subject: 'Kutsu Juuri Rahoitus -portaaliin',
-        type: 'message',
-        customer_name: data.name,
-        company_name: data.company_name || 'Juuri Rahoitus'
-      });
-      
-      return { data: { user: authData.user, message: 'Kutsu lähetetty!' }, error: null };
+      return { data: response.data, error: null };
     } catch (e: any) {
       console.error('Invite financier error:', e);
       return { data: null, error: e };
