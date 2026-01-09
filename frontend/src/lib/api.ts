@@ -269,23 +269,34 @@ export const financiers = {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
     try {
-      // Use Edge Function to create user and send single invite email
-      const response = await supabase.functions.invoke('invite-financier', {
-        body: {
+      // Use direct fetch to Edge Function to avoid CORS issues with supabase.functions.invoke
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/invite-financier`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({
           email: data.email,
           name: data.name,
           phone: data.phone,
           company_name: data.company_name,
           business_id: data.business_id
-        }
+        })
       });
       
-      if (response.error) {
-        console.error('Invite error:', response.error);
-        return { data: null, error: response.error };
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Invite error:', result);
+        return { data: null, error: new Error(result.error || 'Failed to invite financier') };
       }
       
-      return { data: response.data, error: null };
+      return { data: result, error: null };
     } catch (e: any) {
       console.error('Invite financier error:', e);
       return { data: null, error: e };
