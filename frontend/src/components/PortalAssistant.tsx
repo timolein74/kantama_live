@@ -264,8 +264,8 @@ export default function PortalAssistant({ variant = 'customer' }: PortalAssistan
       if (!user || !isSupabaseConfigured()) return;
       
       try {
-        // Get user's applications
-        const { data: apps } = await applications.list(user.id, 'CUSTOMER');
+        // Get user's applications - pass email too since apps might be linked by email only
+        const { data: apps } = await applications.list(user.id, 'CUSTOMER', user.email);
         
         // Get YTJ data from first application if available
         let ytjData = null;
