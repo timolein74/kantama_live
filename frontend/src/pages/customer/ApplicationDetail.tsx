@@ -163,12 +163,19 @@ export default function CustomerApplicationDetail() {
           msg.is_info_request === true && (msg.sender_role === 'FINANCIER' || msg.sender_role === 'ADMIN')
         );
         
+        // Deduplicate by ID (in case of any duplicates)
+        const uniqueInfoRequests = infoRequests.filter((msg: any, index: number, self: any[]) =>
+          index === self.findIndex((m: any) => m.id === msg.id)
+        );
+        
+        console.log('📨 Info requests found:', uniqueInfoRequests.length, uniqueInfoRequests.map((m: any) => ({ id: m.id, msg: m.message?.substring(0, 30) })));
+        
         // Find responses for each info request
         const responses = (messagesData || []).filter((msg: any) => 
           msg.sender_role === 'CUSTOMER' && msg.parent_message_id
         );
         
-        const transformedMessages = infoRequests.map((msg: any) => {
+        const transformedMessages = uniqueInfoRequests.map((msg: any) => {
           // Find any responses to this info request
           const msgResponses = responses.filter((r: any) => r.parent_message_id === msg.id);
           
