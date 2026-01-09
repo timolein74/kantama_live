@@ -22,7 +22,7 @@ import {
   Upload,
   AlertCircle
 } from 'lucide-react';
-import { applications, financiers, assignments, offers, contracts, infoRequests, messages, notifications as notificationsApi, files as filesApi, emailNotifications } from '../../lib/api';
+import { applications, financiers, assignments, offers, contracts, infoRequests, messages, notifications as notificationsApi, files as filesApi, emailNotifications, sendNotificationEmail } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import {
@@ -229,6 +229,49 @@ export default function AdminApplicationDetail() {
         } catch (err) {
           console.warn('Could not mark notifications as read:', err);
         }
+      }
+      
+      // Send notification and email to the selected financier
+      try {
+        // Get financier details
+        const selectedFinancier = financierList.find(f => f.id === selectedFinancierId);
+        
+        if (selectedFinancier) {
+          // Create in-app notification
+          await supabase.from('notifications').insert({
+            user_id: selectedFinancierId,
+            title: 'Uusi hakemus käsiteltäväksi',
+            message: `Sinulle on osoitettu hakemus: ${application?.company_name || 'Uusi yritys'}`,
+            action_url: `/financier/applications/${id}`
+          });
+          
+          // Send email notification
+          if (selectedFinancier.email) {
+            await sendNotificationEmail({
+              to: selectedFinancier.email,
+              subject: 'Uusi hakemus käsiteltäväksi - Juuri Rahoitus',
+              type: 'message',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #059669;">Uusi hakemus käsiteltäväksi</h2>
+                  <p>Hei ${selectedFinancier.first_name || ''},</p>
+                  <p>Sinulle on osoitettu uusi rahoitushakemus:</p>
+                  <ul>
+                    <li><strong>Yritys:</strong> ${application?.company_name || '-'}</li>
+                    <li><strong>Y-tunnus:</strong> ${application?.business_id || '-'}</li>
+                    <li><strong>Summa:</strong> ${application?.equipment_price?.toLocaleString('fi-FI')} €</li>
+                  </ul>
+                  ${assignmentNotes ? `<p><strong>Viesti adminilta:</strong> ${assignmentNotes}</p>` : ''}
+                  <p><a href="https://juurirahoitus.fi/financier/applications/${id}" style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Avaa hakemus</a></p>
+                  <p style="color: #666; font-size: 12px; margin-top: 20px;">Juuri Rahoitus Oy</p>
+                </div>
+              `
+            });
+            console.log('✅ Email sent to financier:', selectedFinancier.email);
+          }
+        }
+      } catch (notifErr) {
+        console.warn('Could not send notification to financier:', notifErr);
       }
       
       toast.success('Hakemus lähetetty rahoittajalle');
