@@ -269,34 +269,61 @@ export const financiers = {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
     try {
-      // Use direct fetch to Edge Function to avoid CORS issues with supabase.functions.invoke
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      // Generate a temporary password - user will reset it
+      const tempPassword = `Temp${Date.now()}!${Math.random().toString(36).slice(2, 10)}`;
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/invite-financier`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'apikey': supabaseAnonKey
-        },
-        body: JSON.stringify({
-          email: data.email,
-          name: data.name,
-          phone: data.phone,
-          company_name: data.company_name,
-          business_id: data.business_id
-        })
+      // Create user with signUp - this may send a confirmation email depending on settings
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: tempPassword,
+        options: {
+          data: {
+            first_name: data.name.split(' ')[0],
+            last_name: data.name.split(' ').slice(1).join(' ') || null,
+            role: 'FINANCIER'
+          },
+          emailRedirectTo: 'https://juurirahoitus.fi/login'
+        }
       });
       
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error('Invite error:', result);
-        return { data: null, error: new Error(result.error || 'Failed to invite financier') };
+      if (signUpError) {
+        console.error('SignUp error:', signUpError);
+        return { data: null, error: signUpError };
       }
       
-      return { data: result, error: null };
+      if (!authData.user) {
+        return { data: null, error: new Error('Failed to create user') };
+      }
+      
+      // Create/update profile
+      const nameParts = data.name.split(' ');
+      const { error: profileError } = await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        email: data.email,
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(' ') || null,
+        role: 'FINANCIER',
+        is_active: true,
+        phone: data.phone || null,
+        company_name: data.company_name || null,
+        business_id: data.business_id || null
+      });
+      
+      if (profileError) {
+        console.error('Profile error:', profileError);
+      }
+      
+      // Send password reset email so user can set their own password
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {
+        redirectTo: 'https://juurirahoitus.fi/set-password'
+      });
+      
+      if (resetError) {
+        console.error('Password reset email error:', resetError);
+        // Continue anyway - user was created
+      }
+      
+      return { data: { user_id: authData.user.id, message: 'Kutsu lähetetty!' }, error: null };
     } catch (e: any) {
       console.error('Invite financier error:', e);
       return { data: null, error: e };
