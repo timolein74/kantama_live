@@ -1436,31 +1436,7 @@ export default function CustomerApplicationDetail() {
                     </div>
                   )}
 
-                  {/* Contract PDF download if available */}
-                  {(contract as any).contract_pdf_url && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <FileText className="w-6 h-6 text-blue-600" />
-                          <div>
-                            <p className="font-medium text-blue-900">Sopimus-PDF</p>
-                            <p className="text-blue-700 text-sm">Lataa sopimus PDF-muodossa</p>
-                          </div>
-                        </div>
-                        <a 
-                          href={(contract as any).contract_pdf_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Lataa PDF
-                        </a>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Accept for signing button - only show if PDF exists and status is SENT */}
+                  {/* Contract PDF with side-by-side buttons when status is SENT */}
                   {(contract as any).contract_pdf_url && contract.status === 'SENT' && (
                     <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl p-5 mb-4">
                       {showVismaConfirmation && acceptingContractId === contract.id ? (
@@ -1484,41 +1460,77 @@ export default function CustomerApplicationDetail() {
                             <div className="flex-1">
                               <h4 className="font-bold text-emerald-800 text-lg mb-1">Hyväksy sopimus allekirjoitettavaksi</h4>
                               <p className="text-emerald-700 text-sm mb-4">
-                                Tarkista sopimuksen ehdot yllä olevasta PDF-tiedostosta. Hyväksymällä saat sähköpostiisi Visma Sign -allekirjoituslinkin.
+                                Tarkista sopimuksen ehdot PDF-tiedostosta. Hyväksymällä saat sähköpostiisi Visma Sign -allekirjoituslinkin.
                               </p>
-                              <button
-                                onClick={async () => {
-                                  setAcceptingContractId(contract.id);
-                                  try {
-                                    const { error } = await contracts.acceptForSigning(contract.id);
-                                    if (error) throw error;
-                                    setShowVismaConfirmation(true);
-                                    toast.success('Sopimus hyväksytty allekirjoitukseen!');
-                                  } catch (err) {
-                                    console.error('Error accepting contract:', err);
-                                    toast.error('Virhe sopimuksen hyväksymisessä');
-                                    setAcceptingContractId(null);
-                                  }
-                                }}
-                                disabled={acceptingContractId === contract.id}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center"
-                              >
-                                {acceptingContractId === contract.id && !showVismaConfirmation ? (
-                                  <>
-                                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                                    Käsitellään...
-                                  </>
-                                ) : (
-                                  <>
-                                    <CheckCircle className="w-5 h-5 mr-2" />
-                                    Hyväksyn sopimuksen allekirjoitukseen
-                                  </>
-                                )}
-                              </button>
+                              {/* Side-by-side buttons: Download PDF and Accept */}
+                              <div className="flex flex-col sm:flex-row gap-3">
+                                <a 
+                                  href={(contract as any).contract_pdf_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center"
+                                >
+                                  <Download className="w-5 h-5 mr-2" />
+                                  Lataa PDF
+                                </a>
+                                <button
+                                  onClick={async () => {
+                                    setAcceptingContractId(contract.id);
+                                    try {
+                                      const { error } = await contracts.acceptForSigning(contract.id);
+                                      if (error) throw error;
+                                      setShowVismaConfirmation(true);
+                                      toast.success('Sopimus hyväksytty allekirjoitukseen!');
+                                    } catch (err) {
+                                      console.error('Error accepting contract:', err);
+                                      toast.error('Virhe sopimuksen hyväksymisessä');
+                                      setAcceptingContractId(null);
+                                    }
+                                  }}
+                                  disabled={acceptingContractId === contract.id}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center justify-center"
+                                >
+                                  {acceptingContractId === contract.id && !showVismaConfirmation ? (
+                                    <>
+                                      <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                                      Käsitellään...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle className="w-5 h-5 mr-2" />
+                                      Hyväksyn sopimuksen allekirjoitukseen
+                                    </>
+                                  )}
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </>
                       )}
+                    </div>
+                  )}
+
+                  {/* Contract PDF download for non-SENT statuses (already signed, etc.) */}
+                  {(contract as any).contract_pdf_url && contract.status !== 'SENT' && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <FileText className="w-6 h-6 text-blue-600" />
+                          <div>
+                            <p className="font-medium text-blue-900">Sopimus-PDF</p>
+                            <p className="text-blue-700 text-sm">Lataa sopimus PDF-muodossa</p>
+                          </div>
+                        </div>
+                        <a 
+                          href={(contract as any).contract_pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary bg-blue-600 hover:bg-blue-700"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Lataa PDF
+                        </a>
+                      </div>
                     </div>
                   )}
 
@@ -1561,7 +1573,8 @@ export default function CustomerApplicationDetail() {
                       </div>
                     )}
                     
-                    {contract.status === 'SENT' && (
+                    {/* Only show upload signed PDF option if there's NO PDF attachment and status is SENT */}
+                    {contract.status === 'SENT' && !(contract as any).contract_pdf_url && (
                       <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
                         {/* Upload signed PDF */}
                         <div className="flex items-center gap-2">
