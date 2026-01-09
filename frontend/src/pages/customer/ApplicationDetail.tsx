@@ -90,6 +90,10 @@ export default function CustomerApplicationDetail() {
   const [showContractPreview, setShowContractPreview] = useState<Contract | null>(null);
   const [showContractModal, setShowContractModal] = useState<Contract | null>(null);
   const contractDocRef = useRef<HTMLDivElement>(null);
+  
+  // Contract signing acceptance
+  const [acceptingContractId, setAcceptingContractId] = useState<string | null>(null);
+  const [showVismaConfirmation, setShowVismaConfirmation] = useState(false);
 
   // Load application from Supabase
   useEffect(() => {
@@ -1455,6 +1459,81 @@ export default function CustomerApplicationDetail() {
                           <Download className="w-4 h-4 mr-2" />
                           Lataa PDF
                         </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accept for signing button - only show if PDF exists and status is SENT */}
+                  {(contract as any).contract_pdf_url && contract.status === 'SENT' && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl p-5 mb-4">
+                      {showVismaConfirmation && acceptingContractId === contract.id ? (
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="text-center"
+                        >
+                          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <CheckCircle className="w-8 h-8 text-emerald-600" />
+                          </div>
+                          <h4 className="text-xl font-bold text-emerald-800 mb-2">Sopimus hyväksytty allekirjoitukseen!</h4>
+                          <p className="text-emerald-700">Saat kohta sähköpostiisi Visma Sign -allekirjoituslinkin.</p>
+                        </motion.div>
+                      ) : (
+                        <>
+                          <div className="flex items-start space-x-4">
+                            <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center flex-shrink-0">
+                              <PenTool className="w-6 h-6 text-emerald-600" />
+                            </div>
+                            <div className="flex-1">
+                              <h4 className="font-bold text-emerald-800 text-lg mb-1">Hyväksy sopimus allekirjoitettavaksi</h4>
+                              <p className="text-emerald-700 text-sm mb-4">
+                                Tarkista sopimuksen ehdot yllä olevasta PDF-tiedostosta. Hyväksymällä saat sähköpostiisi Visma Sign -allekirjoituslinkin.
+                              </p>
+                              <button
+                                onClick={async () => {
+                                  setAcceptingContractId(contract.id);
+                                  try {
+                                    const { error } = await contracts.acceptForSigning(contract.id);
+                                    if (error) throw error;
+                                    setShowVismaConfirmation(true);
+                                    toast.success('Sopimus hyväksytty allekirjoitukseen!');
+                                  } catch (err) {
+                                    console.error('Error accepting contract:', err);
+                                    toast.error('Virhe sopimuksen hyväksymisessä');
+                                    setAcceptingContractId(null);
+                                  }
+                                }}
+                                disabled={acceptingContractId === contract.id}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-lg hover:shadow-xl flex items-center"
+                              >
+                                {acceptingContractId === contract.id && !showVismaConfirmation ? (
+                                  <>
+                                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                                    Käsitellään...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="w-5 h-5 mr-2" />
+                                    Hyväksyn sopimuksen allekirjoitukseen
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Show status if already accepted for signing */}
+                  {contract.status === 'WAITING_SIGNATURE' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-center space-x-3">
+                        <Clock className="w-6 h-6 text-amber-600" />
+                        <div>
+                          <p className="font-medium text-amber-900">Odottaa allekirjoituslinkkiä</p>
+                          <p className="text-amber-700 text-sm">Saat sähköpostiisi Visma Sign -allekirjoituslinkin pian.</p>
+                        </div>
                       </div>
                     </div>
                   )}

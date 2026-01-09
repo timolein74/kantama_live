@@ -16,7 +16,8 @@ import {
   PartyPopper,
   Sparkles,
   FileSignature,
-  Bell
+  Bell,
+  Send
 } from 'lucide-react';
 import { applications, notifications as notificationsApi, offers } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
@@ -100,8 +101,12 @@ export default function FinancierDashboard() {
   const offersSent = appList.filter(a => ['OFFER_RECEIVED', 'OFFER_SENT'].includes(a.status)).length;
   const offersAccepted = appList.filter(a => a.status === 'OFFER_ACCEPTED').length;
   const contractsSent = appList.filter(a => a.status === 'CONTRACT_SENT').length;
+  const contractsAccepted = appList.filter(a => a.status === 'CONTRACT_ACCEPTED').length;
   const completed = appList.filter(a => ['SIGNED', 'CLOSED'].includes(a.status)).length;
   const totalValue = appList.reduce((sum, app) => sum + (app.equipment_price || 0), 0);
+  
+  // Get apps waiting for Visma Sign
+  const contractAcceptedApps = appList.filter(a => a.status === 'CONTRACT_ACCEPTED');
 
   const recentApplications = appList.slice(0, 5);
 
@@ -237,6 +242,44 @@ export default function FinancierDashboard() {
               <FileSignature className="w-5 h-5 mr-2" />
               Tee luottopäätös
             </Link>
+          </div>
+        </motion.div>
+      )}
+
+      {/* CONTRACT ACCEPTED FOR SIGNING - Big prominent notification */}
+      {contractsAccepted > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-purple-600 to-violet-700 rounded-2xl p-6 text-white shadow-lg border-4 border-purple-300"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center animate-pulse">
+                <span className="text-4xl">🎉</span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold flex items-center">
+                  Sopimus hyväksytty allekirjoitukseen!
+                </h2>
+                <div className="mt-2">
+                  {contractAcceptedApps.map((app, idx) => (
+                    <p key={idx} className="text-purple-100 font-medium text-lg">
+                      • <strong>{app.company_name}</strong> odottaa Visma Sign -linkkiä
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Link
+                to="/financier/applications?status=CONTRACT_ACCEPTED"
+                className="bg-white text-purple-700 px-6 py-3 rounded-xl font-bold hover:bg-purple-50 transition-colors flex items-center shadow-lg"
+              >
+                <Send className="w-5 h-5 mr-2" />
+                Lähetä Visma Sign -linkki
+              </Link>
+            </div>
           </div>
         </motion.div>
       )}

@@ -631,13 +631,42 @@ export const infoRequests = {
       
       const notificationsToCreate = [];
       
-      // Notify the original sender (admin or financier)
+      // Notify the original sender (admin or financier) and send email
       if (originalRequest.sender_id) {
         notificationsToCreate.push({
           user_id: originalRequest.sender_id,
           title: 'Vastaus lisätietopyyntöön',
           message: `${app?.company_name || 'Asiakas'} vastasi viestiisi`
         });
+        
+        // Send email to the financier/admin who requested the info
+        const { data: sender } = await supabase
+          .from('profiles')
+          .select('email, first_name, role')
+          .eq('id', originalRequest.sender_id)
+          .single();
+        
+        if (sender?.email) {
+          try {
+            await sendNotificationEmail({
+              to: sender.email,
+              subject: 'Asiakas toimitti lisätiedot - Juuri Rahoitus',
+              type: 'info_request',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #059669;">📎 Lisätiedot toimitettu!</h2>
+                  <p>Hei ${sender.first_name || ''},</p>
+                  <p>Asiakas <strong>${app?.company_name || 'Yritys'}</strong> on vastannut lisätietopyyntöösi ja toimittanut pyydetyt dokumentit.</p>
+                  <p><a href="https://juurirahoitus.fi/financier/applications/${originalRequest.application_id}" style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Avaa hakemus ja tarkista liitteet</a></p>
+                  <p style="color: #666; font-size: 12px; margin-top: 20px;">Juuri Rahoitus Oy</p>
+                </div>
+              `
+            });
+            console.log('✅ Email sent to financier about info request response:', sender.email);
+          } catch (emailErr) {
+            console.warn('Failed to send email to financier:', emailErr);
+          }
+        }
       }
       
       // Also notify all admins if the sender was a financier
@@ -1209,6 +1238,130 @@ export const contracts = {
       .select()
       .single();
     return { data, error };
+  },
+  
+  // Customer accepts contract for signing (triggers Visma Sign process)
+  acceptForSigning: async (id: string | number) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    // Get contract with application details
+    const { data: contract } = await supabase
+      .from('contracts')
+      .select('application_id')
+      .eq('id', String(id))
+      .single();
+    
+    if (!contract) return { data: null, error: new Error('Contract not found') };
+    
+    // Update contract status to "WAITING_SIGNATURE"
+    const { data, error } = await supabase
+      .from('contracts')
+      .update({ 
+        status: 'WAITING_SIGNATURE',
+        accepted_for_signing_at: new Date().toISOString()
+      })
+      .eq('id', String(id))
+      .select()
+      .single();
+    
+    if (error) {
+      // If column doesn't exist, retry without accepted_for_signing_at
+      if (error.message?.includes('accepted_for_signing_at')) {
+        const fallbackResponse = await supabase
+          .from('contracts')
+          .update({ status: 'WAITING_SIGNATURE' })
+          .eq('id', String(id))
+          .select()
+          .single();
+        if (fallbackResponse.error) return { data: null, error: fallbackResponse.error };
+      } else {
+        return { data: null, error };
+      }
+    }
+    
+    // Get application details for notifications
+    const { data: app } = await supabase
+      .from('applications')
+      .select('company_name, contact_person, financier_id')
+      .eq('id', contract.application_id)
+      .single();
+    
+    // Get offer to find the financier who sent it
+    const { data: offer } = await supabase
+      .from('offers')
+      .select('financier_id')
+      .eq('application_id', contract.application_id)
+      .eq('status', 'ACCEPTED')
+      .single();
+    
+    const financierId = offer?.financier_id || app?.financier_id;
+    
+    // Notify the financier
+    if (financierId) {
+      await supabase.from('notifications').insert({
+        user_id: financierId,
+        title: '🎉 Asiakas hyväksyi sopimuksen allekirjoitukseen!',
+        message: `${app?.company_name || 'Asiakas'} on hyväksynyt sopimuksen ja odottaa Visma Sign -linkkiä`
+      });
+      
+      // Send email to financier
+      const { data: financier } = await supabase
+        .from('profiles')
+        .select('email, first_name')
+        .eq('id', financierId)
+        .single();
+      
+      if (financier?.email) {
+        try {
+          await sendNotificationEmail({
+            to: financier.email,
+            subject: '🎉 Asiakas hyväksyi sopimuksen allekirjoitukseen - Juuri Rahoitus',
+            type: 'contract_accepted',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 20px;">
+                  <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                  <h2 style="margin: 0; font-size: 24px;">Sopimus hyväksytty allekirjoitukseen!</h2>
+                </div>
+                <p style="color: #374151;">Hei ${financier.first_name || ''},</p>
+                <p style="color: #374151;"><strong>${app?.company_name || 'Asiakas'}</strong> on hyväksynyt sopimuksen ja odottaa Visma Sign -allekirjoituslinkkiä.</p>
+                <div style="background-color: #f0fdf4; border: 1px solid #86efac; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0; color: #166534;"><strong>Seuraava vaihe:</strong> Lähetä asiakkaalle Visma Sign -allekirjoituslinkki.</p>
+                </div>
+                <p><a href="https://juurirahoitus.fi/financier/applications/${contract.application_id}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: bold;">Avaa hakemus</a></p>
+                <p style="color: #6b7280; font-size: 12px; margin-top: 30px;">Juuri Rahoitus Oy</p>
+              </div>
+            `
+          });
+          console.log('✅ Email sent to financier about contract acceptance');
+        } catch (emailErr) {
+          console.warn('Failed to send email to financier:', emailErr);
+        }
+      }
+    }
+    
+    // Also notify admins
+    const { data: admins } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'ADMIN');
+    
+    if (admins && admins.length > 0) {
+      const adminNotifications = admins.map(admin => ({
+        user_id: admin.id,
+        title: '🎉 Asiakas hyväksyi sopimuksen',
+        message: `${app?.company_name || 'Asiakas'} odottaa Visma Sign -linkkiä`
+      }));
+      await supabase.from('notifications').insert(adminNotifications);
+    }
+    
+    // Update application status
+    await supabase
+      .from('applications')
+      .update({ status: 'CONTRACT_ACCEPTED' })
+      .eq('id', contract.application_id);
+    
+    return { data, error: null };
   },
   
   uploadSigned: async (id: string | number, file: File) => {
