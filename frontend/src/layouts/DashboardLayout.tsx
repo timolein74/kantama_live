@@ -13,6 +13,7 @@ import {
 import { useState, useEffect } from 'react';
 import { notifications as notificationsApi } from '../lib/api';
 import type { Notification } from '../types';
+import PortalAssistant from '../components/PortalAssistant';
 
 export default function DashboardLayout() {
   const { user, logout } = useAuthStore();
@@ -285,6 +286,9 @@ export default function DashboardLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Portal Assistant */}
+      <PortalAssistant variant="customer" />
     </div>
   );
 }
