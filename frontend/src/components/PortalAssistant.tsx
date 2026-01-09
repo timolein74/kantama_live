@@ -50,7 +50,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
     actions: (ctx, nav) => {
       const app = ctx.applications.find(a => a.status === 'OFFER_SENT' || a.status === 'OFFER_RECEIVED');
       if (app) {
-        return [{ label: 'Katso tarjous', icon: <Euro className="w-4 h-4" />, action: () => nav(`/customer/applications/${app.id}`), variant: 'primary' }];
+        return [{ label: 'Katso tarjous', icon: <Euro className="w-4 h-4" />, action: () => nav(`/dashboard/applications/${app.id}`), variant: 'primary' }];
       }
       return [];
     }
@@ -67,7 +67,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
     actions: (ctx, nav) => {
       const app = ctx.applications.find(a => a.status === 'CONTRACT_SENT');
       if (app) {
-        return [{ label: 'Avaa sopimus', icon: <FileText className="w-4 h-4" />, action: () => nav(`/customer/applications/${app.id}`), variant: 'primary' }];
+        return [{ label: 'Avaa sopimus', icon: <FileText className="w-4 h-4" />, action: () => nav(`/dashboard/applications/${app.id}`), variant: 'primary' }];
       }
       return [];
     }
@@ -81,7 +81,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       const statuses = ctx.applications.map(a => `• ${a.company_name}: ${getStatusLabel(a.status)}`).join('\n');
       return `Hakemustesi tilanne:\n\n${statuses}\n\nKlikkaa hakemusta nähdäksesi lisätiedot.`;
     },
-    actions: (ctx, nav) => [{ label: 'Näytä hakemukset', icon: <FileText className="w-4 h-4" />, action: () => nav('/customer'), variant: 'primary' }]
+    actions: (ctx, nav) => [{ label: 'Näytä hakemukset', icon: <FileText className="w-4 h-4" />, action: () => nav('/dashboard'), variant: 'primary' }]
   },
   {
     keywords: ['lisätiedot', 'dokumentit', 'liite', 'liitteet', 'tiedosto'],
@@ -95,7 +95,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
     actions: (ctx, nav) => {
       const app = ctx.applications.find(a => a.status === 'INFO_REQUESTED');
       if (app) {
-        return [{ label: 'Lähetä dokumentit', icon: <FileText className="w-4 h-4" />, action: () => nav(`/customer/applications/${app.id}`), variant: 'primary' }];
+        return [{ label: 'Lähetä dokumentit', icon: <FileText className="w-4 h-4" />, action: () => nav(`/dashboard/applications/${app.id}`), variant: 'primary' }];
       }
       return [];
     }
@@ -133,7 +133,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
     },
     actions: (ctx, nav) => {
       if (ctx.applications.length > 0) {
-        return [{ label: 'Lähetä viesti', icon: <Mail className="w-4 h-4" />, action: () => nav(`/customer/applications/${ctx.applications[0].id}`), variant: 'primary' }];
+        return [{ label: 'Lähetä viesti', icon: <Mail className="w-4 h-4" />, action: () => nav(`/dashboard/applications/${ctx.applications[0].id}`), variant: 'primary' }];
       }
       return [];
     }
@@ -192,7 +192,7 @@ function getSmartSuggestions(context: UserContext, navigate: any): QuickAction[]
   if (offerPending) {
     suggestions.push({
       label: '🎉 Tarjous odottaa!',
-      action: () => navigate(`/customer/applications/${offerPending.id}`),
+      action: () => navigate(`/dashboard/applications/${offerPending.id}`),
       variant: 'primary'
     });
   }
@@ -202,7 +202,7 @@ function getSmartSuggestions(context: UserContext, navigate: any): QuickAction[]
   if (infoRequest) {
     suggestions.push({
       label: '📎 Lisätietoja pyydetty',
-      action: () => navigate(`/customer/applications/${infoRequest.id}`),
+      action: () => navigate(`/dashboard/applications/${infoRequest.id}`),
       variant: 'primary'
     });
   }
@@ -212,7 +212,7 @@ function getSmartSuggestions(context: UserContext, navigate: any): QuickAction[]
   if (contractPending) {
     suggestions.push({
       label: '📝 Sopimus odottaa',
-      action: () => navigate(`/customer/applications/${contractPending.id}`),
+      action: () => navigate(`/dashboard/applications/${contractPending.id}`),
       variant: 'primary'
     });
   }
