@@ -152,7 +152,7 @@ export default function CustomerApplicationDetail() {
         const docLabels: Record<string, string> = {
           tilinpaatos: 'Tilinpäätös',
           tulosTase: 'Tulos ja tase ajot',
-          henkilokortti: 'Kuvallinen henkilökortti',
+          henkilokortti: 'Henkilötodistus (Passi / Henkilökortti)',
           kuvaKohteesta: 'Kuva kohteesta',
           urakkasopimus: 'Urakkasopimus',
           liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
@@ -397,7 +397,7 @@ export default function CustomerApplicationDetail() {
         const docLabels: Record<string, string> = {
           tilinpaatos: 'Tilinpäätös',
           tulosTase: 'Tulos ja tase ajot',
-          henkilokortti: 'Kuvallinen henkilökortti',
+          henkilokortti: 'Henkilötodistus (Passi / Henkilökortti)',
           kuvaKohteesta: 'Kuva kohteesta',
           urakkasopimus: 'Urakkasopimus',
           liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
@@ -1152,7 +1152,11 @@ export default function CustomerApplicationDetail() {
                         </div>
                         <div className="flex justify-between py-3 border-b border-slate-100">
                           <span className="text-slate-500">Jäännösarvo</span>
-                          <span className="font-semibold text-slate-900">{offer.residual_value && application.equipment_price ? ((offer.residual_value / application.equipment_price) * 100).toFixed(1) : '0.0'}%</span>
+                          <span className="font-semibold text-slate-900">
+                            {offer.residual_value && application.equipment_price 
+                              ? `${((offer.residual_value / application.equipment_price) * 100).toFixed(1)}% (${offer.residual_value.toLocaleString('fi-FI')} €)` 
+                              : '0.0%'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1746,7 +1750,7 @@ export default function CustomerApplicationDetail() {
                               const docLabels: Record<string, string> = {
                                 tilinpaatos: 'Tilinpäätös',
                                 tulosTase: 'Tulos ja tase ajot',
-                                henkilokortti: 'Kuvallinen henkilökortti',
+                                henkilokortti: 'Henkilötodistus (Passi / Henkilökortti)',
                                 kuvaKohteesta: 'Kuva kohteesta',
                                 urakkasopimus: 'Urakkasopimus',
                                 liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',

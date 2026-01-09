@@ -202,7 +202,7 @@ export default function FinancierApplicationDetail() {
   const documentLabels: Record<string, string> = {
     tilinpaatos: 'Tilinpäätös',
     tulosTase: 'Tulos ja tase ajot',
-    henkilokortti: 'Kuvallinen henkilökortti',
+    henkilokortti: 'Henkilötodistus (Passi / Henkilökortti)',
     kuvaKohteesta: 'Kuva kohteesta',
     urakkasopimus: 'Urakkasopimus',
     liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
@@ -1153,14 +1153,14 @@ export default function FinancierApplicationDetail() {
 
         {activeTab === 'offer' && (
           <div className="space-y-4">
-            {/* Create offer button */}
-            {!offerList.length && !showOfferForm && (
+            {/* Create offer button - show always if not in form mode */}
+            {!showOfferForm && (
               <button
                 onClick={() => setShowOfferForm(true)}
                 className="btn-primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Luo uusi tarjous
+                {offerList.length > 0 ? 'Tee toinen tarjous' : 'Luo uusi tarjous'}
               </button>
             )}
 
@@ -1379,14 +1379,20 @@ export default function FinancierApplicationDetail() {
                 <p className="text-slate-500">Luo tarjous hakemukselle.</p>
               </div>
             ) : (
-              offerList.map((offer) => (
-                <div key={offer.id} className="card">
+              offerList.map((offer, index) => (
+                <div key={offer.id} className={`card ${offer.status === 'ACCEPTED' ? 'border-2 border-emerald-500 bg-emerald-50/30' : ''}`}>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="font-semibold text-midnight-900">
-                        {offer.status === 'DRAFT' ? 'Tarjouksen luonnos' : 'Tarjous'}
+                      <h4 className="font-semibold text-midnight-900 flex items-center gap-2">
+                        {offer.status === 'DRAFT' ? 'Tarjouksen luonnos' : `Tarjous #${offerList.length - index}`}
+                        {offer.status === 'ACCEPTED' && (
+                          <span className="text-emerald-600 text-sm font-normal flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            Asiakkaan valitsema
+                          </span>
+                        )}
                       </h4>
-                      <p className="text-sm text-slate-600">{application.company_name}</p>
+                      <p className="text-sm text-slate-600">{application.company_name} • {formatDateTime(offer.created_at)}</p>
                     </div>
                     <span className={`badge ${
                       offer.status === 'DRAFT' ? 'badge-gray' :
@@ -1434,7 +1440,7 @@ export default function FinancierApplicationDetail() {
                         <div className="flex justify-between">
                           <span className="text-slate-600">Jäännösarvo:</span>
                           <span className="font-semibold text-midnight-900">
-                            {((offer.residual_value / application.equipment_price) * 100).toFixed(1)} %
+                            {((offer.residual_value / application.equipment_price) * 100).toFixed(1)} % ({offer.residual_value.toLocaleString('fi-FI')} €)
                           </span>
                         </div>
                       )}
@@ -2072,7 +2078,7 @@ export default function FinancierApplicationDetail() {
                     {[
                       { key: 'tilinpaatos', label: 'Tilinpäätös' },
                       { key: 'tulosTase', label: 'Tulos ja tase ajot' },
-                      { key: 'henkilokortti', label: 'Kuvallinen henkilökortti' },
+                      { key: 'henkilokortti', label: 'Henkilötodistus (Passi / Henkilökortti)' },
                       { key: 'kuvaKohteesta', label: 'Kuva kohteesta' },
                       { key: 'urakkasopimus', label: 'Urakkasopimus' },
                       { key: 'liiketoimintasuunnitelma', label: 'Liiketoimintasuunnitelma' },

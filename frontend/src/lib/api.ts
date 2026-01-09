@@ -1711,24 +1711,54 @@ export const applications = {
         return { data: null, error };
       }
       
-      // Create notifications for all admins
+      // Create notifications for all admins and financiers
       try {
-        const { data: admins } = await supabase
+        const { data: adminsAndFinanciers } = await supabase
           .from('profiles')
-          .select('id')
-          .eq('role', 'ADMIN');
+          .select('id, email, role')
+          .in('role', ['ADMIN', 'FINANCIER'])
+          .eq('is_active', true);
         
-        if (admins && admins.length > 0) {
-          const notifications = admins.map(admin => ({
-            user_id: admin.id,
+        if (adminsAndFinanciers && adminsAndFinanciers.length > 0) {
+          // Create in-app notifications
+          const notifications = adminsAndFinanciers.map(user => ({
+            user_id: user.id,
             title: 'Uusi hakemus',
             message: `Uusi rahoitushakemus: ${applicationData.company_name || 'Uusi yritys'}`
           }));
           
           await supabase.from('notifications').insert(notifications);
+          
+          // Send email notifications to financiers
+          const financiers = adminsAndFinanciers.filter(u => u.role === 'FINANCIER' && u.email);
+          for (const financier of financiers) {
+            try {
+              await sendNotificationEmail({
+                to: financier.email,
+                subject: 'Uusi rahoitushakemus',
+                html: `
+                  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #059669;">Uusi rahoitushakemus</h2>
+                    <p>Hei,</p>
+                    <p>Uusi rahoitushakemus on saapunut:</p>
+                    <ul>
+                      <li><strong>Yritys:</strong> ${applicationData.company_name || '-'}</li>
+                      <li><strong>Y-tunnus:</strong> ${applicationData.business_id || '-'}</li>
+                      <li><strong>Tyyppi:</strong> ${applicationData.application_type === 'LEASING' ? 'Leasing' : 'Takaisinvuokraus'}</li>
+                      <li><strong>Summa:</strong> ${applicationData.equipment_price?.toLocaleString('fi-FI')} €</li>
+                    </ul>
+                    <p><a href="https://juurirahoitus.fi/financier" style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Avaa portaali</a></p>
+                    <p style="color: #666; font-size: 12px;">Juuri Rahoitus Oy</p>
+                  </div>
+                `
+              });
+            } catch (emailErr) {
+              console.warn('Failed to send email to financier:', financier.email, emailErr);
+            }
+          }
         }
       } catch (notifError) {
-        console.warn('Failed to create admin notifications:', notifError);
+        console.warn('Failed to create notifications:', notifError);
       }
       
       return { data, error: null };

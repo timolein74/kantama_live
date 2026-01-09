@@ -998,7 +998,7 @@ export default function AdminApplicationDetail() {
                           <td className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50">Jäännösarvo</td>
                           <td className="px-4 py-2 text-sm font-semibold text-midnight-900">
                             {offer.residual_value && application.equipment_price 
-                              ? `${((offer.residual_value / application.equipment_price) * 100).toFixed(1)} %`
+                              ? `${((offer.residual_value / application.equipment_price) * 100).toFixed(1)} % (${offer.residual_value.toLocaleString('fi-FI')} €)`
                               : '-'}
                           </td>
                         </tr>
