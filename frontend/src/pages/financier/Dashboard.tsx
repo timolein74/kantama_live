@@ -170,9 +170,7 @@ export default function FinancierDashboard() {
                   // Mark notification as read and remove from list
                   try {
                     await notificationsApi.markAsRead(String(notif.id));
-                    setNotificationList(prev => prev.map(n => 
-                      n.id === notif.id ? { ...n, is_read: true } : n
-                    ));
+                    setNotificationList(prev => prev.filter(n => n.id !== notif.id));
                   } catch (err) {
                     console.error('Error marking notification as read:', err);
                   }
@@ -375,24 +373,30 @@ export default function FinancierDashboard() {
             <h2 className="font-display font-bold text-midnight-900">Ilmoitukset</h2>
           </div>
 
-          {notificationList.length === 0 ? (
+          {notificationList.filter(n => !n.is_read).length === 0 ? (
             <div className="text-center py-8">
               <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-slate-500">Ei ilmoituksia</p>
+              <p className="text-slate-500">Ei uusia ilmoituksia</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {notificationList.map((notif) => (
-                <div
+              {notificationList.filter(n => !n.is_read).map((notif) => (
+                <button
                   key={notif.id}
-                  className={`p-4 rounded-xl border ${
-                    notif.is_read ? 'bg-white border-slate-100' : 'bg-emerald-50 border-emerald-100'
-                  }`}
+                  onClick={async () => {
+                    try {
+                      await notificationsApi.markAsRead(String(notif.id));
+                      setNotificationList(prev => prev.filter(n => n.id !== notif.id));
+                    } catch (err) {
+                      console.error('Error marking notification as read:', err);
+                    }
+                  }}
+                  className="w-full text-left p-4 rounded-xl border bg-emerald-50 border-emerald-100 hover:bg-emerald-100 transition-colors"
                 >
                   <p className="font-medium text-midnight-900">{notif.title}</p>
                   <p className="text-sm text-slate-600 mt-1">{notif.message}</p>
-                  <p className="text-xs text-slate-400 mt-2">{formatDate(notif.created_at)}</p>
-                </div>
+                  <p className="text-xs text-slate-400 mt-2">{formatDate(notif.created_at)} • Klikkaa poistaaksesi</p>
+                </button>
               ))}
             </div>
           )}
