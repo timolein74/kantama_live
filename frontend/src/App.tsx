@@ -44,6 +44,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
 import { DemoPanel } from './components/DemoPanel';
 import { PasswordProtection } from './components/PasswordProtection';
+import { CookieConsent } from './components/CookieConsent';
 
 function App() {
   const { checkAuth } = useAuthStore();
@@ -126,6 +127,9 @@ function App() {
 
       {/* Demo panel - ONLY in localhost development */}
       {import.meta.env.DEV && <DemoPanel />}
+      
+      {/* Cookie consent banner */}
+      <CookieConsent />
     </PasswordProtection>
   );
 }
