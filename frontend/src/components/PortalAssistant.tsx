@@ -37,10 +37,13 @@ interface UserContext {
 }
 
 // Contextual knowledge base - knows about portal features
+// Based on comprehensive chatbot database with 50+ Q&A pairs across 18 categories
 const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => string; actions?: (ctx: UserContext, nav: any) => QuickAction[] }[] = [
-  // TARJOUKSET
+  // ===== YDINPALVELUT =====
+  
+  // TARJOUKSET - Näkeminen ja voimassaolo
   {
-    keywords: ['tarjous', 'tarjoukset', 'offer', 'tarjouksen'],
+    keywords: ['tarjous', 'tarjoukset', 'offer', 'tarjouksen', 'näytä tarjous'],
     answer: (ctx) => {
       const pendingOffers = ctx.applications.filter(a => a.status === 'OFFER_SENT' || a.status === 'OFFER_RECEIVED');
       if (pendingOffers.length > 0) {
@@ -56,7 +59,18 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
-  // SOPIMUS
+  // TARJOUKSEN VOIMASSAOLO
+  {
+    keywords: ['voimassa', 'kuinka kauan tarjous', 'tarjouksen voimassaolo', 'umpeutuu'],
+    answer: () => 'Tarjoukset ovat tyypillisesti voimassa 14-30 päivää. Tarkka voimassaoloaika näkyy tarjouksessa.\n\nJos tarjous on umpeutunut, voit pyytää uuden tarjouksen ottamalla yhteyttä rahoittajaan hakemuksesi kautta.'
+  },
+  // TARJOUSNEUVOTTELU
+  {
+    keywords: ['neuvottelu', 'neuvotella', 'tingitä', 'parempi', 'ehdot', 'muuttaa tarjous'],
+    answer: () => '💬 Kyllä, tarjouksesta voi neuvotella!\n\nVoit pyytää rahoittajalta:\n• Pidempää/lyhyempää sopimuskautta\n• Erilaista käsirahaa\n• Erilaista jäännösarvoa\n\nLähetä viesti hakemuksesi kautta ja kerro mitä ehtoja haluaisit muuttaa. Rahoittaja tekee tarvittaessa uuden tarjouksen.'
+  },
+
+  // SOPIMUKSET - Allekirjoitus ja muutokset
   {
     keywords: ['sopimus', 'allekirjoitus', 'allekirjoita', 'contract', 'sopimuksen'],
     answer: (ctx) => {
@@ -74,6 +88,17 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
+  // SOPIMUKSEN MUUTTAMINEN
+  {
+    keywords: ['muuttaa sopimus', 'sopimuksen muutos', 'muokata sopimus', 'kesken sopimus'],
+    answer: () => 'Sopimuksen muuttaminen kesken sopimuskauden on mahdollista tietyissä tilanteissa:\n\n✅ Mahdolliset muutokset:\n• Kohteen vaihto (järjestelymaksu)\n• Sopimuskauden pidentäminen\n• Ennenaikainen lunastus\n\n❌ Ei yleensä mahdollista:\n• Kuukausierän pienentäminen\n• Sopimuskauden lyhentäminen\n\nOta yhteyttä hakemuksesi kautta niin selvitetään mahdollisuudet!'
+  },
+  // SOPIMUKSEN IRTISANOMINEN
+  {
+    keywords: ['irtisano', 'lopettaa', 'peruuttaa', 'keskeyttää', 'purkaa sopimus'],
+    answer: () => '⚠️ Leasingsopimus on sitova koko sopimuskauden ajan.\n\nVaihtoehdot kesken kauden:\n\n1️⃣ Ennenaikainen lunastus\n• Maksat jäljellä olevat erät + jäännösarvo\n• Kohde siirtyy omistukseesi\n\n2️⃣ Kohteen vaihto\n• Vaihdat uuteen koneeseen\n• Uusi sopimus tehdään\n\nOta yhteyttä rahoittajaan keskustellaksesi vaihtoehdoista.'
+  },
+
   // HAKEMUS JA TILA
   {
     keywords: ['hakemus', 'hakemukset', 'tila', 'status', 'missä', 'vaihe', 'hakemuksen', 'eteneminen', 'tilanne'],
@@ -86,6 +111,17 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
     },
     actions: (ctx, nav) => [{ label: 'Näytä hakemukset', icon: <FileText className="w-4 h-4" />, action: () => nav('/dashboard'), variant: 'primary' }]
   },
+  // HAKEMUKSEN KÄSITTELYAIKA
+  {
+    keywords: ['käsittelyaika', 'kuinka nopeasti', 'milloin saan', 'odottaa'],
+    answer: () => '⏱️ Tyypilliset käsittelyajat:\n\n• Tarjous hakemuksen jälkeen: 1-2 arkipäivää\n• Luottopäätös: 1-3 arkipäivää\n• Sopimus allekirjoitettavaksi: 1-2 arkipäivää\n\nKiireellisissä tapauksissa ota yhteyttä hakemuksesi kautta - pyrimme joustavuuteen!'
+  },
+  // HAKEMUKSEN MUOKKAAMINEN
+  {
+    keywords: ['muokkaa hakemus', 'korjaa hakemus', 'väärä tieto', 'muuttaa hakemus'],
+    answer: () => 'Jos hakemuksessa on virheellisiä tietoja:\n\n1. Lähetä viesti hakemuksesi "Viestit"-välilehdeltä\n2. Kerro mitä tietoja pitää korjata\n3. Rahoittaja päivittää tiedot\n\nHuom! Hakemuksen perustiedot (summa, kohde) vaikuttavat tarjoukseen, joten muutokset kannattaa tehdä ennen tarjousta.'
+  },
+
   // DOKUMENTIT JA LIITTEET
   {
     keywords: ['lisätiedot', 'dokumentit', 'liite', 'liitteet', 'tiedosto', 'tilinpäätös', 'paperit', 'asiakirjat'],
@@ -94,7 +130,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       if (infoRequested) {
         return `Rahoittaja on pyytänyt lisätietoja hakemukseesi "${infoRequested.company_name}"! 📎\n\nAvaa hakemus ja lähetä pyydetyt dokumentit "Viestit"-välilehdeltä.`;
       }
-      return 'Voit lähettää lisädokumentteja hakemuksesi "Viestit"-välilehdeltä. Tyypillisesti tarvittavia dokumentteja ovat:\n\n• Tilinpäätös\n• Henkilötodistus\n• Kuva kohteesta\n• Urakkasopimus (tarvittaessa)';
+      return '📎 Tyypillisesti tarvittavia dokumentteja:\n\n• Tilinpäätös (viimeisin)\n• Tulos ja tase -ajot (tuoreet)\n• Henkilötodistus (passi/henkilökortti)\n• Kuva kohteesta\n• Urakkasopimus (tarvittaessa)\n\nRahoittaja ilmoittaa mitä dokumentteja juuri sinun hakemukseesi tarvitaan.';
     },
     actions: (ctx, nav) => {
       const app = ctx.applications.find(a => a.status === 'INFO_REQUESTED');
@@ -104,17 +140,12 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
-  // YRITYSTIEDOT JA YTJ
+  // DOKUMENTTIEN LATAAMINEN
   {
-    keywords: ['yritys', 'ytj', 'tiedot', 'y-tunnus', 'yrityksen'],
-    answer: (ctx) => {
-      if (ctx.ytjData) {
-        const ytj = ctx.ytjData;
-        return `Yrityksesi tiedot YTJ:stä:\n\n🏢 ${ytj.name || ctx.companyName}\n📍 ${ytj.address || 'Osoite ei saatavilla'}\n🏭 Toimiala: ${ytj.industry || 'Ei tiedossa'}\n📅 Perustettu: ${ytj.registrationDate || 'Ei tiedossa'}\n\nNämä tiedot haetaan automaattisesti Patentti- ja rekisterihallituksen YTJ-palvelusta.`;
-      }
-      return `Yritystietosi (${ctx.companyName}) haetaan automaattisesti YTJ:stä hakemuksen yhteydessä. Tiedot sisältävät yrityksen perustiedot, osoitteen ja toimialan.`;
-    }
+    keywords: ['lataa dokumentti', 'miten lähetän', 'tiedostomuoto', 'pdf'],
+    answer: () => 'Dokumenttien lähettäminen on helppoa:\n\n1. Avaa hakemuksesi "Viestit"-välilehti\n2. Klikkaa "Lisää liite" tai vedä tiedosto\n3. Lähetä viesti liitteineen\n\n📄 Tuetut muodot: PDF, JPG, PNG, DOC, XLS\n📦 Max koko: 10 MB per tiedosto'
   },
+
   // LUOTTOPÄÄTÖS
   {
     keywords: ['luottopäätös', 'luotto', 'päätös', 'hyväksyntä', 'luoton'],
@@ -123,78 +154,176 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       if (creditPending) {
         return `Luottopäätös on käsittelyssä! ⏳\n\nSaat tiedon päätöksestä sähköpostiisi. Käsittelyaika on yleensä 1-3 arkipäivää.`;
       }
-      return 'Luottopäätös tehdään kun olet hyväksynyt tarjouksen ja toimittanut tarvittavat dokumentit. Päätös perustuu yrityksen taloustietoihin ja luottokelpoisuuteen.';
+      return 'Luottopäätös tehdään kun olet hyväksynyt tarjouksen ja toimittanut tarvittavat dokumentit.\n\nPäätökseen vaikuttavat:\n• Yrityksen taloustiedot\n• Maksuhäiriömerkinnät\n• Yrityksen ikä ja historia\n• Rahoitettavan kohteen arvo';
     }
   },
-  // MAKSUT JA HINNOITTELU
+  // HYLÄTTY LUOTTOPÄÄTÖS
   {
-    keywords: ['maksu', 'kuukausi', 'erä', 'hinta', 'kuukausierä', 'maksaa', 'paljonko', 'kustannus'],
-    answer: (ctx) => {
-      return 'Kuukausierä määräytyy rahoitettavan summan, sopimuskauden ja jäännösarvon mukaan. Näet tarkan kuukausierän tarjouksessa. Tyypillisesti erä sisältää:\n\n• Pääoman lyhennys\n• Korko\n• Mahdollinen laskutuslisä (n. 9€/kk)\n\nALV 25,5% lisätään kuukausierään.';
-    }
+    keywords: ['hylätty', 'ei mennyt läpi', 'kielteinen', 'hylkäys', 'miksi hylättiin'],
+    answer: () => 'Jos luottopäätös on kielteinen, syitä voivat olla:\n\n• Maksuhäiriömerkinnät\n• Heikko taloustilanne\n• Yritys liian nuori\n• Liian suuri rahoitustarve\n\n💡 Voit kokeilla:\n• Suurempaa käsirahaa\n• Pienempää rahoitussummaa\n• Hakea uudelleen myöhemmin\n\nOta yhteyttä niin keskustellaan vaihtoehdoista!'
   },
-  // LEASING
+
+  // ===== RAHOITUSVAIHTOEHDOT =====
+
+  // LEASING PERUSTEET
   {
-    keywords: ['leasing', 'lea', 'vuokraus', 'mitä', 'mikä', 'rahoitus'],
-    answer: (ctx) => {
-      return 'Leasing on rahoitusmuoto, jossa vuokraat laitteen tai koneen sovituksi ajaksi kiinteällä kuukausierällä.\n\n✅ Ei sido pääomaa\n✅ Kiinteä kuukausierä\n✅ Sopimuskauden päätyttyä voit lunastaa, palauttaa tai jatkaa\n\nSopii erityisesti yrityksille, jotka haluavat pitää käyttöpääoman vapaana.';
-    }
+    keywords: ['leasing', 'lea', 'mitä on leasing', 'miten leasing'],
+    answer: () => '📋 Leasing on rahoitusmuoto, jossa:\n\n✅ Vuokraat koneen/laitteen kiinteällä kuukausierällä\n✅ Et sido pääomaa\n✅ Kuukausierä on vähennyskelpoinen kulu\n✅ Sopimuskauden lopussa voit lunastaa, palauttaa tai jatkaa\n\nLeasing sopii erityisesti yrityksille, jotka haluavat pitää käyttöpääoman vapaana ja ennustaa kulut tarkasti.'
   },
-  // TAKAISINVUOKRAUS / SALE-LEASEBACK
+  // LEASING VS LAINA
   {
-    keywords: ['takaisinvuokraus', 'slb', 'sale-leaseback', 'sale', 'myy', 'omistan'],
-    answer: (ctx) => {
-      return 'Takaisinvuokraus (Sale-Leaseback) tarkoittaa, että myyt omistamasi koneen tai laitteen rahoitusyhtiölle ja vuokraat sen takaisin.\n\n💰 Vapautat pääomaa kassaan\n✅ Jatkat kohteen käyttöä normaalisti\n✅ Kiinteä kuukausierä\n\nSopii erinomaisesti käyttöpääoman vahvistamiseen!';
-    }
+    keywords: ['ero', 'laina', 'pankki', 'luotto', 'rahoitus vai', 'kumpi parempi'],
+    answer: () => '📊 Leasing vs. Pankkilaina:\n\n💚 Leasing:\n• Ei sido pääomaa\n• Kiinteä kuukausierä\n• Vähennyskelpoinen kulu\n• Nopea prosessi\n• Kohde vakuutena\n\n🏦 Pankkilaina:\n• Kohde omaksi heti\n• Voi vaatia lisävakuuksia\n• Usein korkosidonnainen\n• Pidempi käsittelyaika\n\nLeasing on yleensä parempi valinta kalustohankintoihin!'
   },
-  // KÄSIRAHA JA ENNAKKO
+  // LEASING TYYPIT
+  {
+    keywords: ['rahoitusleasing', 'huoltoleasing', 'käyttöleasing', 'leasing tyyppi'],
+    answer: () => '📋 Leasing-tyypit:\n\n1️⃣ Rahoitusleasing (yleisin)\n• Kiinteä kuukausierä\n• Lunastus mahdollinen\n• Sopii koneisiin ja laitteisiin\n\n2️⃣ Käyttöleasing\n• Sisältää usein huollon\n• Lyhyempi sitoutuminen\n• Sopii autoihin\n\n3️⃣ Huoltoleasing\n• Sisältää huolto- ja ylläpitopalvelut\n• Kokonaiskustannus selvillä\n\nJuuri Rahoituksessa käytämme pääasiassa rahoitusleasingiä.'
+  },
+
+  // TAKAISINVUOKRAUS
+  {
+    keywords: ['takaisinvuokraus', 'slb', 'sale-leaseback', 'sale', 'myy', 'omistan jo'],
+    answer: () => '💰 Takaisinvuokraus (Sale-Leaseback):\n\nMyyt omistamasi koneen rahoitusyhtiölle ja vuokraat sen takaisin itsellesi.\n\n✅ Edut:\n• Vapautat pääomaa kassaan heti\n• Jatkat koneen käyttöä normaalisti\n• Kiinteä kuukausierä\n• Parantaa kassavirtaa\n\nSopii erinomaisesti käyttöpääoman vahvistamiseen tai uusiin investointeihin!'
+  },
+  // TAKAISINVUOKRAUS ARVOSTUS
+  {
+    keywords: ['arvostus', 'paljonko saan', 'koneen arvo', 'arviointi'],
+    answer: () => '💎 Koneen arvostus takaisinvuokrauksessa:\n\n• Perustuu kohteen käypään markkina-arvoon\n• Huomioi iän, kunnon ja käyttötunnit\n• Tyypillisesti 60-80% uushankintahinnasta\n\nTee hakemus niin rahoittaja arvioi kohteesi arvon ja tekee tarjouksen!'
+  },
+
+  // ===== TALOUDELLISET =====
+
+  // MAKSUT JA KUUKAUSIERÄ
+  {
+    keywords: ['maksu', 'kuukausi', 'erä', 'hinta', 'kuukausierä', 'maksaa', 'paljonko'],
+    answer: () => '💰 Kuukausierä koostuu:\n\n• Pääoman lyhennys\n• Korko\n• Laskutuslisä (n. 9€/kk)\n\nErän suuruuteen vaikuttavat:\n• Rahoitettava summa\n• Sopimuskausi (24-72 kk)\n• Käsiraha\n• Jäännösarvo\n\nTarkka kuukausierä näkyy tarjouksessa. ALV 25,5% lisätään erään.'
+  },
+  // MAKSUTAVAT
+  {
+    keywords: ['maksutapa', 'lasku', 'e-lasku', 'suoramaksu', 'miten maksan'],
+    answer: () => '💳 Maksutavat:\n\n• E-lasku (suositus)\n• Paperilasku\n• Suoramaksu\n\nLasku tulee kuukausittain ja eräpäivä on tyypillisesti kuun 15. tai viimeinen päivä. Voit vaihtaa maksutapaa ottamalla yhteyttä.'
+  },
+  // MAKSUVIIVÄSTYKSET
+  {
+    keywords: ['myöhässä', 'viivästys', 'maksamatta', 'unohdin', 'eräpäivä'],
+    answer: () => '⚠️ Jos maksu on myöhässä:\n\n1. Maksa lasku mahdollisimman pian\n2. Myöhästyneestä maksusta peritään viivästyskorko\n3. Toistuvat myöhästymiset voivat johtaa perintään\n\n💡 Jos tiedät etukäteen ongelmista, ota heti yhteyttä - löydämme usein ratkaisun!'
+  },
+  // MAKSUVAIKEUDET
+  {
+    keywords: ['maksuvaikeus', 'ei pysty', 'taloudellinen', 'vaikea', 'maksukyky'],
+    answer: () => '🆘 Maksuvaikeuksissa toimi näin:\n\n1️⃣ Ota HETI yhteyttä rahoittajaan\n2️⃣ Kerro tilanteesta avoimesti\n3️⃣ Yhdessä etsitään ratkaisu\n\n💚 Mahdollisia järjestelyjä:\n• Maksuajan pidennys\n• Maksuerän pienennys väliaikaisesti\n• Maksuvapaa kuukausi\n\nÄlä jätä laskuja maksamatta ilman yhteydenottoa!'
+  },
+
+  // KÄSIRAHA
   {
     keywords: ['käsiraha', 'ennakko', 'alkumaksu', 'omarahoitus', 'ennakkovuokra'],
-    answer: (ctx) => {
-      return 'Käsiraha (ennakkovuokra) on vapaaehtoinen alkumaksu, joka:\n\n• Pienentää rahoitettavaa summaa\n• Laskee kuukausierää\n• Voi parantaa rahoituksen ehtoja\n\nKäsiraha ei ole pakollinen - voit rahoittaa myös 100% kohteen arvosta.';
-    }
+    answer: () => '💵 Käsiraha (ennakkovuokra):\n\n• Vapaaehtoinen alkumaksu\n• Pienentää rahoitettavaa summaa\n• Laskee kuukausierää\n• Voi parantaa rahoitusehtoja\n\n❓ Onko pakollinen?\nEi! Voit rahoittaa myös 100% kohteen arvosta ilman käsirahaa.'
   },
+
   // JÄÄNNÖSARVO
   {
-    keywords: ['jäännösarvo', 'lunastus', 'osta', 'omaksi', 'loppu'],
-    answer: (ctx) => {
-      return 'Jäännösarvo on summa, jolla voit lunastaa kohteen itsellesi sopimuskauden päätyttyä.\n\n• Sovitaan etukäteen sopimusta tehdessä\n• Tyypillisesti 0-20% kohteen arvosta\n• Suurempi jäännösarvo = pienempi kuukausierä\n\nSopimuskauden päätyttyä voit myös palauttaa kohteen tai jatkaa sopimusta.';
-    }
+    keywords: ['jäännösarvo', 'lunastus', 'osta', 'omaksi', 'loppu', 'sopimuskauden jälkeen'],
+    answer: () => '📊 Jäännösarvo:\n\nSumma, jolla voit lunastaa kohteen sopimuskauden päätyttyä.\n\n• Sovitaan etukäteen (tyypillisesti 0-20%)\n• Suurempi jäännösarvo = pienempi kuukausierä\n\n🔚 Sopimuskauden lopussa voit:\n1. Lunastaa kohteen (maksat jäännösarvon)\n2. Palauttaa kohteen\n3. Jatkaa sopimusta uudella kaudella'
   },
+
   // SOPIMUSKAUSI
   {
     keywords: ['sopimuskausi', 'aika', 'kesto', 'kausi', 'pituus', 'kuinka kauan', 'kauanko'],
-    answer: (ctx) => {
-      return 'Sopimuskausi vaihtelee yleensä 24-72 kuukauden välillä.\n\n📅 Lyhyempi kausi (24-36 kk):\n• Suurempi kuukausierä\n• Nopeampi lunastus\n\n📅 Pidempi kausi (48-72 kk):\n• Pienempi kuukausierä\n• Sopii suuremmille investoinneille\n\nVoit valita yrityksellesi sopivimman vaihtoehdon!';
-    }
+    answer: () => '📅 Sopimuskausi:\n\nTyypillisesti 24-72 kuukautta.\n\n⚡ Lyhyempi kausi (24-36 kk):\n• Suurempi kuukausierä\n• Nopeampi lunastus\n• Sopii nopeasti kuluviin kohteisiin\n\n🔄 Pidempi kausi (48-72 kk):\n• Pienempi kuukausierä\n• Sopii kalliimmille kohteille\n• Parempi kassavirta\n\nValitse yrityksellesi sopiva kausi!'
   },
+
+  // ALV JA VEROTUS
+  {
+    keywords: ['alv', 'vero', 'verotus', 'arvonlisävero', 'vähennys'],
+    answer: () => '🧾 ALV ja verotus leasingissä:\n\n✅ ALV-käsittely:\n• Kuukausierään lisätään ALV 25,5%\n• ALV-velvollinen yritys vähentää ALV:n normaalisti\n\n✅ Tuloverotus:\n• Kuukausierät ovat vähennyskelpoista liiketoiminnan kulua\n• Ei poistoja kirjanpitoon\n\nLeasing on verotuksellisesti edullinen tapa hankkia kalustoa!'
+  },
+  // OSINGOT JA RAHOITUS
+  {
+    keywords: ['osinko', 'yrityksen raha', 'varallisuus'],
+    answer: () => '💼 Leasing ja yrityksen talous:\n\nLeasing ei sido yrityksen pääomaa, joten:\n\n✅ Käyttöpääoma pysyy vapaana\n✅ Osinkoja voidaan jakaa normaalisti\n✅ Tase ei rasitu samalla tavalla kuin lainassa\n✅ Tunnusluvut (esim. omavaraisuus) eivät heikkene yhtä paljon\n\nLeasing on kassavirran kannalta järkevä valinta!'
+  },
+
+  // ===== ERITYISTILANTEET =====
+
+  // YRITYSKAUPPA
+  {
+    keywords: ['yrityskauppa', 'myydä yritys', 'omistajanvaihdos', 'sukupolvenvaihdos'],
+    answer: () => '🏢 Leasingsopimus yrityskaupassa:\n\nJos yritys vaihtaa omistajaa:\n\n1. Ilmoita rahoittajalle heti\n2. Sopimus voidaan siirtää uudelle omistajalle\n3. Uusi omistaja käy läpi luottokelpoisuusarvioinnin\n4. Siirto vaatii rahoittajan hyväksynnän\n\nOta yhteyttä ajoissa niin hoidetaan siirto sujuvasti!'
+  },
+  // KONKURSSI
+  {
+    keywords: ['konkurssi', 'saneeraus', 'maksukyvytön', 'lopettaa yritys'],
+    answer: () => '⚠️ Konkurssi/saneeraustilanteessa:\n\n🔴 Konkurssi:\n• Leasingkohde palautetaan rahoittajalle\n• Pesänhoitaja hoitaa käytännön järjestelyt\n\n🟡 Yrityssaneeraus:\n• Sopimus voidaan usein jatkaa\n• Ehdoista neuvotellaan saneerausohjelmassa\n\n💚 Ota yhteyttä heti kun tilanne selviää - etsitään yhdessä paras ratkaisu!'
+  },
+
+  // VAKUUDET
+  {
+    keywords: ['vakuus', 'takaus', 'henkilötakaus', 'vakuudet'],
+    answer: () => '🔐 Vakuudet leasingissä:\n\n✅ Pääsääntöisesti EI tarvita lisävakuuksia\n• Rahoitettava kohde toimii vakuutena\n\n❓ Milloin voidaan pyytää:\n• Henkilötakaus (nuori/pieni yritys)\n• Lisävakuus (erityisen suuri rahoitus)\n\nVakuustarve selviää luottopäätöksen yhteydessä.'
+  },
+
+  // KÄYTETYT KONEET
+  {
+    keywords: ['käytetty', 'vanha', 'käytetyn', 'second hand', 'ikä'],
+    answer: () => '🔧 Käytetyt koneet ja laitteet:\n\n✅ Rahoitamme myös käytettyjä koneita!\n\nHuomioitavaa:\n• Kohteen kunto arvioidaan\n• Ikä vaikuttaa sopimuskauden pituuteen\n• Käyttötunnit huomioidaan\n\n💡 Takaisinvuokraus sopii erityisen hyvin jo omistetuille käytetyille koneille!'
+  },
+  // OHJELMISTOT JA IT
+  {
+    keywords: ['ohjelmisto', 'software', 'it', 'tietokone', 'palvelin', 'lisenssi'],
+    answer: () => '💻 IT-laitteet ja ohjelmistot:\n\n✅ Rahoitamme:\n• Tietokoneet ja palvelimet\n• IT-infrastruktuuri\n• Tuotannonohjausjärjestelmät\n\n❌ Emme yleensä rahoita:\n• Pelkkiä ohjelmistolisenssejä\n• SaaS-palveluita\n\nLisätietoja? Kysy hakemuksen yhteydessä!'
+  },
+
+  // ===== PROSESSI JA TUKI =====
+
   // PROSESSI JA AIKATAULU
   {
     keywords: ['prosessi', 'miten', 'kuinka', 'toimii', 'kauanko', 'kestää', 'aikataulu', 'nopea'],
-    answer: (ctx) => {
-      return 'Rahoitusprosessi on nopea:\n\n1️⃣ Hakemus (5 min)\n2️⃣ Tarjous (1-2 arkipäivää)\n3️⃣ Hyväksyntä + dokumentit\n4️⃣ Luottopäätös (1-3 arkipäivää)\n5️⃣ Sopimus allekirjoitettavaksi\n6️⃣ Rahoitus aktivoituu!\n\nKokonaisuudessaan prosessi kestää tyypillisesti 3-7 arkipäivää.';
-    }
+    answer: () => '⚡ Rahoitusprosessi vaihe vaiheelta:\n\n1️⃣ Hakemus (5 min)\n2️⃣ Tarjous (1-2 arkipäivää)\n3️⃣ Hyväksyntä + dokumentit\n4️⃣ Luottopäätös (1-3 arkipäivää)\n5️⃣ Sopimus allekirjoitettavaksi\n6️⃣ Rahoitus aktivoituu!\n\n📅 Kokonaisuudessaan tyypillisesti 3-7 arkipäivää. Kiireellisissä tapauksissa jopa nopeammin!'
   },
-  // MITÄ RAHOITETAAN
+  // NOPEUTTAMINEN
   {
-    keywords: ['kohde', 'laite', 'kone', 'rahoite', 'rahoitettav', 'auto', 'kuorma', 'traktori'],
-    answer: (ctx) => {
-      return 'Rahoitamme laajasti erilaisia koneita ja laitteita:\n\n🚛 Kuorma-autot ja ajoneuvot\n🚜 Maatalous- ja metsäkoneet\n🏗️ Rakennuskoneet\n🏭 Tuotantolaitteet\n💻 IT-laitteet\n\nJos et ole varma, kysy - arvioimme jokaisen hakemuksen tapauskohtaisesti!';
-    }
+    keywords: ['nopeuttaa', 'nopeammin', 'kiire', 'heti', 'pikaisesti'],
+    answer: () => '⚡ Näin nopeutat prosessia:\n\n1. Täytä hakemus huolellisesti\n2. Lisää kaikki dokumentit heti\n3. Vastaa lisätietopyyntöihin nopeasti\n4. Mainitse kiireestä hakemuksessa\n\n💡 Kiireellisissä tapauksissa lähetä viesti hakemuksesi kautta!'
   },
-  // ASIAKASPALVELU JA YHTEYDENOTTO
+
+  // ASIAKASPALVELU
   {
     keywords: ['yhteyttä', 'apu', 'ihminen', 'puhelin', 'soita', 'asiakaspalvelu', 'kontakti', 'sähköposti'],
+    answer: () => '📞 Ota yhteyttä:\n\n💬 Nopein tapa: Viesti hakemuksen kautta\n→ Rahoittaja näkee kaikki tietosi suoraan\n\n📧 Sähköposti: info@juurirahoitus.fi\n\nHakemuksesi kautta lähetetty viesti menee suoraan rahoittajalle ja saat nopeimman vastauksen!'
+  },
+  // TAKAISINSOITTO
+  {
+    keywords: ['takaisinsoitto', 'soittaa', 'puhelinnumero', 'soittopyyntö'],
+    answer: () => '📞 Haluatko takaisinsoiton?\n\nLähetä viesti hakemuksesi kautta ja kerro:\n• Puhelinnumerosi\n• Sopiva soittoaika\n• Mitä asia koskee\n\nRahoittaja soittaa sinulle sovittuna aikana!'
+  },
+
+  // MIKSI JUURIRAHOITUS
+  {
+    keywords: ['miksi', 'ero muihin', 'kilpailija', 'parempi', 'juuri', 'juurirahoitus'],
+    answer: () => '💚 Miksi Juuri Rahoitus?\n\n✅ Nopea prosessi (jopa 3 päivää)\n✅ Kilpailukykyiset ehdot\n✅ Henkilökohtainen palvelu\n✅ Erikoistunut konerahoitukseen\n✅ Suomalainen toimija\n✅ Joustava ja ymmärtävä\n\nMe ymmärrämme yrittäjän arkea ja teemme rahoituksesta helppoa!'
+  },
+
+  // ===== PERUSTOIMINNOT =====
+
+  // YRITYSTIEDOT JA YTJ
+  {
+    keywords: ['yritys', 'ytj', 'tiedot', 'y-tunnus', 'yrityksen'],
     answer: (ctx) => {
-      return 'Saat apua seuraavasti:\n\n💬 Viesti hakemuksen kautta (suositus!)\n📧 info@juurirahoitus.fi\n\nHakemuksen kautta lähetetty viesti on nopein tapa saada vastaus, koska rahoittaja näkee kaikki tietosi suoraan.';
-    },
-    actions: (ctx, nav) => {
-      if (ctx.applications.length > 0) {
-        return [{ label: 'Lähetä viesti', icon: <Mail className="w-4 h-4" />, action: () => nav(`/dashboard/applications/${ctx.applications[0].id}`), variant: 'primary' }];
+      if (ctx.ytjData) {
+        const ytj = ctx.ytjData;
+        return `Yrityksesi tiedot YTJ:stä:\n\n🏢 ${ytj.name || ctx.companyName}\n📍 ${ytj.address || 'Osoite ei saatavilla'}\n🏭 Toimiala: ${ytj.industry || 'Ei tiedossa'}\n📅 Perustettu: ${ytj.registrationDate || 'Ei tiedossa'}\n\nTiedot haetaan automaattisesti hakemuksen yhteydessä.`;
       }
-      return [];
+      return `Yritystietosi (${ctx.companyName}) haetaan automaattisesti YTJ:stä hakemuksen yhteydessä.`;
     }
   },
+
+  // MITÄ RAHOITETAAN
+  {
+    keywords: ['kohde', 'laite', 'kone', 'rahoite', 'rahoitettav', 'auto', 'kuorma', 'traktori', 'kaivinkone'],
+    answer: () => '🏗️ Rahoitamme laajasti erilaisia koneita:\n\n🚛 Kuorma-autot ja perävaunut\n🚜 Maatalous- ja metsäkoneet\n🏗️ Kaivurit ja pyöräkuormaajat\n🏭 Tuotantolaitteet\n💻 IT-laitteet\n🔧 Työkalut ja erikoiskoneet\n\nJos et ole varma, kysy - arvioimme jokaisen hakemuksen!'
+  },
+
   // SEURAAVA VAIHE
   {
     keywords: ['seuraava', 'mitä nyt', 'teen', 'pitää', 'tehdä'],
@@ -213,7 +342,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
         case 'CONTRACT_SENT':
           return 'Sopimus odottaa allekirjoitustasi! 📝\n\nSeuraavaksi:\n1. Lataa ja tarkista sopimus\n2. Allekirjoita sähköisesti\n3. Rahoitus aktivoituu!';
         default:
-          return `Hakemuksesi tila: ${getStatusLabel(app.status)}\n\nAvaa hakemus nähdäksesi lisätiedot ja seuraavat vaiheet.`;
+          return `Hakemuksesi tila: ${getStatusLabel(app.status)}\n\nAvaa hakemus nähdäksesi lisätiedot.`;
       }
     },
     actions: (ctx, nav) => {
@@ -223,29 +352,28 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
+
+  // ===== YLEISET =====
+
   // TERVEHDYKSET
   {
-    keywords: ['terve', 'moi', 'hei', 'hello', 'hyvää', 'päivää'],
-    answer: (ctx) => `Hei ${ctx.userName}! 👋\n\nOlen Juuri-avustajasi. Tunnen yrityksesi ${ctx.companyName} ja hakemustesi tilanteen.\n\nMiten voin auttaa sinua tänään?`
+    keywords: ['terve', 'moi', 'hei', 'hello', 'hyvää', 'päivää', 'huomenta', 'iltaa'],
+    answer: (ctx) => `Hei ${ctx.userName}! 👋\n\nOlen Juuri-avustajasi. Tunnen yrityksesi ${ctx.companyName} ja hakemustesi tilanteen.\n\nKysy rohkeasti rahoituksesta, prosessista tai hakemuksestasi!`
   },
   // KIITOKSET
   {
-    keywords: ['kiitos', 'thanks', 'ok', 'selvä', 'jees', 'hyvä'],
+    keywords: ['kiitos', 'thanks', 'ok', 'selvä', 'jees', 'hyvä', 'kyllä'],
     answer: () => 'Ole hyvä! 😊 Olen täällä jos tarvitset lisäapua. Onnea rahoitushakemukseen!'
   },
   // ONGELMAT
   {
     keywords: ['ongelma', 'virhe', 'ei toimi', 'vika', 'bugi', 'jumissa'],
-    answer: (ctx) => {
-      return 'Jos kohtaat ongelmia, kokeile:\n\n1. Päivitä sivu (F5)\n2. Tyhjennä selaimen välimuisti\n3. Kokeile toisella selaimella\n\nJos ongelma jatkuu, lähetä viesti hakemuksesi kautta tai ota yhteyttä: info@juurirahoitus.fi';
-    }
+    answer: () => '🔧 Jos kohtaat teknisiä ongelmia:\n\n1. Päivitä sivu (F5)\n2. Tyhjennä selaimen välimuisti\n3. Kokeile toisella selaimella\n\n💬 Jos ongelma jatkuu:\nLähetä viesti hakemuksesi kautta tai info@juurirahoitus.fi'
   },
   // TURVALLISUUS
   {
-    keywords: ['turvalli', 'luotettav', 'tietoturv', 'yksityisyys', 'gdpr'],
-    answer: () => {
-      return 'Juuri Rahoitus on luotettava suomalainen rahoituskumppani.\n\n🔒 Turvallinen salattu yhteys (HTTPS)\n📋 Noudatamme EU:n tietosuoja-asetusta (GDPR)\n🇫🇮 Tiedot säilytetään Suomessa\n\nTietosi ovat turvassa meillä!';
-    }
+    keywords: ['turvalli', 'luotettav', 'tietoturv', 'yksityisyys', 'gdpr', 'tiedot'],
+    answer: () => '🔒 Tietoturva ja luotettavuus:\n\n✅ Salattu HTTPS-yhteys\n✅ EU:n tietosuoja-asetus (GDPR)\n✅ Tiedot säilytetään Suomessa\n✅ Suomalainen toimija\n\nTietosi ovat turvassa meillä!'
   }
 ];
 
