@@ -269,52 +269,34 @@ export const financiers = {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
     try {
-      // Generate a temporary password - user will reset it
-      const tempPassword = `Temp${Date.now()}!${Math.random().toString(36).slice(2, 10)}`;
+      // Use Edge Function to create user and send custom financier email
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
       
-      // Create user with signUp - redirect to set-password page
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: data.email,
-        password: tempPassword,
-        options: {
-          data: {
-            first_name: data.name.split(' ')[0],
-            last_name: data.name.split(' ').slice(1).join(' ') || null,
-            role: 'FINANCIER'
-          },
-          emailRedirectTo: 'https://juurirahoitus.fi/set-password'
-        }
+      const response = await fetch(`${supabaseUrl}/functions/v1/invite-financier`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'apikey': supabaseAnonKey
+        },
+        body: JSON.stringify({
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          company_name: data.company_name,
+          business_id: data.business_id
+        })
       });
       
-      if (signUpError) {
-        console.error('SignUp error:', signUpError);
-        return { data: null, error: signUpError };
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Invite error:', result);
+        return { data: null, error: new Error(result.error || 'Failed to invite financier') };
       }
       
-      if (!authData.user) {
-        return { data: null, error: new Error('Failed to create user') };
-      }
-      
-      // Create/update profile with FINANCIER role
-      const nameParts = data.name.split(' ');
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: authData.user.id,
-        email: data.email,
-        first_name: nameParts[0],
-        last_name: nameParts.slice(1).join(' ') || null,
-        role: 'FINANCIER',
-        is_active: true,
-        is_verified: false,
-        phone: data.phone || null,
-        company_name: data.company_name || null,
-        business_id: data.business_id || null
-      });
-      
-      if (profileError) {
-        console.error('Profile error:', profileError);
-      }
-      
-      return { data: { user_id: authData.user.id, message: 'Kutsu lähetetty!' }, error: null };
+      return { data: result, error: null };
     } catch (e: any) {
       console.error('Invite financier error:', e);
       return { data: null, error: e };
