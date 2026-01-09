@@ -269,34 +269,72 @@ export const financiers = {
     if (!isSupabaseConfigured()) return { data: null, error: new Error('Supabase not configured') };
     
     try {
-      // Use Edge Function to create user and send custom financier email
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const tempPassword = `Temp${Date.now()}!${Math.random().toString(36).slice(2, 10)}`;
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/invite-financier`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabaseAnonKey}`,
-          'apikey': supabaseAnonKey
-        },
-        body: JSON.stringify({
-          email: data.email,
-          name: data.name,
-          phone: data.phone,
-          company_name: data.company_name,
-          business_id: data.business_id
-        })
+      // Create user with signUp
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: data.email,
+        password: tempPassword,
+        options: {
+          data: {
+            first_name: data.name.split(' ')[0],
+            last_name: data.name.split(' ').slice(1).join(' ') || null,
+            role: 'FINANCIER'
+          },
+          emailRedirectTo: 'https://juurirahoitus.fi/set-password'
+        }
       });
       
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error('Invite error:', result);
-        return { data: null, error: new Error(result.error || 'Failed to invite financier') };
+      if (signUpError) {
+        console.error('SignUp error:', signUpError);
+        return { data: null, error: signUpError };
       }
       
-      return { data: result, error: null };
+      if (!authData.user) {
+        return { data: null, error: new Error('Failed to create user') };
+      }
+      
+      // Create profile
+      const nameParts = data.name.split(' ');
+      await supabase.from('profiles').upsert({
+        id: authData.user.id,
+        email: data.email,
+        first_name: nameParts[0],
+        last_name: nameParts.slice(1).join(' ') || null,
+        role: 'FINANCIER',
+        is_active: true,
+        is_verified: false,
+        phone: data.phone || null,
+        company_name: data.company_name || null,
+        business_id: data.business_id || null
+      });
+      
+      // Send custom welcome email for financier via Edge Function
+      try {
+        await sendNotificationEmail(
+          data.email,
+          'Tervetuloa Juuri Rahoitus -portaaliin',
+          `<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;">
+            <div style="text-align:center;margin-bottom:20px;">
+              <div style="background:#059669;color:white;width:50px;height:50px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;">J</div>
+            </div>
+            <h2 style="color:#1e293b;text-align:center;">Tervetuloa Juuri Rahoitukseen!</h2>
+            <p style="color:#475569;">Hei ${data.name},</p>
+            <p style="color:#475569;">Sinut on kutsuttu rahoittajaksi Juuri Rahoitus -portaaliin.</p>
+            <p style="color:#475569;"><strong>Näin pääset alkuun:</strong></p>
+            <ol style="color:#475569;">
+              <li><strong>Vahvista sähköposti</strong> - Tarkista sähköpostisi Supabaselta tulleesta viestistä</li>
+              <li><strong>Aseta salasana</strong> - Luot oman salasanan tilillesi</li>
+              <li><strong>Vastaanota hakemuksia</strong> - Tee tarjouksia ja luottopäätöksiä</li>
+            </ol>
+            <p style="color:#94a3b8;font-size:12px;margin-top:30px;">Juuri Rahoitus Oy</p>
+          </div>`
+        );
+      } catch (emailError) {
+        console.log('Custom email failed, Supabase default email was sent');
+      }
+      
+      return { data: { user_id: authData.user.id, message: 'Kutsu lähetetty!' }, error: null };
     } catch (e: any) {
       console.error('Invite financier error:', e);
       return { data: null, error: e };
