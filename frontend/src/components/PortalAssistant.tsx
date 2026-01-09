@@ -38,8 +38,9 @@ interface UserContext {
 
 // Contextual knowledge base - knows about portal features
 const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => string; actions?: (ctx: UserContext, nav: any) => QuickAction[] }[] = [
+  // TARJOUKSET
   {
-    keywords: ['tarjous', 'tarjoukset', 'offer'],
+    keywords: ['tarjous', 'tarjoukset', 'offer', 'tarjouksen'],
     answer: (ctx) => {
       const pendingOffers = ctx.applications.filter(a => a.status === 'OFFER_SENT' || a.status === 'OFFER_RECEIVED');
       if (pendingOffers.length > 0) {
@@ -55,8 +56,9 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
+  // SOPIMUS
   {
-    keywords: ['sopimus', 'allekirjoitus', 'allekirjoita', 'contract'],
+    keywords: ['sopimus', 'allekirjoitus', 'allekirjoita', 'contract', 'sopimuksen'],
     answer: (ctx) => {
       const contractPending = ctx.applications.find(a => a.status === 'CONTRACT_SENT');
       if (contractPending) {
@@ -72,8 +74,9 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
+  // HAKEMUS JA TILA
   {
-    keywords: ['hakemus', 'hakemukset', 'tila', 'status', 'missä', 'vaihe'],
+    keywords: ['hakemus', 'hakemukset', 'tila', 'status', 'missä', 'vaihe', 'hakemuksen', 'eteneminen', 'tilanne'],
     answer: (ctx) => {
       if (ctx.applications.length === 0) {
         return 'Sinulla ei ole vielä hakemuksia. Voit tehdä uuden hakemuksen etusivulta!';
@@ -83,14 +86,15 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
     },
     actions: (ctx, nav) => [{ label: 'Näytä hakemukset', icon: <FileText className="w-4 h-4" />, action: () => nav('/dashboard'), variant: 'primary' }]
   },
+  // DOKUMENTIT JA LIITTEET
   {
-    keywords: ['lisätiedot', 'dokumentit', 'liite', 'liitteet', 'tiedosto'],
+    keywords: ['lisätiedot', 'dokumentit', 'liite', 'liitteet', 'tiedosto', 'tilinpäätös', 'paperit', 'asiakirjat'],
     answer: (ctx) => {
       const infoRequested = ctx.applications.find(a => a.status === 'INFO_REQUESTED');
       if (infoRequested) {
         return `Rahoittaja on pyytänyt lisätietoja hakemukseesi "${infoRequested.company_name}"! 📎\n\nAvaa hakemus ja lähetä pyydetyt dokumentit "Viestit"-välilehdeltä.`;
       }
-      return 'Voit lähettää lisädokumentteja hakemuksesi "Viestit"-välilehdeltä. Tyypillisesti tarvittavia dokumentteja ovat tilinpäätös, henkilötodistus ja mahdolliset kauppakirjat.';
+      return 'Voit lähettää lisädokumentteja hakemuksesi "Viestit"-välilehdeltä. Tyypillisesti tarvittavia dokumentteja ovat:\n\n• Tilinpäätös\n• Henkilötodistus\n• Kuva kohteesta\n• Urakkasopimus (tarvittaessa)';
     },
     actions: (ctx, nav) => {
       const app = ctx.applications.find(a => a.status === 'INFO_REQUESTED');
@@ -100,8 +104,9 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
+  // YRITYSTIEDOT JA YTJ
   {
-    keywords: ['yritys', 'ytj', 'tiedot', 'y-tunnus'],
+    keywords: ['yritys', 'ytj', 'tiedot', 'y-tunnus', 'yrityksen'],
     answer: (ctx) => {
       if (ctx.ytjData) {
         const ytj = ctx.ytjData;
@@ -110,8 +115,9 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return `Yritystietosi (${ctx.companyName}) haetaan automaattisesti YTJ:stä hakemuksen yhteydessä. Tiedot sisältävät yrityksen perustiedot, osoitteen ja toimialan.`;
     }
   },
+  // LUOTTOPÄÄTÖS
   {
-    keywords: ['luottopäätös', 'luotto', 'päätös', 'hyväksyntä'],
+    keywords: ['luottopäätös', 'luotto', 'päätös', 'hyväksyntä', 'luoton'],
     answer: (ctx) => {
       const creditPending = ctx.applications.find(a => a.status === 'CREDIT_DECISION_PENDING');
       if (creditPending) {
@@ -120,16 +126,67 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return 'Luottopäätös tehdään kun olet hyväksynyt tarjouksen ja toimittanut tarvittavat dokumentit. Päätös perustuu yrityksen taloustietoihin ja luottokelpoisuuteen.';
     }
   },
+  // MAKSUT JA HINNOITTELU
   {
-    keywords: ['maksu', 'kuukausi', 'erä', 'hinta'],
+    keywords: ['maksu', 'kuukausi', 'erä', 'hinta', 'kuukausierä', 'maksaa', 'paljonko', 'kustannus'],
     answer: (ctx) => {
-      return 'Kuukausierä määräytyy rahoitettavan summan, sopimuskauden ja jäännösarvon mukaan. Näet tarkan kuukausierän tarjouksessa. Tyypillisesti erä sisältää:\n\n• Pääoman lyhennys\n• Korko\n• Mahdollinen laskutuslisä (n. 9€/kk)';
+      return 'Kuukausierä määräytyy rahoitettavan summan, sopimuskauden ja jäännösarvon mukaan. Näet tarkan kuukausierän tarjouksessa. Tyypillisesti erä sisältää:\n\n• Pääoman lyhennys\n• Korko\n• Mahdollinen laskutuslisä (n. 9€/kk)\n\nALV 25,5% lisätään kuukausierään.';
     }
   },
+  // LEASING
   {
-    keywords: ['yhteyttä', 'apu', 'ihminen', 'puhelin', 'soita', 'asiakaspalvelu'],
+    keywords: ['leasing', 'lea', 'vuokraus', 'mitä', 'mikä', 'rahoitus'],
     answer: (ctx) => {
-      return 'Paras tapa saada apua on lähettää viesti hakemuksesi kautta - näin rahoittaja näkee kaikki tiedot ja voi vastata nopeasti.\n\nVoit myös lähettää sähköpostia osoitteeseen info@juurirahoitus.fi';
+      return 'Leasing on rahoitusmuoto, jossa vuokraat laitteen tai koneen sovituksi ajaksi kiinteällä kuukausierällä.\n\n✅ Ei sido pääomaa\n✅ Kiinteä kuukausierä\n✅ Sopimuskauden päätyttyä voit lunastaa, palauttaa tai jatkaa\n\nSopii erityisesti yrityksille, jotka haluavat pitää käyttöpääoman vapaana.';
+    }
+  },
+  // TAKAISINVUOKRAUS / SALE-LEASEBACK
+  {
+    keywords: ['takaisinvuokraus', 'slb', 'sale-leaseback', 'sale', 'myy', 'omistan'],
+    answer: (ctx) => {
+      return 'Takaisinvuokraus (Sale-Leaseback) tarkoittaa, että myyt omistamasi koneen tai laitteen rahoitusyhtiölle ja vuokraat sen takaisin.\n\n💰 Vapautat pääomaa kassaan\n✅ Jatkat kohteen käyttöä normaalisti\n✅ Kiinteä kuukausierä\n\nSopii erinomaisesti käyttöpääoman vahvistamiseen!';
+    }
+  },
+  // KÄSIRAHA JA ENNAKKO
+  {
+    keywords: ['käsiraha', 'ennakko', 'alkumaksu', 'omarahoitus', 'ennakkovuokra'],
+    answer: (ctx) => {
+      return 'Käsiraha (ennakkovuokra) on vapaaehtoinen alkumaksu, joka:\n\n• Pienentää rahoitettavaa summaa\n• Laskee kuukausierää\n• Voi parantaa rahoituksen ehtoja\n\nKäsiraha ei ole pakollinen - voit rahoittaa myös 100% kohteen arvosta.';
+    }
+  },
+  // JÄÄNNÖSARVO
+  {
+    keywords: ['jäännösarvo', 'lunastus', 'osta', 'omaksi', 'loppu'],
+    answer: (ctx) => {
+      return 'Jäännösarvo on summa, jolla voit lunastaa kohteen itsellesi sopimuskauden päätyttyä.\n\n• Sovitaan etukäteen sopimusta tehdessä\n• Tyypillisesti 0-20% kohteen arvosta\n• Suurempi jäännösarvo = pienempi kuukausierä\n\nSopimuskauden päätyttyä voit myös palauttaa kohteen tai jatkaa sopimusta.';
+    }
+  },
+  // SOPIMUSKAUSI
+  {
+    keywords: ['sopimuskausi', 'aika', 'kesto', 'kausi', 'pituus', 'kuinka kauan', 'kauanko'],
+    answer: (ctx) => {
+      return 'Sopimuskausi vaihtelee yleensä 24-72 kuukauden välillä.\n\n📅 Lyhyempi kausi (24-36 kk):\n• Suurempi kuukausierä\n• Nopeampi lunastus\n\n📅 Pidempi kausi (48-72 kk):\n• Pienempi kuukausierä\n• Sopii suuremmille investoinneille\n\nVoit valita yrityksellesi sopivimman vaihtoehdon!';
+    }
+  },
+  // PROSESSI JA AIKATAULU
+  {
+    keywords: ['prosessi', 'miten', 'kuinka', 'toimii', 'kauanko', 'kestää', 'aikataulu', 'nopea'],
+    answer: (ctx) => {
+      return 'Rahoitusprosessi on nopea:\n\n1️⃣ Hakemus (5 min)\n2️⃣ Tarjous (1-2 arkipäivää)\n3️⃣ Hyväksyntä + dokumentit\n4️⃣ Luottopäätös (1-3 arkipäivää)\n5️⃣ Sopimus allekirjoitettavaksi\n6️⃣ Rahoitus aktivoituu!\n\nKokonaisuudessaan prosessi kestää tyypillisesti 3-7 arkipäivää.';
+    }
+  },
+  // MITÄ RAHOITETAAN
+  {
+    keywords: ['kohde', 'laite', 'kone', 'rahoite', 'rahoitettav', 'auto', 'kuorma', 'traktori'],
+    answer: (ctx) => {
+      return 'Rahoitamme laajasti erilaisia koneita ja laitteita:\n\n🚛 Kuorma-autot ja ajoneuvot\n🚜 Maatalous- ja metsäkoneet\n🏗️ Rakennuskoneet\n🏭 Tuotantolaitteet\n💻 IT-laitteet\n\nJos et ole varma, kysy - arvioimme jokaisen hakemuksen tapauskohtaisesti!';
+    }
+  },
+  // ASIAKASPALVELU JA YHTEYDENOTTO
+  {
+    keywords: ['yhteyttä', 'apu', 'ihminen', 'puhelin', 'soita', 'asiakaspalvelu', 'kontakti', 'sähköposti'],
+    answer: (ctx) => {
+      return 'Saat apua seuraavasti:\n\n💬 Viesti hakemuksen kautta (suositus!)\n📧 info@juurirahoitus.fi\n\nHakemuksen kautta lähetetty viesti on nopein tapa saada vastaus, koska rahoittaja näkee kaikki tietosi suoraan.';
     },
     actions: (ctx, nav) => {
       if (ctx.applications.length > 0) {
@@ -138,13 +195,57 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
       return [];
     }
   },
+  // SEURAAVA VAIHE
   {
-    keywords: ['terve', 'moi', 'hei', 'hello'],
-    answer: (ctx) => `Hei ${ctx.userName}! 👋\n\nOlen Juuri-avustajasi. Tunnen yrityksesi ${ctx.companyName} ja hakemustesi tilanteen. Miten voin auttaa?`
+    keywords: ['seuraava', 'mitä nyt', 'teen', 'pitää', 'tehdä'],
+    answer: (ctx) => {
+      const app = ctx.applications[0];
+      if (!app) return 'Sinulla ei ole vielä hakemusta. Tee uusi hakemus etusivulta!';
+      
+      switch (app.status) {
+        case 'SUBMITTED':
+          return 'Hakemuksesi on vastaanotettu! ✅\n\nSeuraavaksi rahoittaja käsittelee hakemuksesi ja lähettää tarjouksen. Tämä kestää yleensä 1-2 arkipäivää.';
+        case 'OFFER_SENT':
+          return 'Sinulla on tarjous odottamassa! 🎉\n\nSeuraavaksi:\n1. Tarkista tarjous\n2. Hyväksy ja hae luottopäätös\n3. Toimita pyydetyt dokumentit';
+        case 'OFFER_ACCEPTED':
+        case 'CREDIT_DECISION_PENDING':
+          return 'Luottopäätös on käsittelyssä! ⏳\n\nSeuraavaksi:\n• Toimita pyydetyt dokumentit jos et ole vielä\n• Odota luottopäätöstä (1-3 arkipäivää)';
+        case 'CONTRACT_SENT':
+          return 'Sopimus odottaa allekirjoitustasi! 📝\n\nSeuraavaksi:\n1. Lataa ja tarkista sopimus\n2. Allekirjoita sähköisesti\n3. Rahoitus aktivoituu!';
+        default:
+          return `Hakemuksesi tila: ${getStatusLabel(app.status)}\n\nAvaa hakemus nähdäksesi lisätiedot ja seuraavat vaiheet.`;
+      }
+    },
+    actions: (ctx, nav) => {
+      if (ctx.applications.length > 0) {
+        return [{ label: 'Avaa hakemus', icon: <FileText className="w-4 h-4" />, action: () => nav(`/dashboard/applications/${ctx.applications[0].id}`), variant: 'primary' }];
+      }
+      return [];
+    }
   },
+  // TERVEHDYKSET
   {
-    keywords: ['kiitos', 'thanks', 'ok'],
-    answer: () => 'Ole hyvä! 😊 Olen täällä jos tarvitset lisäapua.'
+    keywords: ['terve', 'moi', 'hei', 'hello', 'hyvää', 'päivää'],
+    answer: (ctx) => `Hei ${ctx.userName}! 👋\n\nOlen Juuri-avustajasi. Tunnen yrityksesi ${ctx.companyName} ja hakemustesi tilanteen.\n\nMiten voin auttaa sinua tänään?`
+  },
+  // KIITOKSET
+  {
+    keywords: ['kiitos', 'thanks', 'ok', 'selvä', 'jees', 'hyvä'],
+    answer: () => 'Ole hyvä! 😊 Olen täällä jos tarvitset lisäapua. Onnea rahoitushakemukseen!'
+  },
+  // ONGELMAT
+  {
+    keywords: ['ongelma', 'virhe', 'ei toimi', 'vika', 'bugi', 'jumissa'],
+    answer: (ctx) => {
+      return 'Jos kohtaat ongelmia, kokeile:\n\n1. Päivitä sivu (F5)\n2. Tyhjennä selaimen välimuisti\n3. Kokeile toisella selaimella\n\nJos ongelma jatkuu, lähetä viesti hakemuksesi kautta tai ota yhteyttä: info@juurirahoitus.fi';
+    }
+  },
+  // TURVALLISUUS
+  {
+    keywords: ['turvalli', 'luotettav', 'tietoturv', 'yksityisyys', 'gdpr'],
+    answer: () => {
+      return 'Juuri Rahoitus on luotettava suomalainen rahoituskumppani.\n\n🔒 Turvallinen salattu yhteys (HTTPS)\n📋 Noudatamme EU:n tietosuoja-asetusta (GDPR)\n🇫🇮 Tiedot säilytetään Suomessa\n\nTietosi ovat turvassa meillä!';
+    }
   }
 ];
 
@@ -164,6 +265,7 @@ function findContextualAnswer(question: string, context: UserContext, navigate: 
   const suggestions: string[] = [];
   const defaultActions: QuickAction[] = [];
   
+  // Contextual suggestions
   if (context.applications.some(a => a.status === 'OFFER_SENT')) {
     suggestions.push('• "Näytä tarjoukseni"');
   }
@@ -174,11 +276,25 @@ function findContextualAnswer(question: string, context: UserContext, navigate: 
     suggestions.push('• "Miten allekirjoitan sopimuksen?"');
   }
   
+  // General suggestions
   suggestions.push('• "Missä hakemukseni on?"');
+  suggestions.push('• "Mitä seuraavaksi?"');
+  suggestions.push('• "Mitä on leasing?"');
+  suggestions.push('• "Miten prosessi toimii?"');
   suggestions.push('• "Miten saan apua?"');
   
+  // Add action button
+  if (context.applications.length > 0) {
+    defaultActions.push({ 
+      label: 'Avaa hakemukseni', 
+      icon: <FileText className="w-4 h-4" />, 
+      action: () => navigate(`/dashboard/applications/${context.applications[0].id}`), 
+      variant: 'primary' 
+    });
+  }
+  
   return {
-    answer: `En täysin ymmärtänyt kysymystäsi, ${context.userName}. Kokeile esimerkiksi:\n\n${suggestions.join('\n')}`,
+    answer: `Hyvä kysymys, ${context.userName}! 🤔\n\nVoit kysyä minulta esimerkiksi:\n\n${suggestions.slice(0, 5).join('\n')}\n\nTai kirjoita oma kysymyksesi alla olevaan kenttään.`,
     actions: defaultActions
   };
 }
