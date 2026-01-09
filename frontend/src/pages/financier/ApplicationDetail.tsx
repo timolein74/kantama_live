@@ -100,6 +100,7 @@ export default function FinancierApplicationDetail() {
   const [documentTypes, setDocumentTypes] = useState({
     tilinpaatos: { selected: false, required: false },
     tulosTase: { selected: false, required: false },
+    henkilokortti: { selected: false, required: false },
     kuvaKohteesta: { selected: false, required: false },
     urakkasopimus: { selected: false, required: false },
     liiketoimintasuunnitelma: { selected: false, required: false },
@@ -443,6 +444,7 @@ export default function FinancierApplicationDetail() {
       const documentLabels: Record<string, string> = {
         tilinpaatos: 'Tilinpäätös',
         tulosTase: 'Tulos ja tase ajot',
+        henkilokortti: 'Henkilötodistus (Passi / Henkilökortti)',
         kuvaKohteesta: 'Kuva kohteesta',
         urakkasopimus: 'Urakkasopimus',
         liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
@@ -909,6 +911,7 @@ export default function FinancierApplicationDetail() {
                 {[
                   { key: 'tilinpaatos', label: 'Tilinpäätös' },
                   { key: 'tulosTase', label: 'Tulos ja tase ajot' },
+                  { key: 'henkilokortti', label: 'Henkilötodistus (Passi / Henkilökortti)' },
                   { key: 'kuvaKohteesta', label: 'Kuva kohteesta' },
                   { key: 'urakkasopimus', label: 'Urakkasopimus' },
                   { key: 'liiketoimintasuunnitelma', label: 'Liiketoimintasuunnitelma' },
