@@ -311,10 +311,11 @@ export const financiers = {
       
       // Send custom welcome email for financier via Edge Function
       try {
-        await sendNotificationEmail(
-          data.email,
-          'Tervetuloa Juuri Rahoitus -portaaliin',
-          `<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;">
+        await sendNotificationEmail({
+          to: data.email,
+          subject: 'Tervetuloa Juuri Rahoitus -portaaliin',
+          type: 'message',
+          html: `<div style="font-family:Arial;max-width:600px;margin:0 auto;padding:20px;">
             <div style="text-align:center;margin-bottom:20px;">
               <div style="background:#059669;color:white;width:50px;height:50px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;">J</div>
             </div>
@@ -323,15 +324,15 @@ export const financiers = {
             <p style="color:#475569;">Sinut on kutsuttu rahoittajaksi Juuri Rahoitus -portaaliin.</p>
             <p style="color:#475569;"><strong>Näin pääset alkuun:</strong></p>
             <ol style="color:#475569;">
-              <li><strong>Vahvista sähköposti</strong> - Tarkista sähköpostisi Supabaselta tulleesta viestistä</li>
-              <li><strong>Aseta salasana</strong> - Luot oman salasanan tilillesi</li>
-              <li><strong>Vastaanota hakemuksia</strong> - Tee tarjouksia ja luottopäätöksiä</li>
+              <li><strong>Vahvista sähköposti</strong> - Tarkista sähköpostisi Supabaselta tulleesta viestistä ja klikkaa vahvistuslinkkiä</li>
+              <li><strong>Aseta salasana</strong> - Vahvistuksen jälkeen pääset asettamaan salasanan</li>
+              <li><strong>Kirjaudu sisään</strong> - Tee tarjouksia ja luottopäätöksiä asiakkaille</li>
             </ol>
             <p style="color:#94a3b8;font-size:12px;margin-top:30px;">Juuri Rahoitus Oy</p>
           </div>`
-        );
+        });
       } catch (emailError) {
-        console.log('Custom email failed, Supabase default email was sent');
+        console.log('Custom email failed, Supabase default email was sent:', emailError);
       }
       
       return { data: { user_id: authData.user.id, message: 'Kutsu lähetetty!' }, error: null };
