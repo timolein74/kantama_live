@@ -35,6 +35,11 @@ export default function AdminDashboard() {
   const [contractList] = useState<any[]>([]);
   const [customerResponseNotifications, setCustomerResponseNotifications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Track dismissed banners (stored in state, resets on page reload for fresh view)
+  const [dismissedOfferIds, setDismissedOfferIds] = useState<string[]>([]);
+  const [dismissedNewAppIds, setDismissedNewAppIds] = useState<string[]>([]);
+  const [dismissedPendingOfferIds, setDismissedPendingOfferIds] = useState<string[]>([]);
 
   // Load data from Supabase
   useEffect(() => {
@@ -87,8 +92,9 @@ export default function AdminDashboard() {
     fetchData();
   }, [user?.id]);
 
-  // Calculate stats
-  const newApplications = appList.filter(a => a.status === 'SUBMITTED').length;
+  // Calculate stats - filter out dismissed notifications
+  const newAppsList = appList.filter(a => a.status === 'SUBMITTED' && !dismissedNewAppIds.includes(a.id));
+  const newApplications = newAppsList.length;
   const inProgress = appList.filter(a => 
     ['SUBMITTED_TO_FINANCIER', 'INFO_REQUESTED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'CONTRACT_SENT'].includes(a.status)
   ).length;
@@ -100,10 +106,13 @@ export default function AdminDashboard() {
   // Calculate unique customers from applications
   const totalCustomers = new Set(appList.map(app => app.contact_email || app.user_id)).size;
 
-  // Offer stats
-  const pendingOffers = offerList.filter(o => o.status === 'PENDING_ADMIN').length;
+  // Offer stats - filter out dismissed notifications
+  const pendingOffersList = offerList.filter(o => o.status === 'PENDING_ADMIN' && !dismissedPendingOfferIds.includes(o.id));
+  const pendingOffers = pendingOffersList.length;
   const sentOffers = offerList.filter(o => o.status === 'SENT').length;
-  const acceptedOffers = offerList.filter(o => o.status === 'ACCEPTED').length;
+  // Filter out dismissed offers from the accepted count
+  const acceptedOffersList = offerList.filter(o => o.status === 'ACCEPTED' && !dismissedOfferIds.includes(o.id));
+  const acceptedOffers = acceptedOffersList.length;
 
   // Contract stats
   const pendingContracts = contractList.filter(c => c.status === 'SENT').length;
@@ -129,7 +138,7 @@ export default function AdminDashboard() {
         <p className="text-slate-600 mt-1">Yleiskatsaus järjestelmän tilasta</p>
       </div>
 
-      {/* NEW APPLICATION NOTIFICATION - Most important */}
+      {/* NEW APPLICATION NOTIFICATION - Click to dismiss */}
       {newApplications > 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -153,6 +162,11 @@ export default function AdminDashboard() {
             </div>
             <Link
               to="/admin/applications?status=SUBMITTED"
+              onClick={() => {
+                // Dismiss all shown new apps when clicking
+                const idsToHide = newAppsList.map(a => a.id);
+                setDismissedNewAppIds(prev => [...prev, ...idsToHide]);
+              }}
               className="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center"
             >
               <Eye className="w-5 h-5 mr-2" />
@@ -162,7 +176,7 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      {/* NEW OFFER NOTIFICATION - Pending admin approval */}
+      {/* NEW OFFER NOTIFICATION - Click to dismiss */}
       {pendingOffers > 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
@@ -186,6 +200,11 @@ export default function AdminDashboard() {
             </div>
             <Link
               to="/admin/offers"
+              onClick={() => {
+                // Dismiss all shown pending offers when clicking
+                const idsToHide = pendingOffersList.map(o => o.id);
+                setDismissedPendingOfferIds(prev => [...prev, ...idsToHide]);
+              }}
               className="bg-white text-orange-600 px-6 py-3 rounded-xl font-semibold hover:bg-orange-50 transition-colors flex items-center"
             >
               Hyväksy tarjoukset
@@ -195,7 +214,7 @@ export default function AdminDashboard() {
         </motion.div>
       )}
 
-      {/* ACCEPTED OFFER NOTIFICATION */}
+      {/* ACCEPTED OFFER NOTIFICATION - Click to dismiss */}
       {acceptedOffers > 0 && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -219,6 +238,11 @@ export default function AdminDashboard() {
             </div>
             <Link
               to="/admin/offers"
+              onClick={() => {
+                // Dismiss all shown accepted offers when clicking
+                const idsToHide = acceptedOffersList.map(o => o.id);
+                setDismissedOfferIds(prev => [...prev, ...idsToHide]);
+              }}
               className="bg-white text-green-600 px-6 py-3 rounded-xl font-semibold hover:bg-green-50 transition-colors flex items-center"
             >
               Katso tarjoukset
