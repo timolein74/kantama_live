@@ -158,9 +158,9 @@ export default function CustomerApplicationDetail() {
           liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
         };
         
-        // Only show info requests from financiers/admins (not customer responses)
+        // Only show info requests from financiers/admins (not customer responses or regular messages)
         const infoRequests = (messagesData || []).filter((msg: any) => 
-          msg.is_info_request === true || msg.sender_role === 'FINANCIER' || msg.sender_role === 'ADMIN'
+          msg.is_info_request === true && (msg.sender_role === 'FINANCIER' || msg.sender_role === 'ADMIN')
         );
         
         // Find responses for each info request
