@@ -69,7 +69,7 @@ export default function FinancierDashboard() {
           setAppList(apps || []);
           
           // Find applications with accepted offers
-          const acceptedApps = financierApps.filter((app: DbApplication) => app.status === 'OFFER_ACCEPTED');
+          const acceptedApps = (apps || []).filter((app: DbApplication) => app.status === 'OFFER_ACCEPTED');
           setAcceptedOfferApps(acceptedApps.map((app: DbApplication) => ({
             customer_name: app.company_name,
             application_id: app.id
