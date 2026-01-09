@@ -313,15 +313,8 @@ export const financiers = {
         console.error('Profile error:', profileError);
       }
       
-      // Send password reset email so user can set their own password
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(data.email, {
-        redirectTo: 'https://juurirahoitus.fi/set-password'
-      });
-      
-      if (resetError) {
-        console.error('Password reset email error:', resetError);
-        // Continue anyway - user was created
-      }
+      // Note: signUp already sends confirmation email with link to set password
+      // No need to call resetPasswordForEmail - that would send a second email
       
       return { data: { user_id: authData.user.id, message: 'Kutsu lähetetty!' }, error: null };
     } catch (e: any) {

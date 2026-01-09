@@ -192,8 +192,7 @@ export default function PublicLayout() {
             <div>
               <h4 className="text-white font-semibold mb-4">Tietoa</h4>
               <ul className="space-y-2 text-sm">
-                <li><Link to="/privacy" className="hover:text-white transition-colors">Tietosuoja</Link></li>
-                <li><Link to="/terms" className="hover:text-white transition-colors">Käyttöehdot</Link></li>
+                <li><Link to="/tietosuoja" className="hover:text-white transition-colors">Tietosuoja</Link></li>
               </ul>
             </div>
           </div>
