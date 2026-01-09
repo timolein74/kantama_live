@@ -1279,6 +1279,12 @@ export const contracts = {
       }
     }
     
+    // IMPORTANT: Update application status to WAITING_SIGNATURE so dashboard notification disappears
+    await supabase
+      .from('applications')
+      .update({ status: 'WAITING_SIGNATURE' })
+      .eq('id', contract.application_id);
+    
     // Get application details for notifications
     const { data: app } = await supabase
       .from('applications')
