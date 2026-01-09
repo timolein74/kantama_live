@@ -913,7 +913,7 @@ export const offers = {
           .eq('id', offer.application_id);
       }
       
-      // Create notifications (fire and forget)
+      // Create notifications and send email to financier
       try {
         const { data: admins } = await supabase
           .from('profiles')
@@ -928,6 +928,44 @@ export const offers = {
         }
         if (offer?.financier_id) {
           notifs.push({ user_id: offer.financier_id, title: 'Tarjous hyväksytty', message: 'Asiakas hyväksyi tarjouksesi' });
+          
+          // Send email to financier
+          const { data: financier } = await supabase
+            .from('profiles')
+            .select('email, first_name')
+            .eq('id', offer.financier_id)
+            .single();
+          
+          if (financier?.email) {
+            // Get application details for email
+            const { data: app } = await supabase
+              .from('applications')
+              .select('company_name, equipment_price')
+              .eq('id', offer.application_id)
+              .single();
+            
+            await sendNotificationEmail({
+              to: financier.email,
+              subject: 'Tarjous hyväksytty - Asiakas pyytää luottopäätöstä',
+              type: 'offer',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                  <h2 style="color: #059669;">🎉 Tarjous hyväksytty!</h2>
+                  <p>Hei ${financier.first_name || ''},</p>
+                  <p>Asiakas <strong>${app?.company_name || 'Yritys'}</strong> on hyväksynyt tarjouksesi ja pyytää virallista luottopäätöstä.</p>
+                  <ul>
+                    <li><strong>Yritys:</strong> ${app?.company_name || '-'}</li>
+                    <li><strong>Summa:</strong> ${app?.equipment_price?.toLocaleString('fi-FI')} €</li>
+                    <li><strong>Kuukausimaksu:</strong> ${offer.monthly_payment?.toLocaleString('fi-FI')} €</li>
+                  </ul>
+                  <p><strong>Seuraava askel:</strong> Pyydä tarvittavat dokumentit luottopäätöstä varten.</p>
+                  <p><a href="https://juurirahoitus.fi/financier/applications/${offer.application_id}" style="background-color: #059669; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Avaa hakemus</a></p>
+                  <p style="color: #666; font-size: 12px; margin-top: 20px;">Juuri Rahoitus Oy</p>
+                </div>
+              `
+            });
+            console.log('✅ Email sent to financier about accepted offer:', financier.email);
+          }
         }
         if (notifs.length > 0) {
           await supabase.from('notifications').insert(notifs);
