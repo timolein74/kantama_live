@@ -9,7 +9,8 @@ import {
   RefreshCw,
   ChevronRight
 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { applications } from '../../lib/api';
 import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
@@ -30,9 +31,14 @@ export default function CustomerApplications() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | ''>('');
   const [typeFilter, setTypeFilter] = useState<ApplicationType | ''>('');
 
-  // Load applications from Supabase
+  // Load applications from Supabase - FILTERED BY USER
   useEffect(() => {
     const fetchApplications = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+      
       if (!isSupabaseConfigured()) {
         // Fallback to localStorage for demo
         const storedApps = JSON.parse(localStorage.getItem('demo-applications') || '[]');
@@ -47,18 +53,16 @@ export default function CustomerApplications() {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('applications')
-          .select('*')
-          .order('created_at', { ascending: false });
+        // IMPORTANT: Use applications.list() with user filtering to only show user's own applications
+        const { data, error } = await applications.list(user.id, user.role, user.email);
 
         if (error) {
           console.error('Error fetching applications:', error);
           setAppList([]);
           setFilteredApps([]);
         } else {
-          setAppList(data || []);
-          setFilteredApps(data || []);
+          setAppList((data || []) as Application[]);
+          setFilteredApps((data || []) as Application[]);
         }
       } catch (error) {
         console.error('Error:', error);

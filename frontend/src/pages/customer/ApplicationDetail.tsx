@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { contracts, infoRequests, files, messages, applications, offers } from '../../lib/api';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
   formatDate,
@@ -55,6 +56,7 @@ const demoOffers: Offer[] = [];
 
 export default function CustomerApplicationDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuthStore();
   
   // DEMO MODE: Combine static + localStorage data
   const [application, setApplication] = useState<Application | null>(null);
@@ -110,7 +112,7 @@ export default function CustomerApplicationDetail() {
       }
 
       try {
-        // Fetch application from Supabase
+        // Fetch application from Supabase with user verification
         const { data: appData, error: appError } = await supabase
           .from('applications')
           .select('*')
@@ -119,6 +121,19 @@ export default function CustomerApplicationDetail() {
 
         if (appError || !appData) {
           console.error('Application fetch error:', appError);
+          setApplication(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // SECURITY CHECK: Verify user owns this application
+        const userEmail = user?.email?.toLowerCase();
+        const appEmail = appData.contact_email?.toLowerCase();
+        const isOwner = appData.user_id === user?.id || appEmail === userEmail;
+        
+        if (!isOwner) {
+          console.error('Access denied: User does not own this application');
+          toast.error('Ei käyttöoikeutta tähän hakemukseen');
           setApplication(null);
           setIsLoading(false);
           return;
@@ -217,7 +232,7 @@ export default function CustomerApplicationDetail() {
     };
 
     fetchData();
-  }, [id]);
+  }, [id, user]);
 
   const handleAcceptOffer = async (offerId: string | number) => {
     // DEMO MODE
