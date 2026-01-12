@@ -2005,35 +2005,19 @@ export const applications = {
       // Combine all app IDs this financier should see
       const allAppIds = [...new Set([...offerAppIds, ...notifAppIds])];
       
-      // SECURITY FIX: Only show applications assigned to THIS financier (via notification or assigned_financier_id)
-      // or where they have offers
-      let query = supabase.from('applications').select('*');
-      
+      // SECURITY FIX: Only show applications assigned to THIS financier (via notification)
+      // or where they have offers - NO assigned_financier_id column exists yet
       if (allAppIds.length > 0) {
-        // Show apps where financier has notification OR offer OR is assigned
-        query = query.or(`assigned_financier_id.eq.${userId},id.in.(${allAppIds.join(',')})`);
-      } else {
-        // Only show apps assigned to this specific financier
-        query = query.eq('assigned_financier_id', userId);
+        const { data, error } = await supabase
+          .from('applications')
+          .select('*')
+          .in('id', allAppIds)
+          .order('created_at', { ascending: false });
+        return { data, error };
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
-      
-      // Filter out any apps where assigned_financier_id error occurred (column doesn't exist yet)
-      if (error?.message?.includes('assigned_financier_id')) {
-        // Fallback: only show apps with offers or notifications
-        if (allAppIds.length > 0) {
-          const { data: fallbackData, error: fallbackError } = await supabase
-            .from('applications')
-            .select('*')
-            .in('id', allAppIds)
-            .order('created_at', { ascending: false });
-          return { data: fallbackData, error: fallbackError };
-        }
-        return { data: [], error: null };
-      }
-      
-      return { data, error };
+      // No apps to show
+      return { data: [], error: null };
     }
     
     // For admins or no role specified, show all

@@ -179,9 +179,8 @@ export default function FinancierApplicationDetail() {
         ]);
         
         // SECURITY CHECK: Verify this financier has access to this application
-        // They must either be assigned to it OR have made an offer on it OR have received notification for it
+        // They must have made an offer OR received notification for it
         const hasOffer = offersRes.data?.some((o: Offer) => o.financier_id === user?.id);
-        const isAssigned = appRes.data?.assigned_financier_id === user?.id;
         
         // Check if financier has received a notification for this application
         const { data: financierNotifs } = await supabase
@@ -192,7 +191,7 @@ export default function FinancierApplicationDetail() {
           .limit(1);
         const hasNotification = (financierNotifs?.length || 0) > 0;
         
-        if (!hasOffer && !isAssigned && !hasNotification) {
+        if (!hasOffer && !hasNotification) {
           toast.error('Ei käyttöoikeutta tähän hakemukseen');
           setApplication(null);
           setIsLoading(false);
