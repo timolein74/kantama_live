@@ -171,7 +171,13 @@ export default function AdminApplicationDetail() {
         // Fetch application files
         const filesRes = await filesApi.list(id);
         console.log('📁 Files API response for application', id, ':', filesRes);
-        console.log('📁 Files data:', filesRes.data);
+        console.log('📁 Files data:', JSON.stringify(filesRes.data, null, 2));
+        
+        // DEBUG: Show alert with file data for troubleshooting
+        if (filesRes.data && filesRes.data.length > 0) {
+          console.log('📁 First file object:', JSON.stringify(filesRes.data[0], null, 2));
+        }
+        
         setApplicationFiles(filesRes.data || []);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -855,6 +861,13 @@ export default function AdminApplicationDetail() {
                   <FileText className="w-5 h-5 mr-2 text-emerald-600" />
                   Liitetiedostot ({applicationFiles.length})
                 </h3>
+                {/* DEBUG INFO - remove after fix */}
+                <div className="mb-4 p-2 bg-yellow-100 text-xs rounded">
+                  <strong>DEBUG:</strong> App ID: {id} | Files count: {applicationFiles.length}
+                  {applicationFiles[0] && (
+                    <span> | First file keys: {Object.keys(applicationFiles[0]).join(', ')}</span>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {applicationFiles.map((file: any) => {
                     // file_name and url are now provided by files.list()
