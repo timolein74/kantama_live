@@ -129,8 +129,8 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
 
-      {/* Demo panel - ONLY in localhost development */}
-      {import.meta.env.DEV && <DemoPanel />}
+      {/* Demo panel - ONLY in localhost development, NEVER in production */}
+      {import.meta.env.DEV && window.location.hostname === 'localhost' && <DemoPanel />}
       
       {/* Cookie consent banner */}
       <CookieConsent />

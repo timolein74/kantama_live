@@ -170,6 +170,8 @@ export default function AdminApplicationDetail() {
         
         // Fetch application files
         const filesRes = await filesApi.list(id);
+        console.log('📁 Files API response for application', id, ':', filesRes);
+        console.log('📁 Files data:', filesRes.data);
         setApplicationFiles(filesRes.data || []);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -854,28 +856,38 @@ export default function AdminApplicationDetail() {
                   Liitetiedostot ({applicationFiles.length})
                 </h3>
                 <div className="space-y-2">
-                  {applicationFiles.map((file: any) => (
-                    <div key={file.id} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
-                      <div className="flex items-center">
-                        <FileText className="w-5 h-5 text-slate-400 mr-3" />
-                        <div>
-                          <p className="font-medium text-slate-900">{file.file_name}</p>
-                          <p className="text-xs text-slate-500">
-                            {file.document_type === 'tarjousliite' ? 'Tarjousliite' : file.document_type} • 
-                            {file.file_size ? ` ${Math.round(file.file_size / 1024)} KB` : ''}
-                          </p>
+                  {applicationFiles.map((file: any) => {
+                    // file_name and url are now provided by files.list()
+                    const fileName = file.file_name || file.name || 'Tiedosto';
+                    // Extract readable name (remove timestamp prefix, e.g. "1736590799911_document.pdf" -> "document.pdf")
+                    const displayName = fileName.match(/^\d+_(.+)$/) ? fileName.replace(/^\d+_/, '') : fileName;
+                    const fileUrl = file.url;
+                    const fileSize = file.metadata?.size;
+                    
+                    console.log('📄 Rendering file:', { fileName, displayName, fileUrl, file });
+                    
+                    return (
+                      <div key={file.id || fileName} className="flex items-center justify-between bg-slate-50 rounded-lg p-3">
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-slate-400 mr-3" />
+                          <div>
+                            <p className="font-medium text-slate-900">{displayName}</p>
+                            <p className="text-xs text-slate-500">
+                              Liite{fileSize ? ` • ${Math.round(fileSize / 1024)} KB` : ''}
+                            </p>
+                          </div>
                         </div>
+                        <a 
+                          href={fileUrl} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="btn bg-emerald-500 text-white hover:bg-emerald-600 text-sm px-4 py-2"
+                        >
+                          Avaa
+                        </a>
                       </div>
-                      <a 
-                        href={file.url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="btn bg-emerald-500 text-white hover:bg-emerald-600 text-sm px-4 py-2"
-                      >
-                        Avaa
-                      </a>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1471,7 +1483,7 @@ export default function AdminApplicationDetail() {
                             <div className="flex flex-wrap gap-2">
                               {msg.attachments.map((path: string, i: number) => {
                                 const fileName = path.split('/').pop() || path;
-                                const downloadUrl = `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/documents/${path}`;
+                                const downloadUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${path}`;
                                 return (
                                   <a
                                     key={i}
@@ -1498,19 +1510,25 @@ export default function AdminApplicationDetail() {
                   <div className="mt-4 p-3 bg-slate-50 rounded-lg">
                     <p className="text-sm font-medium text-slate-700 mb-2">📎 Liitetiedostot:</p>
                     <div className="space-y-1">
-                      {applicationFiles.map((file: any) => (
-                        <div key={file.id} className="flex items-center justify-between bg-white rounded p-2">
-                          <span className="text-sm text-slate-700">{file.file_name}</span>
-                          <a 
-                            href={file.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600"
-                          >
-                            Avaa
-                          </a>
-                        </div>
-                      ))}
+                      {applicationFiles.map((file: any) => {
+                        const fileName = file.file_name || file.name || 'Tiedosto';
+                        const displayName = fileName.includes('_') ? fileName.substring(fileName.indexOf('_') + 1) : fileName;
+                        const fileUrl = file.url || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/applications/${id}/${fileName}`;
+                        
+                        return (
+                          <div key={file.id || fileName} className="flex items-center justify-between bg-white rounded p-2">
+                            <span className="text-sm text-slate-700">{displayName}</span>
+                            <a 
+                              href={fileUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-xs bg-emerald-500 text-white px-2 py-1 rounded hover:bg-emerald-600"
+                            >
+                              Avaa
+                            </a>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

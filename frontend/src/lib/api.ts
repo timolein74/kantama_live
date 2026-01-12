@@ -1480,12 +1480,29 @@ export const files = {
     if (!isSupabaseConfigured()) return { data: [], error: null };
     
     try {
+      const storagePath = `applications/${applicationId}`;
+      console.log('📂 Listing files from storage path:', storagePath);
+      
       const { data, error } = await supabase.storage
         .from('documents')
-        .list(`applications/${applicationId}`);
+        .list(storagePath);
       
-      return { data: data || [], error };
+      console.log('📂 Storage list raw result:', { data, error });
+      
+      // Filter out placeholder files and add URL to each file
+      const filesWithUrls = (data || [])
+        .filter(f => f.name && !f.name.startsWith('.'))
+        .map(f => ({
+          ...f,
+          file_name: f.name,
+          url: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${storagePath}/${f.name}`
+        }));
+      
+      console.log('📂 Processed files with URLs:', filesWithUrls);
+      
+      return { data: filesWithUrls, error };
     } catch (error) {
+      console.error('📂 Storage list error:', error);
       return { data: [], error };
     }
   },
