@@ -1441,7 +1441,7 @@ export const files = {
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('document')
+        .from('documents')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -1454,14 +1454,38 @@ export const files = {
       
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('document')
+        .from('documents')
         .getPublicUrl(filePath);
       
-      console.log('✅ File uploaded:', uploadData.path);
+      console.log('✅ File uploaded to storage:', uploadData.path);
+      
+      // Save file metadata to application_files table
+      const { data: fileRecord, error: dbError } = await supabase
+        .from('application_files')
+        .insert({
+          application_id: String(applicationId),
+          file_name: file.name,
+          file_path: filePath,
+          file_url: urlData.publicUrl,
+          file_type: file.type,
+          file_size: file.size,
+          description: description || null,
+          uploaded_by: userId
+        })
+        .select()
+        .single();
+      
+      if (dbError) {
+        console.error('Database insert error:', dbError);
+        // File is uploaded but not tracked in DB - still return success
+        console.warn('⚠️ File uploaded to storage but not tracked in database');
+      } else {
+        console.log('✅ File record saved to database:', fileRecord.id);
+      }
       
       return { 
         data: { 
-          id: uploadData.path,
+          id: fileRecord?.id || uploadData.path,
           path: uploadData.path,
           url: urlData.publicUrl,
           name: file.name,
@@ -1500,7 +1524,7 @@ export const files = {
       const filesWithUrls = (data || []).map(f => ({
         ...f,
         file_name: f.file_name || f.filename || f.name || 'Tiedosto',
-        url: f.file_url || f.url || f.storage_path || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/document/${f.storage_path || f.file_path || ''}`
+        url: f.file_url || f.url || f.storage_path || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${f.storage_path || f.file_path || ''}`
       }));
       
       console.log('📂 Processed files:', filesWithUrls);
@@ -1521,7 +1545,7 @@ export const files = {
     
     try {
       const { data, error } = await supabase.storage
-        .from('document')
+        .from('documents')
         .download(path);
       
       return { data, error };
@@ -1534,7 +1558,7 @@ export const files = {
     if (!isSupabaseConfigured()) return null;
     
     const { data } = supabase.storage
-      .from('document')
+      .from('documents')
       .getPublicUrl(path);
     
     return data.publicUrl;
@@ -1545,7 +1569,7 @@ export const files = {
     
     try {
       const { data, error } = await supabase.storage
-        .from('document')
+        .from('documents')
         .remove([path]);
       
       return { data, error };

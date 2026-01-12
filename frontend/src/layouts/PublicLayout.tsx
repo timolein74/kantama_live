@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { Menu, X, LogIn, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Logo from '../components/Logo';
-import ChatBot from '../components/ChatBot';
+// import ChatBot from '../components/ChatBot'; // temporarily disabled
 
 // Custom event for changing form type
 export const setFormType = (type: 'leasing' | 'slb') => {
@@ -203,7 +203,8 @@ export default function PublicLayout() {
       </footer>
 
       {/* AI Chatbot */}
-      <ChatBot />
+      {/* ChatBot - temporarily disabled */}
+      {/* <ChatBot /> */}
     </div>
   );
 }

@@ -270,7 +270,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
   },
   // OHJELMISTOT JA IT
   {
-    keywords: ['ohjelmisto', 'software', 'it', 'tietokone', 'palvelin', 'lisenssi'],
+    keywords: ['ohjelmisto', 'software', 'it-laite', 'it-infra', 'tietokone', 'palvelin', 'lisenssi'],
     answer: () => '💻 IT-laitteet ja ohjelmistot:\n\n✅ Rahoitamme:\n• Tietokoneet ja palvelimet\n• IT-infrastruktuuri\n• Tuotannonohjausjärjestelmät\n\n❌ Emme yleensä rahoita:\n• Pelkkiä ohjelmistolisenssejä\n• SaaS-palveluita\n\nLisätietoja? Kysy hakemuksen yhteydessä!'
   },
 
@@ -278,7 +278,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
 
   // PROSESSI JA AIKATAULU
   {
-    keywords: ['prosessi', 'miten', 'kuinka', 'toimii', 'kauanko', 'kestää', 'aikataulu', 'nopea'],
+    keywords: ['prosessi', 'miten toimii', 'kuinka toimii', 'toimii', 'kauanko', 'kestää', 'aikataulu', 'nopea'],
     answer: () => '⚡ Rahoitusprosessi vaihe vaiheelta:\n\n1️⃣ Hakemus (5 min)\n2️⃣ Tarjous (1-2 arkipäivää)\n3️⃣ Hyväksyntä + dokumentit\n4️⃣ Luottopäätös (1-3 arkipäivää)\n5️⃣ Sopimus allekirjoitettavaksi\n6️⃣ Rahoitus aktivoituu!\n\n📅 Kokonaisuudessaan tyypillisesti 3-7 arkipäivää. Kiireellisissä tapauksissa jopa nopeammin!'
   },
   // NOPEUTTAMINEN
@@ -289,7 +289,7 @@ const portalKnowledge: { keywords: string[]; answer: (ctx: UserContext) => strin
 
   // ASIAKASPALVELU
   {
-    keywords: ['yhteyttä', 'apu', 'ihminen', 'puhelin', 'soita', 'asiakaspalvelu', 'kontakti', 'sähköposti'],
+    keywords: ['yhteyttä', 'apu', 'apua', 'ihminen', 'puhelin', 'soita', 'asiakaspalvelu', 'kontakti', 'sähköposti', 'saan apua'],
     answer: () => '📞 Ota yhteyttä:\n\n💬 Nopein tapa: Viesti hakemuksen kautta\n→ Rahoittaja näkee kaikki tietosi suoraan\n\n📧 Sähköposti: info@juurirahoitus.fi\n\nHakemuksesi kautta lähetetty viesti menee suoraan rahoittajalle ja saat nopeimman vastauksen!'
   },
   // TAKAISINSOITTO

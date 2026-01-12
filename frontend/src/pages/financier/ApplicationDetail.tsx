@@ -2176,7 +2176,7 @@ export default function FinancierApplicationDetail() {
                           <div className="flex flex-wrap gap-2">
                             {(ir as any).attachments.map((path: string, i: number) => {
                               const fileName = path.split('/').pop() || path;
-                              const downloadUrl = `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/uploads/${path}`;
+                              const downloadUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${path}`;
                               return (
                                 <a
                                   key={i}
@@ -2218,7 +2218,7 @@ export default function FinancierApplicationDetail() {
                                     {resp.attachments.map((path: string, i: number) => {
                                       const fileName = typeof path === 'string' ? path.split('/').pop() : 'tiedosto';
                                       const downloadUrl = typeof path === 'string' 
-                                        ? `https://iquhgqeicalsrsfzdopd.supabase.co/storage/v1/object/public/uploads/${path}`
+                                        ? `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${path}`
                                         : '#';
                                       return (
                                         <a

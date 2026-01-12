@@ -1817,7 +1817,7 @@ export default function CustomerApplicationDetail() {
                                 return (
                                   <a 
                                     key={i}
-                                    href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/uploads/${att}`}
+                                    href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${att}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex items-center text-sm bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200"
