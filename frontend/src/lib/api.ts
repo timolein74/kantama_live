@@ -1977,7 +1977,7 @@ export const applications = {
       return { data, error };
     }
     
-    // For financiers, only show applications where they have made an offer OR new/assigned applications
+    // For financiers, only show applications ASSIGNED TO THEM or where they have made an offer
     if (role === 'FINANCIER' && userId) {
       // First get application IDs where this financier has made offers
       const { data: financierOffers } = await supabase
@@ -1987,15 +1987,16 @@ export const applications = {
       
       const offerAppIds = financierOffers?.map(o => o.application_id) || [];
       
-      // Get applications: new (SUBMITTED), assigned to financier (SUBMITTED_TO_FINANCIER), or ones they have offers on
+      // SECURITY FIX: Only show applications assigned to THIS financier or where they have offers
+      // DO NOT show all SUBMITTED/SUBMITTED_TO_FINANCIER apps to all financiers!
       let query = supabase.from('applications').select('*');
       
       if (offerAppIds.length > 0) {
-        // Show SUBMITTED/SUBMITTED_TO_FINANCIER apps OR apps where financier has made an offer
-        query = query.or(`status.in.(SUBMITTED,SUBMITTED_TO_FINANCIER),id.in.(${offerAppIds.join(',')})`);
+        // Show apps assigned to this financier OR apps where they have made an offer
+        query = query.or(`assigned_financier_id.eq.${userId},id.in.(${offerAppIds.join(',')})`);
       } else {
-        // Only show SUBMITTED or SUBMITTED_TO_FINANCIER apps (new/assigned applications)
-        query = query.in('status', ['SUBMITTED', 'SUBMITTED_TO_FINANCIER']);
+        // Only show apps assigned to this specific financier
+        query = query.eq('assigned_financier_id', userId);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });

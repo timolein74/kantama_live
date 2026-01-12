@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { applications, offers, contracts, infoRequests, files, sendNotificationEmail } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { useAuthStore } from '../../store/authStore';
 import {
   formatCurrency,
   formatDate,
@@ -45,6 +46,7 @@ import type { CompanyInfo } from '../../lib/api';
 
 export default function FinancierApplicationDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuthStore();
   const [application, setApplication] = useState<Application | null>(null);
   const [offerList, setOfferList] = useState<Offer[]>([]);
   const [contractList, setContractList] = useState<Contract[]>([]);
@@ -176,6 +178,18 @@ export default function FinancierApplicationDetail() {
           infoRequests.getForFinancier(id)
         ]);
         
+        // SECURITY CHECK: Verify this financier has access to this application
+        // They must either be assigned to it OR have made an offer on it
+        const hasOffer = offersRes.data?.some((o: Offer) => o.financier_id === user?.id);
+        const isAssigned = appRes.data?.assigned_financier_id === user?.id;
+        
+        if (!hasOffer && !isAssigned) {
+          toast.error('Ei käyttöoikeutta tähän hakemukseen');
+          setApplication(null);
+          setIsLoading(false);
+          return;
+        }
+        
         setApplication(appRes.data);
         setOfferList(offersRes.data);
         setContractList(contractsRes.data);
@@ -197,7 +211,7 @@ export default function FinancierApplicationDetail() {
     };
     
     fetchData();
-  }, [id]);
+  }, [id, user]);
 
   // Document type labels for info request
   const documentLabels: Record<string, string> = {
