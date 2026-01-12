@@ -199,9 +199,10 @@ export default function AdminApplicationDetail() {
     setIsAssigning(true);
     
     try {
-      // Update application status to SUBMITTED_TO_FINANCIER
+      // Update application status AND assigned_financier_id
       const { error: updateError } = await applications.update(id, {
-        status: 'SUBMITTED_TO_FINANCIER'
+        status: 'SUBMITTED_TO_FINANCIER',
+        assigned_financier_id: selectedFinancierId
       } as any);
       
       if (updateError) {
@@ -210,7 +211,7 @@ export default function AdminApplicationDetail() {
       
       // Update local state
       if (application) {
-        setApplication({ ...application, status: 'SUBMITTED_TO_FINANCIER' });
+        setApplication({ ...application, status: 'SUBMITTED_TO_FINANCIER', assigned_financier_id: selectedFinancierId } as any);
       }
       
       // Add to assignment list (local tracking)

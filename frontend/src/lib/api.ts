@@ -1987,19 +1987,52 @@ export const applications = {
       
       const offerAppIds = financierOffers?.map(o => o.application_id) || [];
       
-      // SECURITY FIX: Only show applications assigned to THIS financier or where they have offers
-      // DO NOT show all SUBMITTED/SUBMITTED_TO_FINANCIER apps to all financiers!
+      // Get notifications for this financier to find assigned applications
+      const { data: financierNotifs } = await supabase
+        .from('notifications')
+        .select('action_url')
+        .eq('user_id', userId)
+        .ilike('title', '%hakemus%');
+      
+      // Extract application IDs from notification action URLs
+      const notifAppIds = (financierNotifs || [])
+        .map(n => {
+          const match = n.action_url?.match(/applications\/([a-f0-9-]+)/);
+          return match ? match[1] : null;
+        })
+        .filter(Boolean) as string[];
+      
+      // Combine all app IDs this financier should see
+      const allAppIds = [...new Set([...offerAppIds, ...notifAppIds])];
+      
+      // SECURITY FIX: Only show applications assigned to THIS financier (via notification or assigned_financier_id)
+      // or where they have offers
       let query = supabase.from('applications').select('*');
       
-      if (offerAppIds.length > 0) {
-        // Show apps assigned to this financier OR apps where they have made an offer
-        query = query.or(`assigned_financier_id.eq.${userId},id.in.(${offerAppIds.join(',')})`);
+      if (allAppIds.length > 0) {
+        // Show apps where financier has notification OR offer OR is assigned
+        query = query.or(`assigned_financier_id.eq.${userId},id.in.(${allAppIds.join(',')})`);
       } else {
         // Only show apps assigned to this specific financier
         query = query.eq('assigned_financier_id', userId);
       }
       
       const { data, error } = await query.order('created_at', { ascending: false });
+      
+      // Filter out any apps where assigned_financier_id error occurred (column doesn't exist yet)
+      if (error?.message?.includes('assigned_financier_id')) {
+        // Fallback: only show apps with offers or notifications
+        if (allAppIds.length > 0) {
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('applications')
+            .select('*')
+            .in('id', allAppIds)
+            .order('created_at', { ascending: false });
+          return { data: fallbackData, error: fallbackError };
+        }
+        return { data: [], error: null };
+      }
+      
       return { data, error };
     }
     
