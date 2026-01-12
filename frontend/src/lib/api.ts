@@ -1441,7 +1441,7 @@ export const files = {
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('documents')
+        .from('document')
         .upload(filePath, file, {
           cacheControl: '3600',
           upsert: false
@@ -1454,7 +1454,7 @@ export const files = {
       
       // Get public URL
       const { data: urlData } = supabase.storage
-        .from('documents')
+        .from('document')
         .getPublicUrl(filePath);
       
       console.log('✅ File uploaded:', uploadData.path);
@@ -1480,29 +1480,34 @@ export const files = {
     if (!isSupabaseConfigured()) return { data: [], error: null };
     
     try {
-      const storagePath = `applications/${applicationId}`;
-      console.log('📂 Listing files from storage path:', storagePath);
+      console.log('📂 Fetching files for application:', applicationId);
       
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .list(storagePath);
+      // Fetch from application_files table
+      const { data, error } = await supabase
+        .from('application_files')
+        .select('*')
+        .eq('application_id', applicationId)
+        .order('created_at', { ascending: false });
       
-      console.log('📂 Storage list raw result:', { data, error });
+      console.log('📂 application_files query result:', { data, error });
       
-      // Filter out placeholder files and add URL to each file
-      const filesWithUrls = (data || [])
-        .filter(f => f.name && !f.name.startsWith('.'))
-        .map(f => ({
-          ...f,
-          file_name: f.name,
-          url: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${storagePath}/${f.name}`
-        }));
+      if (error) {
+        console.error('📂 Error fetching files:', error);
+        return { data: [], error };
+      }
       
-      console.log('📂 Processed files with URLs:', filesWithUrls);
+      // Map to expected format with URLs
+      const filesWithUrls = (data || []).map(f => ({
+        ...f,
+        file_name: f.file_name || f.filename || f.name || 'Tiedosto',
+        url: f.file_url || f.url || f.storage_path || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/document/${f.storage_path || f.file_path || ''}`
+      }));
       
-      return { data: filesWithUrls, error };
+      console.log('📂 Processed files:', filesWithUrls);
+      
+      return { data: filesWithUrls, error: null };
     } catch (error) {
-      console.error('📂 Storage list error:', error);
+      console.error('📂 Files list error:', error);
       return { data: [], error };
     }
   },
@@ -1516,7 +1521,7 @@ export const files = {
     
     try {
       const { data, error } = await supabase.storage
-        .from('documents')
+        .from('document')
         .download(path);
       
       return { data, error };
@@ -1529,7 +1534,7 @@ export const files = {
     if (!isSupabaseConfigured()) return null;
     
     const { data } = supabase.storage
-      .from('documents')
+      .from('document')
       .getPublicUrl(path);
     
     return data.publicUrl;
@@ -1540,7 +1545,7 @@ export const files = {
     
     try {
       const { data, error } = await supabase.storage
-        .from('documents')
+        .from('document')
         .remove([path]);
       
       return { data, error };
