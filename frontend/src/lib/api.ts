@@ -1506,7 +1506,7 @@ export const files = {
     try {
       console.log('📂 Fetching files for application:', applicationId);
       
-      // Fetch from application_files table
+      // First, try to fetch from application_files table
       const { data, error } = await supabase
         .from('application_files')
         .select('*')
@@ -1515,21 +1515,60 @@ export const files = {
       
       console.log('📂 application_files query result:', { data, error });
       
-      if (error) {
-        console.error('📂 Error fetching files:', error);
-        return { data: [], error };
+      // If we have files in the database, use them
+      if (data && data.length > 0) {
+        const filesWithUrls = data.map(f => ({
+          ...f,
+          file_name: f.file_name || f.filename || f.name || 'Tiedosto',
+          url: f.file_url || f.url || f.storage_path || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${f.storage_path || f.file_path || ''}`
+        }));
+        
+        console.log('📂 Processed files from DB:', filesWithUrls);
+        return { data: filesWithUrls, error: null };
       }
       
-      // Map to expected format with URLs
-      const filesWithUrls = (data || []).map(f => ({
-        ...f,
-        file_name: f.file_name || f.filename || f.name || 'Tiedosto',
-        url: f.file_url || f.url || f.storage_path || `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${f.storage_path || f.file_path || ''}`
-      }));
+      // Fallback: Try to fetch from Storage directly (for old files not in DB)
+      console.log('📂 No files in DB, checking Storage...');
       
-      console.log('📂 Processed files:', filesWithUrls);
+      // Try multiple possible paths where files might be stored
+      const possiblePaths = [
+        `applications/${applicationId}`,
+        `${applicationId}`
+      ];
       
-      return { data: filesWithUrls, error: null };
+      let storageFiles: any[] = [];
+      
+      for (const path of possiblePaths) {
+        try {
+          const { data: storageData, error: storageError } = await supabase.storage
+            .from('documents')
+            .list(path, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
+          
+          if (storageData && storageData.length > 0 && !storageError) {
+            console.log(`📂 Found ${storageData.length} files in Storage at ${path}`);
+            
+            // Filter out folders (they have null metadata)
+            const actualFiles = storageData.filter(f => f.metadata !== null);
+            
+            storageFiles = actualFiles.map(f => ({
+              id: f.id || f.name,
+              file_name: f.name,
+              file_path: `${path}/${f.name}`,
+              url: `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/documents/${path}/${f.name}`,
+              file_type: f.metadata?.mimetype || 'application/octet-stream',
+              file_size: f.metadata?.size || 0,
+              created_at: f.created_at
+            }));
+            
+            break; // Found files, stop searching
+          }
+        } catch (e) {
+          console.log(`📂 No files found at ${path}`);
+        }
+      }
+      
+      console.log('📂 Files from Storage:', storageFiles);
+      return { data: storageFiles, error: null };
     } catch (error) {
       console.error('📂 Files list error:', error);
       return { data: [], error };
