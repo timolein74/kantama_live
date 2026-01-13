@@ -22,7 +22,8 @@ import {
   X,
   Printer,
   Eye,
-  ExternalLink
+  ExternalLink,
+  Rocket
 } from 'lucide-react';
 import { applications, offers, contracts, infoRequests, files, sendNotificationEmail } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
@@ -40,6 +41,8 @@ import {
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { ContractForm, ContractDocument } from '../../components/contract';
 import YTJInfoCard from '../../components/YTJInfoCard';
+import ContractTimeline from '../../components/ContractTimeline';
+import ContractRequests from '../../components/ContractRequests';
 import type { Application, Offer, InfoRequest } from '../../types';
 import type { Contract, ContractCreateData } from '../../types/contract';
 import type { CompanyInfo } from '../../lib/api';
@@ -108,6 +111,11 @@ export default function FinancierApplicationDetail() {
     liiketoimintasuunnitelma: { selected: false, required: false },
   });
   const [documentRequestMessage, setDocumentRequestMessage] = useState('');
+  
+  // Application rejection
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isRejecting, setIsRejecting] = useState(false);
 
   // DEMO DATA - Empty for fresh testing
   const demoApplications: Application[] = [];
@@ -576,6 +584,33 @@ export default function FinancierApplicationDetail() {
     }
   };
 
+  // Hylkää hakemus - rahoittaja ei voi tarjota rahoitusta
+  const handleRejectApplication = async () => {
+    if (!id) return;
+    
+    setIsRejecting(true);
+    try {
+      const { error } = await applications.reject(id, rejectionReason || undefined);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast.success('Hakemus hylätty. Asiakkaalle on lähetetty ilmoitus.');
+      setShowRejectModal(false);
+      setRejectionReason('');
+      
+      // Refresh application data
+      const appRes = await applications.get(id);
+      setApplication(appRes.data);
+    } catch (error: any) {
+      console.error('Reject application error:', error);
+      toast.error(error?.message || 'Virhe hakemuksen hylkäämisessä');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
   const handleCreateContract = async (data: ContractCreateData, logoFile?: File) => {
     if (!id) return;
     
@@ -796,6 +831,69 @@ export default function FinancierApplicationDetail() {
     }
   };
 
+  // KEHITYSVERSIO: Aktivoi sopimus tuotantoon
+  const handleActivateContract = async (contractId: string | number) => {
+    const confirm = window.confirm(
+      'Haluatko siirtää sopimuksen tuotantoon?\n\nTämä aktivoi sopimuksen ja aloittaa laskutusjakson.'
+    );
+    if (!confirm) return;
+
+    try {
+      // Päivitä sopimuksen status ACTIVE ja aseta activated_at
+      const { error } = await supabase
+        .from('contracts')
+        .update({ 
+          status: 'ACTIVE',
+          activated_at: new Date().toISOString()
+        })
+        .eq('id', contractId);
+
+      if (error) {
+        console.error('Activation error:', error);
+        toast.error('Virhe sopimuksen aktivoinnissa');
+        return;
+      }
+
+      // Päivitä hakemuksen status
+      await supabase
+        .from('applications')
+        .update({ status: 'ACTIVE' })
+        .eq('id', id);
+
+      toast.success('🚀 Sopimus aktivoitu tuotantoon!');
+
+      // Päivitä näkymä
+      const [appRes, contractsRes] = await Promise.all([
+        applications.get(id!),
+        contracts.getForApplication(id!)
+      ]);
+      setApplication(appRes.data);
+      setContractList(contractsRes.data);
+    } catch (error: any) {
+      console.error('Activation exception:', error);
+      toast.error('Virhe sopimuksen aktivoinnissa');
+    }
+  };
+
+  // Uudelleenlataus apufunktio
+  const fetchData = async () => {
+    if (!id) return;
+    try {
+      const [appRes, contractsRes, offersRes, infoRes] = await Promise.all([
+        applications.get(id),
+        contracts.getForApplication(id),
+        offers.getForApplication(id),
+        infoRequests.getForFinancier(id)
+      ]);
+      setApplication(appRes.data);
+      setContractList(contractsRes.data);
+      setOfferList(offersRes.data);
+      setInfoRequestList(infoRes.data);
+    } catch (error) {
+      console.error('Fetch error:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -849,7 +947,10 @@ export default function FinancierApplicationDetail() {
       </div>
 
       {/* Action banners based on status */}
-      {application.status === 'SUBMITTED_TO_FINANCIER' && (
+      {/* Hylkää-painike näkyy kaikissa avoinna olevissa tiloissa */}
+      {['SUBMITTED', 'SUBMITTED_TO_FINANCIER', 'IN_PROGRESS', 'INFO_REQUESTED', 'INFO_RECEIVED', 'OFFER_SENT', 'CREDIT_DECISION_PENDING'].includes(application.status) && 
+       !['REJECTED', 'SIGNED', 'ACTIVE', 'COMPLETED'].includes(application.status) &&
+       !contractList.some(c => ['SIGNED', 'ACTIVE'].includes(c.status)) && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -859,13 +960,28 @@ export default function FinancierApplicationDetail() {
             <div className="flex items-start space-x-3">
               <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5" />
               <div>
-                <p className="font-medium text-orange-900">Uusi hakemus käsiteltävänä</p>
+                <p className="font-medium text-orange-900">
+                  {application.status === 'SUBMITTED_TO_FINANCIER' ? 'Uusi hakemus käsiteltävänä' : 
+                   application.status === 'INFO_REQUESTED' ? 'Odottaa lisätietoja' :
+                   application.status === 'INFO_RECEIVED' ? 'Lisätiedot vastaanotettu' :
+                   application.status === 'OFFER_SENT' ? 'Tarjous lähetetty' :
+                   'Hakemus käsittelyssä'}
+                </p>
                 <p className="text-orange-700 text-sm mt-1">
-                  Tarkista hakemuksen tiedot ja tee tarjous tai pyydä lisätietoja.
+                  {application.status === 'SUBMITTED_TO_FINANCIER' 
+                    ? 'Tarkista hakemuksen tiedot ja tee tarjous tai pyydä lisätietoja.'
+                    : 'Voit tehdä tarjouksen, pyytää lisätietoja tai hylätä hakemuksen.'}
                 </p>
               </div>
             </div>
             <div className="flex space-x-2">
+              <button
+                onClick={() => setShowRejectModal(true)}
+                className="btn bg-white border border-red-300 text-red-700 hover:bg-red-50"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Hylkää
+              </button>
               <button
                 onClick={() => {
                   setActiveTab('messages');
@@ -886,6 +1002,30 @@ export default function FinancierApplicationDetail() {
                 <Euro className="w-4 h-4 mr-2" />
                 Tee tarjous
               </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Hylätty-ilmoitus */}
+      {application.status === 'REJECTED' && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 border border-red-200 rounded-xl p-4"
+        >
+          <div className="flex items-start space-x-3">
+            <X className="w-5 h-5 text-red-600 mt-0.5" />
+            <div>
+              <p className="font-medium text-red-900">Hakemus hylätty</p>
+              <p className="text-red-700 text-sm mt-1">
+                Tämä hakemus on hylätty. Asiakkaalle on lähetetty ilmoitus.
+              </p>
+              {(application as any).rejection_reason && (
+                <p className="text-red-600 text-xs mt-2">
+                  <strong>Sisäinen syy:</strong> {(application as any).rejection_reason}
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -1169,6 +1309,16 @@ export default function FinancierApplicationDetail() {
                   >
                     <Euro className="w-4 h-4 mr-2" />
                     Tee tarjous
+                  </button>
+                )}
+                {/* Reject button - visible when no contract exists */}
+                {!contractList.some(c => c.status === 'ACTIVE' || c.status === 'SIGNED') && application?.status !== 'REJECTED' && (
+                  <button
+                    onClick={() => setShowRejectModal(true)}
+                    className="btn bg-white border border-red-300 text-red-700 hover:bg-red-50"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Hylkää hakemus
                   </button>
                 )}
               </div>
@@ -1987,12 +2137,38 @@ export default function FinancierApplicationDetail() {
 
                   {contract.status === 'SIGNED' && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4 mt-4">
-                      <div className="flex items-center text-green-700">
-                        <CheckCircle className="w-5 h-5 mr-2" />
-                        <span className="font-medium">
-                          Sopimus allekirjoitettu {contract.lessee_signer_name && `(${contract.lessee_signer_name})`}
-                        </span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-green-700">
+                          <CheckCircle className="w-5 h-5 mr-2" />
+                          <span className="font-medium">
+                            Sopimus allekirjoitettu {contract.lessee_signer_name && `(${contract.lessee_signer_name})`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleActivateContract(contract.id)}
+                          className="btn-primary bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-lg"
+                        >
+                          <Rocket className="w-4 h-4" />
+                          Siirrä tuotantoon
+                        </button>
                       </div>
+                      <p className="text-sm text-green-600 mt-2">
+                        Klikkaa "Siirrä tuotantoon" aktivoidaksesi sopimuksen ja aloittaaksesi laskutuksen.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* KEHITYSVERSIO: Aktiivisen sopimuksen seuranta */}
+                  {contract.status === 'ACTIVE' && (
+                    <div className="mt-4 space-y-6">
+                      <ContractTimeline
+                        contract={contract}
+                        offer={offerList.find(o => o.id === contract.offer_id)}
+                        userRole="FINANCIER"
+                        onUpdate={() => fetchData()}
+                      />
+                      {/* Sopimuspyynnöt */}
+                      <ContractRequests contractId={contract.id} showAll={true} />
                     </div>
                   )}
                 </div>
@@ -2287,6 +2463,79 @@ export default function FinancierApplicationDetail() {
           </div>
         )}
       </div>
+
+      {/* Rejection Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900">Hylkää hakemus</h3>
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium text-red-900">Huomio!</p>
+                  <p className="text-red-700 text-sm mt-1">
+                    Olet hylkäämässä hakemuksen yritykseltä <strong>{application?.company_name}</strong>.
+                    Asiakkaalle lähetetään automaattisesti ilmoitus päätöksestä.
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Sisäinen syy (valinnainen, ei näy asiakkaalle)
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                placeholder="Esim. liian suuri riski, puutteelliset vakuudet..."
+                className="input-field w-full h-24"
+              />
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowRejectModal(false)}
+                className="btn flex-1"
+                disabled={isRejecting}
+              >
+                Peruuta
+              </button>
+              <button
+                onClick={handleRejectApplication}
+                disabled={isRejecting}
+                className="btn bg-red-600 text-white hover:bg-red-700 flex-1 flex items-center justify-center"
+              >
+                {isRejecting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Hylätään...
+                  </>
+                ) : (
+                  <>
+                    <X className="w-4 h-4 mr-2" />
+                    Hylkää hakemus
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ import {
 } from '../../lib/utils';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { ContractDocument } from '../../components/contract';
+import ContractTimeline from '../../components/ContractTimeline';
 import type { Application, Offer, InfoRequest } from '../../types';
 import type { Contract } from '../../types/contract';
 
@@ -1632,6 +1633,24 @@ export default function CustomerApplicationDetail() {
                           )}
                         </div>
                       </div>
+                      <p className="text-sm text-green-600 mt-2">
+                        Rahoittaja aktivoi sopimuksen pian. Saat ilmoituksen kun sopimus on tuotannossa.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* KEHITYSVERSIO: Aktiivisen sopimuksen seuranta */}
+                  {contract.status === 'ACTIVE' && (
+                    <div className="mt-4">
+                      <ContractTimeline
+                        contract={contract}
+                        offer={offerList.find(o => o.id === contract.offer_id)}
+                        userRole="CUSTOMER"
+                        onUpdate={async () => {
+                          const contractsRes = await contracts.getForApplication(id!);
+                          setContractList(contractsRes.data);
+                        }}
+                      />
                     </div>
                   )}
                 </motion.div>
@@ -1729,12 +1748,44 @@ export default function CustomerApplicationDetail() {
 
                   <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg mb-4">
                     <p className="text-sm text-amber-600 mb-1 font-medium">Rahoittajan pyyntö:</p>
-                    <p className="text-amber-800 mb-3">{ir.message}</p>
+                    {/* Show message if exists, otherwise show document summary */}
+                    {ir.message ? (
+                      <p className="text-amber-800 mb-3">{ir.message}</p>
+                    ) : (ir as any).requested_documents && (ir as any).requested_documents.length > 0 ? (
+                      <p className="text-amber-800 mb-3">
+                        Rahoittaja pyytää seuraavat dokumentit: <strong>
+                          {(ir as any).requested_documents.map((docType: string) => {
+                            const labels: Record<string, string> = {
+                              tilinpaatos: 'Tilinpäätös',
+                              tulosTase: 'Tulos ja tase ajot',
+                              henkilokortti: 'Henkilötodistus',
+                              kuvaKohteesta: 'Kuva kohteesta',
+                              urakkasopimus: 'Urakkasopimus',
+                              liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
+                            };
+                            return labels[docType] || docType;
+                          }).join(', ')}
+                        </strong>
+                      </p>
+                    ) : (
+                      <p className="text-amber-800 mb-3">Rahoittaja on pyytänyt lisätietoja.</p>
+                    )}
                     {/* Show document list with interactive checkboxes */}
-                    {(ir as any).documents && (ir as any).documents.length > 0 && !(ir as any).is_read && (
+                    {(((ir as any).documents && (ir as any).documents.length > 0) || ((ir as any).requested_documents && (ir as any).requested_documents.length > 0)) && !(ir as any).is_read && (
                       <div className="mt-3 space-y-3">
-                        <p className="text-sm font-medium text-amber-700 mb-2">Liitä pyydetyt dokumentit:</p>
-                        {(ir as any).documents.map((doc: any, i: number) => (
+                        <p className="text-sm font-medium text-amber-700 mb-2">📎 Liitä pyydetyt dokumentit:</p>
+                        {/* Use documents if available, otherwise transform requested_documents */}
+                        {((ir as any).documents || ((ir as any).requested_documents || []).map((docType: string) => {
+                          const labels: Record<string, string> = {
+                            tilinpaatos: 'Tilinpäätös',
+                            tulosTase: 'Tulos ja tase ajot',
+                            henkilokortti: 'Henkilötodistus (Passi / Henkilökortti)',
+                            kuvaKohteesta: 'Kuva kohteesta',
+                            urakkasopimus: 'Urakkasopimus',
+                            liiketoimintasuunnitelma: 'Liiketoimintasuunnitelma',
+                          };
+                          return { type: docType, label: labels[docType] || docType, required: true };
+                        })).map((doc: any, i: number) => (
                           <div key={i} className="bg-white rounded-lg p-3 border border-amber-200">
                             <label className="flex items-center cursor-pointer">
                               <input 

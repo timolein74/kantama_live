@@ -88,6 +88,18 @@ Deno.serve(async (req) => {
             </div>
           `;
           break;
+        case 'rejected':
+          emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #dc2626;">Rahoituspäätös${companyInfo}</h2>
+              <p>${greeting}</p>
+              <p>Valitettavasti emme tällä kertaa voi tarjota rahoitusta hakemukseesi.</p>
+              <p>Rahoituspäätös perustuu kokonaisarvioon, joka huomioi useita tekijöitä. Mikäli tilanteesi muuttuu, olet tervetullut hakemaan uudelleen.</p>
+              <p>Kiitos mielenkiinnostasi Juuri Rahoitusta kohtaan.</p>
+              <p style="margin-top: 24px; color: #666;">Ystävällisin terveisin,<br>Juuri Rahoitus</p>
+            </div>
+          `;
+          break;
         default:
           emailHtml = `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

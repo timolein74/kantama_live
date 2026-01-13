@@ -65,10 +65,12 @@ const EDGE_FUNCTION_URL = 'https://iquhgqeicalsrsfzdopd.supabase.co/functions/v1
 export const sendNotificationEmail = async (params: {
   to: string;
   subject: string;
-  type: 'offer' | 'info_request' | 'message' | 'contract';
+  type: 'offer' | 'info_request' | 'message' | 'contract' | 'rejected';
   customer_name?: string;
   company_name?: string;
   html?: string;
+  requested_documents?: string[];
+  message_content?: string;
 }): Promise<{ success: boolean; data?: any; error?: string }> => {
   console.log('📧 [EMAIL] Attempting to send email:', {
     to: params.to,
@@ -517,12 +519,16 @@ export const infoRequests = {
       // ALWAYS send email if contact_email exists (regardless of user_id)
       if (app?.contact_email) {
         console.log('📧 [INFO_REQUEST] Sending email to:', app.contact_email);
+        console.log('📧 [INFO_REQUEST] With documents:', data.requested_documents);
+        console.log('📧 [INFO_REQUEST] With message:', data.message);
         const emailResult = await sendNotificationEmail({
           to: app.contact_email,
           subject: 'Lisätietopyyntö hakemukseesi - Juuri Rahoitus',
           type: 'info_request',
           customer_name: app.contact_person || undefined,
           company_name: app.company_name || undefined,
+          requested_documents: data.requested_documents || undefined,
+          message_content: data.message || undefined,
         });
         
         if (!emailResult.success) {
@@ -1977,9 +1983,19 @@ export const applications = {
       return { data, error };
     }
     
-    // For financiers, only show applications ASSIGNED TO THEM or where they have made an offer
+    // For financiers, only show applications ASSIGNED TO THEM via application_assignments table
     if (role === 'FINANCIER' && userId) {
-      // First get application IDs where this financier has made offers
+      // KRIITTINEN: Käytä application_assignments taulua - EI notifikaatioita!
+      // Tämä varmistaa että rahoittaja näkee VAIN hänelle osoitetut hakemukset
+      const { data: assignments } = await supabase
+        .from('application_assignments')
+        .select('application_id')
+        .eq('financier_id', userId)
+        .eq('status', 'ACTIVE');
+      
+      const assignedAppIds = assignments?.map(a => a.application_id) || [];
+      
+      // Lisäksi hae hakemukset joissa rahoittajalla on tarjouksia (taaksepäin yhteensopivuus)
       const { data: financierOffers } = await supabase
         .from('offers')
         .select('application_id')
@@ -1987,26 +2003,9 @@ export const applications = {
       
       const offerAppIds = financierOffers?.map(o => o.application_id) || [];
       
-      // Get notifications for this financier to find assigned applications
-      const { data: financierNotifs } = await supabase
-        .from('notifications')
-        .select('action_url')
-        .eq('user_id', userId)
-        .ilike('title', '%hakemus%');
+      // Yhdistä osoitetut ja tarjotut (unique)
+      const allAppIds = [...new Set([...assignedAppIds, ...offerAppIds])];
       
-      // Extract application IDs from notification action URLs
-      const notifAppIds = (financierNotifs || [])
-        .map(n => {
-          const match = n.action_url?.match(/applications\/([a-f0-9-]+)/);
-          return match ? match[1] : null;
-        })
-        .filter(Boolean) as string[];
-      
-      // Combine all app IDs this financier should see
-      const allAppIds = [...new Set([...offerAppIds, ...notifAppIds])];
-      
-      // SECURITY FIX: Only show applications assigned to THIS financier (via notification)
-      // or where they have offers - NO assigned_financier_id column exists yet
       if (allAppIds.length > 0) {
         const { data, error } = await supabase
           .from('applications')
@@ -2016,7 +2015,7 @@ export const applications = {
         return { data, error };
       }
       
-      // No apps to show
+      // Ei hakemuksia näytettäväksi
       return { data: [], error: null };
     }
     
@@ -2127,6 +2126,94 @@ export const applications = {
     }
     
     return { data, error };
+  },
+  
+  // Rahoittaja hylkää hakemuksen (ei voi tarjota rahoitusta)
+  reject: async (id: string | number, reason?: string) => {
+    if (!isSupabaseConfigured()) return { data: null, error: null };
+    
+    const idStr = String(id);
+    console.log('📛 Rejecting application:', idStr, 'Reason:', reason);
+    
+    try {
+      // 1. Get application details for notification
+      const { data: app, error: appError } = await supabase
+        .from('applications')
+        .select('contact_email, contact_person, company_name, user_id')
+        .eq('id', idStr)
+        .single();
+      
+      if (appError) {
+        console.error('Error fetching application:', appError);
+        return { data: null, error: appError };
+      }
+      
+      // 2. Update application status to REJECTED
+      const { data, error } = await supabase
+        .from('applications')
+        .update({ 
+          status: 'REJECTED', 
+          rejection_reason: reason || null,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', idStr)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error rejecting application:', error);
+        return { data: null, error };
+      }
+      
+      // 3. Create in-app notification if user_id exists
+      if (app?.user_id) {
+        await supabase.from('notifications').insert({
+          user_id: app.user_id,
+          title: 'Rahoituspäätös',
+          message: 'Valitettavasti hakemustasi ei voitu hyväksyä'
+        });
+        console.log('✅ In-app notification created for rejection');
+      }
+      
+      // 4. Send email notification to customer
+      if (app?.contact_email) {
+        console.log('📧 Sending rejection email to:', app.contact_email);
+        const emailResult = await sendNotificationEmail({
+          to: app.contact_email,
+          subject: 'Rahoituspäätös - Juuri Rahoitus',
+          type: 'rejected',
+          customer_name: app.contact_person || undefined,
+          company_name: app.company_name || undefined,
+        });
+        
+        if (!emailResult.success) {
+          console.error('❌ Rejection email failed:', emailResult.error);
+        } else {
+          console.log('✅ Rejection email sent successfully');
+        }
+      }
+      
+      // 5. Notify admins
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'ADMIN');
+      
+      if (admins && admins.length > 0) {
+        const adminNotifications = admins.map(admin => ({
+          user_id: admin.id,
+          title: 'Hakemus hylätty',
+          message: `Rahoittaja hylkäsi hakemuksen: ${app?.company_name || 'Yritys'}`
+        }));
+        await supabase.from('notifications').insert(adminNotifications);
+      }
+      
+      console.log('✅ Application rejected successfully:', data);
+      return { data, error: null };
+    } catch (e) {
+      console.error('Unexpected error rejecting application:', e);
+      return { data: null, error: e };
+    }
   }
 };
 

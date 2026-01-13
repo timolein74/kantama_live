@@ -199,7 +199,36 @@ export default function AdminApplicationDetail() {
     setIsAssigning(true);
     
     try {
-      // Update application status (assigned_financier tracked via notifications)
+      // KRIITTINEN: Lisää osoitus application_assignments tauluun
+      // Tämä varmistaa että VAIN valittu rahoittaja näkee hakemuksen
+      const { error: assignError } = await supabase
+        .from('application_assignments')
+        .insert({
+          application_id: id,
+          financier_id: selectedFinancierId,
+          assigned_by: user?.id,
+          notes: assignmentNotes || null,
+          status: 'ACTIVE'
+        });
+      
+      if (assignError) {
+        // Jos osoitus on jo olemassa, päivitä se
+        if (assignError.code === '23505') { // unique violation
+          await supabase
+            .from('application_assignments')
+            .update({ 
+              status: 'ACTIVE',
+              notes: assignmentNotes || null,
+              assigned_at: new Date().toISOString()
+            })
+            .eq('application_id', id)
+            .eq('financier_id', selectedFinancierId);
+        } else {
+          throw new Error(assignError.message || 'Virhe osoituksen luomisessa');
+        }
+      }
+      
+      // Update application status
       const { error: updateError } = await applications.update(id, {
         status: 'SUBMITTED_TO_FINANCIER'
       } as any);
@@ -218,7 +247,7 @@ export default function AdminApplicationDetail() {
         id: Date.now(),
         application_id: id,
         financier_id: selectedFinancierId,
-        status: 'PENDING',
+        status: 'ACTIVE',
         notes: assignmentNotes || null,
         created_at: new Date().toISOString(),
       };
